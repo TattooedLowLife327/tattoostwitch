@@ -7,13 +7,13 @@
 <title>LLoGB Chat Overlay</title>
 <style>
   :root{
-    --bg: rgba(0,0,0,0.0); /* fully transparent for OBS */
+    --bg: rgba(0,0,0,0.0);
     --bubble: rgba(20, 0, 30, 0.55);
-    --accent: #8a2be2; /* purple */
+    --accent: #8a2be2;
     --text: #ffffff;
     --fade: 12s;
     --font: Helvetica, Arial, sans-serif;
-    --max: 30; /* max on screen */
+    --max: 30;
   }
   *{ box-sizing: border-box; }
   html,body{
@@ -48,11 +48,11 @@
 <script src="https://unpkg.com/tmi.js@1.8.5/dist/tmi.min.js"></script>
 <script>
   // ===== CONFIG =====
-  const CHANNEL = 'lowlifesofgb'; // e.g. 'tattooedlowlife'
+  const urlParams = new URLSearchParams(window.location.search);
+  const CHANNEL = urlParams.get('channel') || 'defaultchannel'; // read from ?channel=yourname
   const MAX_MSG = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max')) || 30;
-  const HIDE_COMMANDS = true;   // hide messages starting with ! (e.g. !sr)
-  const HIDE_BOTS = ['streamelements','nightbot','streamlabs']; // add bot usernames to drop
-  // ==================
+  const HIDE_COMMANDS = true;
+  const HIDE_BOTS = ['streamelements','nightbot','streamlabs'];
 
   const log = document.getElementById('log');
 
@@ -61,7 +61,6 @@
     el.className = 'msg';
     el.innerHTML = `<span class="name">${user}:</span><span class="text">${escapeHTML(text)}</span>`;
     log.appendChild(el);
-    // trim
     while(log.children.length > MAX_MSG){
       log.removeChild(log.firstChild);
     }
@@ -89,9 +88,8 @@
     pushMessage(user, message);
   });
 
-  // Optional: system message on connect
   client.on('connected', () => {
-    pushMessage('SYSTEM', 'Chat connected.');
+    pushMessage('SYSTEM', `Chat connected to #${CHANNEL}.`);
   });
 </script>
 </body>
