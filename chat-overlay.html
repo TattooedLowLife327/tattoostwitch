@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLoGB Chat Overlay</title>
+<style>
+  :root{
+    --bg: rgba(0,0,0,0.0); /* fully transparent for OBS */
+    --bubble: rgba(20, 0, 30, 0.55);
+    --accent: #8a2be2; /* purple */
+    --text: #ffffff;
+    --fade: 12s;
+    --font: Helvetica, Arial, sans-serif;
+    --max: 30; /* max on screen */
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family: var(--font); overflow:hidden;
+  }
+  #log{
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 12px;
+  }
+  .msg{
+    display:flex; gap:10px; align-items:flex-start;
+    background: linear-gradient(135deg, rgba(25,0,35,0.6), rgba(75,0,130,0.28));
+    border-left: 3px solid var(--accent);
+    padding: 10px 12px; border-radius: 10px;
+    animation: rise 0.25s ease-out, fadeout var(--fade) linear forwards;
+  }
+  .name{
+    font-weight:700; color: var(--accent);
+    margin-right: 6px; white-space: nowrap;
+  }
+  .text{ white-space: pre-wrap; word-break: break-word; }
+  @keyframes rise { from{ transform: translateY(10px); opacity:0 } to{ transform: translateY(0); opacity:1 } }
+  @keyframes fadeout { 0%, 85%{ opacity:1 } 100%{ opacity:0 } }
+</style>
+</head>
+<body>
+<div id="log"></div>
+
+<script src="https://unpkg.com/tmi.js@1.8.5/dist/tmi.min.js"></script>
+<script>
+  // ===== CONFIG =====
+  const CHANNEL = 'lowlifesofgb'; // e.g. 'tattooedlowlife'
+  const MAX_MSG = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max')) || 30;
+  const HIDE_COMMANDS = true;   // hide messages starting with ! (e.g. !sr)
+  const HIDE_BOTS = ['streamelements','nightbot','streamlabs']; // add bot usernames to drop
+  // ==================
+
+  const log = document.getElementById('log');
+
+  function pushMessage(user, text){
+    const el = document.createElement('div');
+    el.className = 'msg';
+    el.innerHTML = `<span class="name">${user}:</span><span class="text">${escapeHTML(text)}</span>`;
+    log.appendChild(el);
+    // trim
+    while(log.children.length > MAX_MSG){
+      log.removeChild(log.firstChild);
+    }
+  }
+
+  function escapeHTML(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  const client = new tmi.Client({
+    connection: { secure: true, reconnect: true },
+    channels: [CHANNEL]
+  });
+
+  client.connect();
+
+  client.on('message', (channel, tags, message, self) => {
+    if(self) return;
+    const user = (tags['display-name'] || tags.username || '').toString();
+    const uname = (tags.username || '').toLowerCase();
+
+    if (HIDE_COMMANDS && message.trim().startsWith('!')) return;
+    if (HIDE_BOTS.includes(uname)) return;
+
+    pushMessage(user, message);
+  });
+
+  // Optional: system message on connect
+  client.on('connected', () => {
+    pushMessage('SYSTEM', 'Chat connected.');
+  });
+</script>
+</body>
+</html>
