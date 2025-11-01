@@ -1,0 +1,22 @@
+[build]
+  publish = "."
+  command = "echo 'Static overlay site - no build step required'"
+
+[build.environment]
+  NODE_VERSION = "22.0.0"
+  TWITCH_CHANNEL = "lowlifesofgb"
+
+# Disable extensions like Neon
+[plugins]
+  package = "@netlify/plugin-local-install-core"
+
+# Skip secret scans on harmless config files
+[secrets_scan]
+  enabled = true
+  omit_paths = ["netlify.toml"]
+
+# Redirect API calls if needed
+[[redirects]]
+  from = "/queue"
+  to = "/.netlify/functions/queue"
+  status = 200
