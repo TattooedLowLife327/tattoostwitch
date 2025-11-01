@@ -14,8 +14,8 @@ const {
   SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET,
   SPOTIFY_REFRESH_TOKEN,
-  PORT = 8787,
-  PROMO_MINUTES = 15
+  PORT = process.env.PORT || 8787,
+  PROMO_MINUTES = process.env.PROMO_MINUTES || 15
 } = process.env;
 
 if (!TWITCH_CHANNEL || !TWITCH_BOT_USERNAME || !TWITCH_OAUTH_TOKEN) {
@@ -43,10 +43,10 @@ async function ensureSpotifyToken() {
 let helixAppToken = null;
 let helixTokenExp = 0;
 async function getAppAccessToken() {
-  const now = Math.floor(Date.now()/1000);
+  const now = Math.floor(Date.now() / 1000);
   if (helixAppToken && now < helixTokenExp - 60) return helixAppToken;
 
-  const res = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, { method:'POST' });
+  const res = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, { method: 'POST' });
   const data = await res.json();
   helixAppToken = data.access_token;
   helixTokenExp = now + (data.expires_in || 3600);
@@ -74,24 +74,22 @@ async function getChatters(login) {
 // ====== Song queue state ======
 let nowPlaying = null; // { title, artist, requester }
 let approvedQueue = []; // [{ title, artist, spotifyId, requester }]
-let pending = []; // [{ id, query, requester }], id is incremental index for approve/deny
-
+let pending = []; // [{ id, query, requester }]
 let nextPendingId = 1;
 
 // ====== Twitch IRC (bot) ======
 const client = new tmi.Client({
   identity: { username: TWITCH_BOT_USERNAME, password: TWITCH_OAUTH_TOKEN },
-  channels: [ TWITCH_CHANNEL ]
+  channels: [TWITCH_CHANNEL]
 });
 
 client.connect().catch(console.error);
 
 function say(msg) {
-  client.say(`#${TWITCH_CHANNEL}`, msg).catch(()=>{});
+  client.say(`#${TWITCH_CHANNEL}`, msg).catch(() => {});
 }
 
-// helpers
-function isPrivileged(tags){
+function isPrivileged(tags) {
   const badges = tags.badges || {};
   return !!(badges.broadcaster || badges.moderator);
 }
@@ -101,7 +99,6 @@ client.on('message', async (channel, tags, message, self) => {
   const text = message.trim();
   const uname = (tags['display-name'] || tags.username || '').toString();
 
-  // !sr query
   if (text.toLowerCase().startsWith('!sr ')) {
     const q = text.slice(4).trim();
     if (!q) return;
@@ -111,7 +108,6 @@ client.on('message', async (channel, tags, message, self) => {
     return;
   }
 
-  // approvals (broadcaster/mods only)
   if (text.toLowerCase().startsWith('!approve ')) {
     if (!isPrivileged(tags)) return;
     const n = parseInt(text.split(' ')[1], 10);
@@ -124,7 +120,6 @@ client.on('message', async (channel, tags, message, self) => {
       const track = s.body.tracks.items[0];
       if (!track) { say(`No Spotify match for "${item.query}".`); return; }
 
-      // Queue on Spotify (Note: requires Premium + active device)
       await spotify.addToQueue(track.uri);
 
       const approved = {
@@ -134,7 +129,6 @@ client.on('message', async (channel, tags, message, self) => {
         requester: item.requester
       };
 
-      // rotate now/queue
       if (!nowPlaying) nowPlaying = approved;
       else approvedQueue.push(approved);
 
@@ -150,19 +144,19 @@ client.on('message', async (channel, tags, message, self) => {
     const n = parseInt(text.split(' ')[1], 10);
     const idx = pending.findIndex(p => p.id === n);
     if (idx === -1) { say(`No pending item #${n}.`); return; }
-    const item = pending.splice(idx, 1)[0];
-    say(`Denied #${n}: "${item.query}".`);
+    pending.splice(idx, 1);
+    say(`Denied #${n}.`);
     return;
   }
 
   if (text.toLowerCase() === '!queue') {
-    const next = approvedQueue.slice(0, 5).map((t, i)=>`${i+1}. ${t.title} — ${t.artist} (${t.requester||'?'})`).join(' | ');
+    const next = approvedQueue.slice(0, 5).map((t, i) => `${i + 1}. ${t.title} — ${t.artist} (${t.requester || '?'})`).join(' | ');
     say(`Now: ${nowPlaying ? `${nowPlaying.title} — ${nowPlaying.artist}` : '—'} | Up Next: ${next || '—'}`);
     return;
   }
 
   if (text.toLowerCase() === '!pending') {
-    const list = pending.slice(0,5).map(p=>`#${p.id} "${p.query}" (${p.requester})`).join(' | ');
+    const list = pending.slice(0, 5).map(p => `#${p.id} "${p.query}" (${p.requester})`).join(' | ');
     say(`Pending: ${list || '—'}`);
     return;
   }
@@ -177,8 +171,8 @@ client.on('message', async (channel, tags, message, self) => {
   }
 });
 
-// ====== Periodic promo + lurker announce ======
-async function announceLurkersAndPromo(){
+// ====== Promo and lurker announce ======
+async function announceLurkersAndPromo() {
   try {
     const total = await getViewerCount(TWITCH_CHANNEL);
     const chatters = await getChatters(TWITCH_CHANNEL);
@@ -188,21 +182,20 @@ async function announceLurkersAndPromo(){
     }
   } catch (_) {}
 
-  // promo
   say(`LowLife App + socials: lowlifesofgranboard.com • FB: LLoGB • Twitch: twitch.tv/${TWITCH_CHANNEL}`);
 }
 setInterval(announceLurkersAndPromo, Math.max(1, parseInt(PROMO_MINUTES, 10)) * 60 * 1000);
 
-// ====== REST for overlays ======
+// ====== Overlay endpoint ======
 app.get('/queue', (_req, res) => {
   res.json({
     now: nowPlaying,
     queue: approvedQueue,
-    pending: pending.map(p => ({ id:p.id, query:p.query, requester:p.requester }))
+    pending
   });
 });
 
-// starter
+// ====== Start server ======
 app.listen(PORT, () => {
   console.log(`Overlay API on http://localhost:${PORT}`);
   console.log(`Channel: #${TWITCH_CHANNEL}`);
