@@ -5,6 +5,7 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import SpotifyWebApi from 'spotify-web-api-node';
 
+// ====== ENV VARIABLES ======
 const {
   TWITCH_BOT_USERNAME,
   TWITCH_CHANNEL,
@@ -14,20 +15,22 @@ const {
   SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET,
   SPOTIFY_REFRESH_TOKEN,
-  PORT = process.env.PORT || 8787,
-  PROMO_MINUTES = process.env.PROMO_MINUTES || 15
+  PROMO_MINUTES
 } = process.env;
 
-if (!TWITCH_CHANNEL || !TWITCH_BOT_USERNAME || !TWITCH_OAUTH_TOKEN) {
-  console.error('Missing Twitch IRC env vars. Fill TWITCH_CHANNEL, TWITCH_BOT_USERNAME, TWITCH_OAUTH_TOKEN.');
+const PORT = process.env.PORT;
+
+if (!PORT) {
+  console.error('Missing PORT env var. Add it in Netlify.');
   process.exit(1);
 }
 
+// ====== EXPRESS SETUP ======
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ====== Spotify client ======
+// ====== SPOTIFY ======
 const spotify = new SpotifyWebApi({
   clientId: SPOTIFY_CLIENT_ID,
   clientSecret: SPOTIFY_CLIENT_SECRET
@@ -39,14 +42,17 @@ async function ensureSpotifyToken() {
   spotify.setAccessToken(data.body['access_token']);
 }
 
-// ====== Twitch Helix app access token (for viewer_count) ======
+// ====== TWITCH HELIX TOKEN ======
 let helixAppToken = null;
 let helixTokenExp = 0;
 async function getAppAccessToken() {
   const now = Math.floor(Date.now() / 1000);
   if (helixAppToken && now < helixTokenExp - 60) return helixAppToken;
 
-  const res = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, { method: 'POST' });
+  const res = await fetch(
+    `https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`,
+    { method: 'POST' }
+  );
   const data = await res.json();
   helixAppToken = data.access_token;
   helixTokenExp = now + (data.expires_in || 3600);
@@ -71,13 +77,13 @@ async function getChatters(login) {
   return Object.values(sets).flat();
 }
 
-// ====== Song queue state ======
-let nowPlaying = null; // { title, artist, requester }
-let approvedQueue = []; // [{ title, artist, spotifyId, requester }]
-let pending = []; // [{ id, query, requester }]
+// ====== QUEUE STATE ======
+let nowPlaying = null;
+let approvedQueue = [];
+let pending = [];
 let nextPendingId = 1;
 
-// ====== Twitch IRC (bot) ======
+// ====== TWITCH BOT ======
 const client = new tmi.Client({
   identity: { username: TWITCH_BOT_USERNAME, password: TWITCH_OAUTH_TOKEN },
   channels: [TWITCH_CHANNEL]
@@ -104,7 +110,7 @@ client.on('message', async (channel, tags, message, self) => {
     if (!q) return;
     const item = { id: nextPendingId++, query: q, requester: uname };
     pending.push(item);
-    say(`Request queued for review (#${item.id}): "${q}" — requested by ${uname}`);
+    say(`Request queued (#${item.id}): "${q}" — requested by ${uname}`);
     return;
   }
 
@@ -132,7 +138,7 @@ client.on('message', async (channel, tags, message, self) => {
       if (!nowPlaying) nowPlaying = approved;
       else approvedQueue.push(approved);
 
-      say(`Approved #${n}: ${approved.title} — ${approved.artist} (requested by ${approved.requester}). Queued on Spotify.`);
+      say(`Approved #${n}: ${approved.title} — ${approved.artist} (${approved.requester}) added to queue.`);
     } catch (e) {
       say(`Failed to approve #${n}: ${e?.body?.error?.message || e.message}`);
     }
@@ -150,53 +156,41 @@ client.on('message', async (channel, tags, message, self) => {
   }
 
   if (text.toLowerCase() === '!queue') {
-    const next = approvedQueue.slice(0, 5).map((t, i) => `${i + 1}. ${t.title} — ${t.artist} (${t.requester || '?'})`).join(' | ');
-    say(`Now: ${nowPlaying ? `${nowPlaying.title} — ${nowPlaying.artist}` : '—'} | Up Next: ${next || '—'}`);
-    return;
-  }
-
-  if (text.toLowerCase() === '!pending') {
-    const list = pending.slice(0, 5).map(p => `#${p.id} "${p.query}" (${p.requester})`).join(' | ');
-    say(`Pending: ${list || '—'}`);
+    const next = approvedQueue.slice(0, 5).map((t, i) => `${i + 1}. ${t.title} — ${t.artist}`).join(' | ');
+    say(`Now: ${nowPlaying ? `${nowPlaying.title} — ${nowPlaying.artist}` : '—'} | Next: ${next || '—'}`);
     return;
   }
 
   if (text.toLowerCase() === '!skip') {
     if (!isPrivileged(tags)) return;
-    if (!nowPlaying) { say('Nothing is playing.'); return; }
+    if (!nowPlaying) { say('Nothing playing.'); return; }
     const skipped = nowPlaying;
     nowPlaying = approvedQueue.shift() || null;
-    say(`Skipped: ${skipped.title} — ${skipped.artist}. Now: ${nowPlaying ? `${nowPlaying.title} — ${nowPlaying.artist}` : '—'}`);
+    say(`Skipped ${skipped.title}. Now playing ${nowPlaying ? nowPlaying.title : '—'}.`);
     return;
   }
 });
 
-// ====== Promo and lurker announce ======
+// ====== PROMO / LURKERS ======
 async function announceLurkersAndPromo() {
   try {
     const total = await getViewerCount(TWITCH_CHANNEL);
     const chatters = await getChatters(TWITCH_CHANNEL);
     if (total != null) {
       const lurkers = Math.max(0, total - (chatters?.length || 0));
-      say(`Heads up: ~${lurkers} folks watching not logged in. Say hi, you gremlins 🤘`);
+      say(`Heads up: ~${lurkers} folks watching quietly 🤘`);
     }
   } catch (_) {}
-
-  say(`LowLife App + socials: lowlifesofgranboard.com • FB: LLoGB • Twitch: twitch.tv/${TWITCH_CHANNEL}`);
+  say(`LowLife App + socials: lowlifesofgranboard.com • Twitch.tv/${TWITCH_CHANNEL}`);
 }
 setInterval(announceLurkersAndPromo, Math.max(1, parseInt(PROMO_MINUTES, 10)) * 60 * 1000);
 
-// ====== Overlay endpoint ======
+// ====== ENDPOINT ======
 app.get('/queue', (_req, res) => {
-  res.json({
-    now: nowPlaying,
-    queue: approvedQueue,
-    pending
-  });
+  res.json({ now: nowPlaying, queue: approvedQueue, pending });
 });
 
-// ====== Start server ======
+// ====== START ======
 app.listen(PORT, () => {
-  console.log(`Overlay API on http://localhost:${PORT}`);
-  console.log(`Channel: #${TWITCH_CHANNEL}`);
+  console.log(`Overlay API live on port ${PORT}`);
 });
