@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLoGB Spotify Queue</title>
+<style>
+  :root{
+    --bg: rgba(0,0,0,0.0);
+    --card: rgba(20, 0, 30, 0.55);
+    --accent: #8a2be2;
+    --text: #ffffff;
+    --muted: #cfc2ff;
+    --font: Helvetica, Arial, sans-serif;
+  }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--font); }
+  .wrap{ padding:12px; width:100%; height:100%; }
+  .now{
+    border-left: 4px solid var(--accent);
+    background: linear-gradient(135deg, rgba(25,0,35,0.6), rgba(75,0,130,0.28));
+    padding: 10px 12px; border-radius: 10px; margin-bottom: 12px;
+  }
+  .title{ font-weight: 700; font-size: 1rem; color: var(--muted); margin-bottom: 6px; }
+  .track{ font-size: 1.05rem; }
+  .queue{
+    display:flex; flex-direction:column; gap:8px; max-height: 80vh; overflow: hidden;
+  }
+  .item{
+    background: var(--card); border-left: 3px solid #4b0082; padding:8px 10px; border-radius:8px;
+    display:flex; justify-content:space-between; gap:10px;
+  }
+  .small{ color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="now">
+    <div class="title">Now Playing</div>
+    <div class="track" id="now">—</div>
+    <div class="small" id="requester">Requested by —</div>
+  </div>
+  <div class="title">Up Next</div>
+  <div class="queue" id="queue"></div>
+</div>
+
+<script>
+  // If you change BOT_PORT in .env, update this:
+  const ENDPOINT = 'https://tattoostwitch.onrender.com/queue';
+
+  async function refresh(){
+    try{
+      const r = await fetch(ENDPOINT, { cache: 'no-store' });
+      const data = await r.json();
+
+      const nowEl = document.getElementById('now');
+      const reqEl = document.getElementById('requester');
+      const qEl = document.getElementById('queue');
+      qEl.innerHTML = '';
+
+      if(data.now){
+        nowEl.textContent = `${data.now.title} — ${data.now.artist}`;
+        reqEl.textContent = data.now.requester ? `Requested by ${data.now.requester}` : '';
+      } else {
+        nowEl.textContent = '—';
+        reqEl.textContent = '';
+      }
+
+      (data.queue || []).slice(0,10).forEach((t, i) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<span>${i+1}. ${t.title} — ${t.artist}</span><span class="small">${t.requester || ''}</span>`;
+        qEl.appendChild(div);
+      });
+
+    } catch (e){
+      // minimal fail state
+      document.getElementById('now').textContent = 'Queue offline';
+      document.getElementById('queue').innerHTML = '';
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>
