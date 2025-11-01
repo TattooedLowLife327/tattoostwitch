@@ -21,7 +21,7 @@ const {
 const PORT = process.env.PORT || 8787;
 
 if (!TWITCH_CHANNEL || !TWITCH_CLIENT_ID || !SPOTIFY_CLIENT_ID) {
-  console.error('❌ Missing required environment variables. Check Netlify settings.');
+  console.error('Missing required environment variables. Check Netlify settings.');
   process.exit(1);
 }
 
@@ -187,7 +187,7 @@ async function announceLurkersAndPromo() {
     const chatters = await getChatters(TWITCH_CHANNEL);
     if (total != null) {
       const lurkers = Math.max(0, total - (chatters?.length || 0));
-      say(`Heads up: ~${lurkers} folks watching quietly 🤘`);
+      say(`Heads up: ~${lurkers} folks watching quietly`);
     }
   } catch (_) {}
   say(`LowLife App + socials: lowlifesofgranboard.com • twitch.tv/${TWITCH_CHANNEL}`);
@@ -202,5 +202,5 @@ app.get('/queue', (_req, res) => {
 
 // ====== START SERVER ======
 app.listen(PORT, () => {
-  console.log(`✅ Overlay API live on port ${PORT}`);
+  console.log(`Overlay API live on port ${PORT}`);
 });
