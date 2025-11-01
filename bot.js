@@ -18,10 +18,10 @@ const {
   PROMO_MINUTES
 } = process.env;
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8787;
 
-if (!PORT) {
-  console.error('Missing PORT env var. Add it in Netlify.');
+if (!TWITCH_CHANNEL || !TWITCH_CLIENT_ID || !SPOTIFY_CLIENT_ID) {
+  console.error('❌ Missing required environment variables. Check Netlify settings.');
   process.exit(1);
 }
 
@@ -38,8 +38,12 @@ const spotify = new SpotifyWebApi({
 if (SPOTIFY_REFRESH_TOKEN) spotify.setRefreshToken(SPOTIFY_REFRESH_TOKEN);
 
 async function ensureSpotifyToken() {
-  const data = await spotify.refreshAccessToken();
-  spotify.setAccessToken(data.body['access_token']);
+  try {
+    const data = await spotify.refreshAccessToken();
+    spotify.setAccessToken(data.body['access_token']);
+  } catch (err) {
+    console.error('Spotify token refresh failed:', err.message);
+  }
 }
 
 // ====== TWITCH HELIX TOKEN ======
@@ -49,10 +53,14 @@ async function getAppAccessToken() {
   const now = Math.floor(Date.now() / 1000);
   if (helixAppToken && now < helixTokenExp - 60) return helixAppToken;
 
-  const res = await fetch(
-    `https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`,
-    { method: 'POST' }
-  );
+  const res = await fetch(`https://id.twitch.tv/oauth2/token`, {
+    method: 'POST',
+    body: new URLSearchParams({
+      client_id: TWITCH_CLIENT_ID,
+      client_secret: TWITCH_CLIENT_SECRET,
+      grant_type: 'client_credentials'
+    })
+  });
   const data = await res.json();
   helixAppToken = data.access_token;
   helixTokenExp = now + (data.expires_in || 3600);
@@ -60,13 +68,12 @@ async function getAppAccessToken() {
 }
 
 async function getViewerCount(login) {
-  if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) return null;
   const token = await getAppAccessToken();
   const r = await fetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(login)}`, {
-    headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}` }
+    headers: { 'Client-ID': TWITCH_CLIENT_ID, Authorization: `Bearer ${token}` }
   });
   const j = await r.json();
-  return (j.data && j.data[0] && j.data[0].viewer_count) ? j.data[0].viewer_count : null;
+  return j.data?.[0]?.viewer_count ?? null;
 }
 
 async function getChatters(login) {
@@ -92,6 +99,7 @@ const client = new tmi.Client({
 client.connect().catch(console.error);
 
 function say(msg) {
+  if (!TWITCH_CHANNEL) return;
   client.say(`#${TWITCH_CHANNEL}`, msg).catch(() => {});
 }
 
@@ -100,17 +108,18 @@ function isPrivileged(tags) {
   return !!(badges.broadcaster || badges.moderator);
 }
 
+// ====== CHAT COMMANDS ======
 client.on('message', async (channel, tags, message, self) => {
   if (self) return;
   const text = message.trim();
-  const uname = (tags['display-name'] || tags.username || '').toString();
+  const uname = tags['display-name'] || tags.username || '';
 
   if (text.toLowerCase().startsWith('!sr ')) {
     const q = text.slice(4).trim();
     if (!q) return;
     const item = { id: nextPendingId++, query: q, requester: uname };
     pending.push(item);
-    say(`Request queued (#${item.id}): "${q}" — requested by ${uname}`);
+    say(`Queued #${item.id}: "${q}" — requested by ${uname}`);
     return;
   }
 
@@ -118,13 +127,14 @@ client.on('message', async (channel, tags, message, self) => {
     if (!isPrivileged(tags)) return;
     const n = parseInt(text.split(' ')[1], 10);
     const idx = pending.findIndex(p => p.id === n);
-    if (idx === -1) { say(`No pending item #${n}.`); return; }
+    if (idx === -1) return say(`No pending item #${n}.`);
+
     const item = pending.splice(idx, 1)[0];
     try {
       await ensureSpotifyToken();
       const s = await spotify.searchTracks(item.query, { limit: 1 });
       const track = s.body.tracks.items[0];
-      if (!track) { say(`No Spotify match for "${item.query}".`); return; }
+      if (!track) return say(`No Spotify match for "${item.query}".`);
 
       await spotify.addToQueue(track.uri);
 
@@ -149,7 +159,7 @@ client.on('message', async (channel, tags, message, self) => {
     if (!isPrivileged(tags)) return;
     const n = parseInt(text.split(' ')[1], 10);
     const idx = pending.findIndex(p => p.id === n);
-    if (idx === -1) { say(`No pending item #${n}.`); return; }
+    if (idx === -1) return say(`No pending item #${n}.`);
     pending.splice(idx, 1);
     say(`Denied #${n}.`);
     return;
@@ -163,11 +173,10 @@ client.on('message', async (channel, tags, message, self) => {
 
   if (text.toLowerCase() === '!skip') {
     if (!isPrivileged(tags)) return;
-    if (!nowPlaying) { say('Nothing playing.'); return; }
+    if (!nowPlaying) return say('Nothing playing.');
     const skipped = nowPlaying;
     nowPlaying = approvedQueue.shift() || null;
     say(`Skipped ${skipped.title}. Now playing ${nowPlaying ? nowPlaying.title : '—'}.`);
-    return;
   }
 });
 
@@ -181,8 +190,9 @@ async function announceLurkersAndPromo() {
       say(`Heads up: ~${lurkers} folks watching quietly 🤘`);
     }
   } catch (_) {}
-  say(`LowLife App + socials: lowlifesofgranboard.com • Twitch.tv/${TWITCH_CHANNEL}`);
+  say(`LowLife App + socials: lowlifesofgranboard.com • twitch.tv/${TWITCH_CHANNEL}`);
 }
+
 setInterval(announceLurkersAndPromo, Math.max(1, parseInt(PROMO_MINUTES, 10)) * 60 * 1000);
 
 // ====== ENDPOINT ======
@@ -190,7 +200,7 @@ app.get('/queue', (_req, res) => {
   res.json({ now: nowPlaying, queue: approvedQueue, pending });
 });
 
-// ====== START ======
+// ====== START SERVER ======
 app.listen(PORT, () => {
-  console.log(`Overlay API live on port ${PORT}`);
+  console.log(`✅ Overlay API live on port ${PORT}`);
 });
