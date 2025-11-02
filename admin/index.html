@@ -274,6 +274,7 @@
     <h2>Quick Actions</h2>
     <button class="btn" style="margin-bottom: 10px;" onclick="skipSong()">Skip Current Song</button>
     <button class="btn" style="margin-bottom: 10px;" onclick="triggerPromo()">Trigger DCD Promo</button>
+    <button class="btn" style="margin-bottom: 10px; background: #ff6b6b;" onclick="resetBot()">Reset Bot (Clear All Queues)</button>
   </div>
 
   <button class="btn logout-btn" onclick="logout()">Logout</button>
@@ -414,6 +415,21 @@
       alert('Promo triggered');
     } catch (e) {
       alert('Failed to trigger promo');
+    }
+  }
+
+  async function resetBot() {
+    if (!confirm('Are you sure you want to clear all pending and approved song queues? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/reset-bot`, { method: 'POST' });
+      const data = await res.json();
+      alert(`Bot reset! Cleared ${data.cleared.pending} pending and ${data.cleared.approved} approved songs.`);
+      updatePendingQueue();
+    } catch (e) {
+      alert('Failed to reset bot');
     }
   }
 
