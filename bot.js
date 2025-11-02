@@ -672,6 +672,32 @@ app.post('/skip', async (req, res) => {
   }
 });
 
+// Play current song
+app.post('/play', async (req, res) => {
+  try {
+    await ensureSpotifyToken();
+    await spotify.play();
+    console.log(`[API PLAY] Resumed playback`);
+    res.json({ success: true });
+  } catch (e) {
+    console.error(`[API PLAY ERROR]`, e);
+    res.status(500).json({ error: 'Failed to play' });
+  }
+});
+
+// Pause current song
+app.post('/pause', async (req, res) => {
+  try {
+    await ensureSpotifyToken();
+    await spotify.pause();
+    console.log(`[API PAUSE] Paused playback`);
+    res.json({ success: true });
+  } catch (e) {
+    console.error(`[API PAUSE ERROR]`, e);
+    res.status(500).json({ error: 'Failed to pause' });
+  }
+});
+
 // Trigger promo from admin panel
 app.post('/trigger-promo', (req, res) => {
   const { index } = req.body;
