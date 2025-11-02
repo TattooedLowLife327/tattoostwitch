@@ -279,10 +279,21 @@
     line-height: 1.2;
   }
 
+  .track-duration {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
 
   /* Controls */
   .controls {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
   }
 
   .control-btn {
@@ -436,6 +447,24 @@
           <div class="track-name" id="now-title">—</div>
           <div class="track-artist" id="now-artist">—</div>
           <div class="track-requester" id="now-requester"></div>
+          <div class="track-duration" id="now-duration">0:00 / 0:00</div>
+
+          <!-- Controls -->
+          <div class="controls">
+            <button class="control-btn play-btn" id="play-btn" onclick="togglePlay()" title="Play/Pause">
+              <svg viewBox="0 0 24 24" id="play-icon">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              <svg viewBox="0 0 24 24" id="pause-icon" style="display: none;">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+              </svg>
+            </button>
+            <button class="control-btn" onclick="skipSong()" title="Skip">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -465,6 +494,50 @@
   let currentTrackId = null;
   let lastProgress = 0;
 
+  // Format milliseconds to MM:SS
+  function formatTime(ms) {
+    if (!ms || ms <= 0) return '0:00';
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  // Toggle play/pause
+  async function togglePlay() {
+    try {
+      const endpoint = isPlaying ? 'http://localhost:8787/pause' : 'http://localhost:8787/play';
+      await fetch(endpoint, { method: 'POST' });
+      refresh();
+    } catch (e) {
+      console.error('Failed to toggle playback:', e);
+    }
+  }
+
+  // Skip current song
+  async function skipSong() {
+    try {
+      await fetch('http://localhost:8787/skip', { method: 'POST' });
+      refresh();
+    } catch (e) {
+      console.error('Failed to skip song:', e);
+    }
+  }
+
+  // Update play/pause icon
+  function updatePlayPauseIcon() {
+    const playIcon = document.getElementById('play-icon');
+    const pauseIcon = document.getElementById('pause-icon');
+
+    if (isPlaying) {
+      playIcon.style.display = 'none';
+      pauseIcon.style.display = 'block';
+    } else {
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+    }
+  }
+
   // Smooth progress animation
   function animateProgress() {
     const nowCard = document.querySelector('.now');
@@ -485,6 +558,14 @@
     }
 
     nowCard.style.setProperty('--progress', currentProgress);
+
+    // Update duration display
+    const durationEl = document.getElementById('now-duration');
+    if (durationEl && currentDuration > 0) {
+      const currentTime = (currentProgress / 100) * currentDuration;
+      durationEl.textContent = `${formatTime(currentTime)} / ${formatTime(currentDuration)}`;
+    }
+
     requestAnimationFrame(animateProgress);
   }
 
@@ -546,12 +627,16 @@
           isPlaying = false;
         }
 
+        // Update play/pause icon
+        updatePlayPauseIcon();
+
       } else {
         currentTrackId = null;
         lastProgress = 0;
         nowTitle.textContent = '—';
         nowArtist.textContent = '—';
         nowRequester.textContent = '';
+        document.getElementById('now-duration').textContent = '0:00 / 0:00';
         albumArt.innerHTML = `<svg viewBox="0 0 24 24" fill="white" style="width: 36px; height: 36px;">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
         </svg>`;
@@ -559,6 +644,7 @@
         currentProgress = 0;
         currentDuration = 0;
         isPlaying = false;
+        updatePlayPauseIcon();
       }
 
       // Update notification display
