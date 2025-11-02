@@ -1,0 +1,65 @@
+<!-- all platforms will be added to this container -->
+<div id="platform_container">
+</div>
+
+<!-- platform item -->
+<script type="text/template" id="platform_item">
+  <span style="font: {font_weight} {font_size} {font}; margin:20px" id="{platform}_container">
+    <img class="platform-img platform-{platform}" data-platform="{platform}" width="{font_size}" height="{font_size}" style="vertical-align: middle; margin-right: 8px;">
+    <span style="color:{font_color}" class="{platform}-count"></span>
+  </span>
+</script>
+
+<style>
+  .platform-twitch {
+    content: url('https://sndsyxxcnuwjmjgikzgg.supabase.co/storage/v1/object/public/public.assets/Group%201707478198.png');
+  }
+
+  .platform-facebook {
+    content: url('https://sndsyxxcnuwjmjgikzgg.supabase.co/storage/v1/object/public/public.assets/Frame%201%20(1).png');
+  }
+</style>
+
+<script>
+var platformImages = {
+  'twitch': 'https://sndsyxxcnuwjmjgikzgg.supabase.co/storage/v1/object/public/public.assets/Group%201707478198.png',
+  'facebook': 'https://sndsyxxcnuwjmjgikzgg.supabase.co/storage/v1/object/public/public.assets/Frame%201%20(1).png'
+};
+
+var checkCount = 0;
+var maxChecks = 50;
+
+function updateImages() {
+  var images = document.querySelectorAll('.platform-img');
+  console.log('Check #' + checkCount + ': Found ' + images.length + ' images');
+
+  if (images.length > 0) {
+    for (var i = 0; i < images.length; i++) {
+      var platform = images[i].getAttribute('data-platform');
+      console.log('Platform:', platform);
+      if (platform && platformImages[platform]) {
+        images[i].src = platformImages[platform];
+        console.log('SUCCESS: Set image for', platform);
+      }
+    }
+  } else if (checkCount < maxChecks) {
+    // Keep checking every 200ms until we find images
+    checkCount++;
+    setTimeout(updateImages, 200);
+  }
+}
+
+// Start checking immediately
+updateImages();
+
+// Also set up observer for dynamic updates
+var container = document.getElementById('platform_container');
+if (container) {
+  console.log('Observer attached to container');
+  var observer = new MutationObserver(function() {
+    console.log('DOM changed, updating images');
+    updateImages();
+  });
+  observer.observe(container, { childList: true, subtree: true });
+}
+</script>

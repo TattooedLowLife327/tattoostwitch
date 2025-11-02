@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLoGB Scoreboard</title>
+<style>
+  :root{
+    --bg: rgba(0,0,0,0.0);
+    --purple: #8B5CF6;
+    --text: #ffffff;
+    --muted: #a3a3a3;
+    --font: system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overflow: visible;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .card {
+    width: 320px;
+    background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    border-radius: 12px;
+    overflow: hidden;
+    transform: scale(1.5);
+    transform-origin: top left;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, transparent 100%);
+    border-radius: 12px;
+    pointer-events: none;
+  }
+
+  .card-content {
+    position: relative;
+    padding: 12px 16px;
+    z-index: 2;
+    min-height: 125px;
+    max-height: 125px;
+    display: flex;
+    align-items: center;
+  }
+
+  .scoreboard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .divider-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, transparent 0%, rgba(139, 92, 246, 0.6) 50%, transparent 100%);
+    transform: translateX(-50%);
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .player-name, .player-score {
+    flex: 1;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .player-name {
+    font-size: 20px;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+  }
+
+  .player-score {
+    font-size: 64px;
+    color: var(--text);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    font-weight: 900;
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-overlay"></div>
+  <div class="card-content">
+    <div class="scoreboard">
+      <div class="divider-line"></div>
+
+      <!-- Names Row -->
+      <div class="row">
+        <div class="player-name" id="player1-name">TATTOO</div>
+        <div class="player-name" id="player2-name">OPEN</div>
+      </div>
+
+      <!-- Scores Row -->
+      <div class="row">
+        <div class="player-score" id="player1-score">0</div>
+        <div class="player-score" id="player2-score">0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ENDPOINT = 'http://localhost:8787/scoreboard';
+
+  async function updateScoreboard() {
+    try {
+      const response = await fetch(ENDPOINT, { cache: 'no-store' });
+      const data = await response.json();
+
+      if (data.player1) {
+        document.getElementById('player1-name').textContent = (data.player1.name || 'TATTOO').toUpperCase();
+        document.getElementById('player1-score').textContent = data.player1.score || 0;
+      }
+
+      if (data.player2) {
+        document.getElementById('player2-name').textContent = (data.player2.name || 'OPEN').toUpperCase();
+        document.getElementById('player2-score').textContent = data.player2.score || 0;
+      }
+
+    } catch (error) {
+      console.error('Failed to update scoreboard:', error);
+    }
+  }
+
+  updateScoreboard();
+  setInterval(updateScoreboard, 2000);
+</script>
+</body>
+</html>

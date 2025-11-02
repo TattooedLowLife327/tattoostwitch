@@ -17,6 +17,8 @@ Thumbs.db
 dist/
 build/
 
+# Figma prototypes and design code
+examplecodefromfigma/
 
 #Ignore insiders AI rules
 .github\instructions\codacy.instructions.md
