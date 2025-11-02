@@ -8,80 +8,781 @@
 <style>
   :root{
     --bg: rgba(0,0,0,0.0);
-    --card: rgba(20, 0, 30, 0.55);
-    --accent: #8a2be2;
+    --purple: #8B5CF6;
     --text: #ffffff;
-    --muted: #cfc2ff;
-    --font: Helvetica, Arial, sans-serif;
+    --muted: #a3a3a3;
+    --font: system-ui, -apple-system, sans-serif;
   }
-  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--font); }
-  .wrap{ padding:12px; width:100%; height:100%; }
-  .now{
-    border-left: 4px solid var(--accent);
-    background: linear-gradient(135deg, rgba(25,0,35,0.6), rgba(75,0,130,0.28));
-    padding: 10px 12px; border-radius: 10px; margin-bottom: 12px;
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overflow: visible;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
-  .title{ font-weight: 700; font-size: 1rem; color: var(--muted); margin-bottom: 6px; }
-  .track{ font-size: 1.05rem; }
-  .queue{
-    display:flex; flex-direction:column; gap:8px; max-height: 80vh; overflow: hidden;
+
+  .wrap {
+    width: 320px;
+    transform: scale(1.5);
+    transform-origin: top left;
   }
-  .item{
-    background: var(--card); border-left: 3px solid #4b0082; padding:8px 10px; border-radius:8px;
-    display:flex; justify-content:space-between; gap:10px;
+
+  .now {
+    width: 100%;
   }
-  .small{ color: var(--muted); font-size: 0.9rem; }
+
+  .card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
+
+  .card:not(.now) {
+    overflow: hidden;
+  }
+
+  /* Animated progress border for now playing card */
+  .now::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 12px;
+    padding: 3px;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      rgba(139, 92, 246, 1) 0deg,
+      rgba(168, 85, 247, 1) calc(var(--progress, 0) * 3.6deg),
+      transparent calc(var(--progress, 0) * 3.6deg)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+    filter: blur(6px) brightness(1.5);
+    opacity: 1;
+  }
+
+  .now::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 12px;
+    padding: 2px;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      #8B5CF6 0deg,
+      #A855F7 calc(var(--progress, 0) * 3.6deg),
+      transparent calc(var(--progress, 0) * 3.6deg)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Glow from behind when new song starts */
+  .now .glow-background {
+    position: absolute;
+    inset: -20px;
+    background: var(--purple);
+    border-radius: 12px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+    filter: blur(40px);
+  }
+
+  @keyframes glowFlash {
+    0% {
+      opacity: 0;
+      filter: blur(20px) brightness(2);
+    }
+    40% {
+      opacity: 1;
+      filter: blur(25px) brightness(3);
+    }
+    100% {
+      opacity: 0;
+      filter: blur(30px) brightness(1.5);
+    }
+  }
+
+  .now.new-song .glow-background {
+    animation: glowFlash 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%);
+    border-radius: 12px;
+    pointer-events: none;
+  }
+
+  .card-content {
+    position: relative;
+    padding: 16px;
+  }
+
+  /* Now Playing Card */
+  .now {
+    --progress: 0;
+    transition: --progress 0.5s ease-out;
+  }
+
+  .player-layout {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  /* Album Art */
+  .album-art-container {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .album-glow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(168, 85, 247, 0.2) 100%);
+    border-radius: 8px;
+    filter: blur(12px);
+    transform: scale(1.05);
+  }
+
+  .album-art {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border: 2px solid rgba(139, 92, 246, 0.4);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .album-art:hover {
+    transform: scale(1.05);
+    border-color: rgba(139, 92, 246, 0.6);
+  }
+
+  .album-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* Floating music notes */
+  .music-notes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 3;
+  }
+
+  .music-note {
+    position: absolute;
+    color: var(--purple);
+    opacity: 0;
+    font-size: 16px;
+    animation: float-up 4s ease-in infinite;
+  }
+
+  .music-note:nth-child(1) {
+    left: 10%;
+    animation-delay: 0s;
+  }
+
+  .music-note:nth-child(2) {
+    left: 50%;
+    animation-delay: 1.5s;
+  }
+
+  .music-note:nth-child(3) {
+    left: 80%;
+    animation-delay: 3s;
+  }
+
+  @keyframes float-up {
+    0% {
+      bottom: -10px;
+      opacity: 0;
+      transform: translateY(0) rotate(0deg);
+    }
+    20% {
+      opacity: 0.6;
+    }
+    80% {
+      opacity: 0.6;
+    }
+    100% {
+      bottom: 100%;
+      opacity: 0;
+      transform: translateY(-20px) rotate(15deg);
+    }
+  }
+
+  /* Player Info */
+  .player-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .track-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  .track-artist {
+    font-size: 15px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  .track-requester {
+    font-size: 12px;
+    color: var(--purple);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+
+  /* Controls */
+  .controls {
+    display: none;
+  }
+
+  .control-btn {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .control-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+  }
+
+  .control-btn:hover {
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--purple);
+  }
+
+  .play-btn {
+    background: var(--purple);
+    width: 36px;
+    height: 36px;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+  }
+
+  .play-btn:hover {
+    background: #7c3aed;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+  }
+
+  .play-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Notification Section */
+  .notification-container {
+    position: relative;
+    overflow: hidden;
+    min-height: 125px;
+  }
+
+  .notification-content {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .notification-content.slide-out {
+    transform: translateX(100%);
+  }
+
+  .notification-content.slide-in {
+    transform: translateX(-100%);
+  }
+
+  .notification {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0;
+  }
+
+  .notification-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border-radius: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .notification-icon svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--purple);
+  }
+
+  .notification-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notification-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+  }
+
+  .notification-subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.3;
+  }
+
+  .notification-type {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--purple);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  /* SVG Icons */
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="now">
-    <div class="title">Now Playing</div>
-    <div class="track" id="now">—</div>
-    <div class="small" id="requester">Requested by —</div>
+  <!-- Now Playing Section -->
+  <div class="card now">
+    <div class="glow-background"></div>
+    <div class="card-overlay"></div>
+    <div class="card-content">
+      <div class="player-layout">
+        <!-- Album Art -->
+        <div class="album-art-container">
+          <div class="album-glow"></div>
+          <div class="album-art" id="album-art">
+            <svg viewBox="0 0 24 24" fill="white" style="width: 36px; height: 36px;">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+            </svg>
+          </div>
+          <div class="music-notes">
+            <div class="music-note">♪</div>
+            <div class="music-note">♫</div>
+            <div class="music-note">♪</div>
+          </div>
+        </div>
+
+        <!-- Player Info -->
+        <div class="player-info">
+          <div class="track-name" id="now-title">—</div>
+          <div class="track-artist" id="now-artist">—</div>
+          <div class="track-requester" id="now-requester"></div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="title">Up Next</div>
-  <div class="queue" id="queue"></div>
+
+  <!-- Notification Section -->
+  <div class="card">
+    <div class="card-overlay"></div>
+    <div class="card-content">
+      <div class="notification-container">
+        <div class="notification-content" id="notification-display">
+          <!-- Content will be dynamically updated -->
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-  // If you change BOT_PORT in .env, update this:
-  const ENDPOINT = 'https://tattoostwitch.onrender.com/queue';
+  const ENDPOINT = 'http://localhost:8787/queue';
+
+  let currentProgress = 0;
+  let targetProgress = 0;
+  let currentDuration = 0;
+  let lastUpdateTime = Date.now();
+  let isPlaying = false;
+  let currentTrackId = null;
+  let lastProgress = 0;
+
+  // Smooth progress animation
+  function animateProgress() {
+    const nowCard = document.querySelector('.now');
+    if (!nowCard) return;
+
+    if (isPlaying && currentDuration > 0) {
+      // Calculate time elapsed since last update
+      const now = Date.now();
+      const elapsed = now - lastUpdateTime;
+      lastUpdateTime = now;
+
+      // Increment progress based on elapsed time
+      const progressIncrement = (elapsed / currentDuration) * 100;
+      currentProgress = Math.min(currentProgress + progressIncrement, 100);
+    } else {
+      // Smoothly interpolate to target when not playing
+      currentProgress += (targetProgress - currentProgress) * 0.1;
+    }
+
+    nowCard.style.setProperty('--progress', currentProgress);
+    requestAnimationFrame(animateProgress);
+  }
+
+  // Trigger glow when new song starts
+  function triggerNewSongGlow() {
+    const nowCard = document.querySelector('.now');
+    if (!nowCard) return;
+
+    nowCard.classList.add('new-song');
+    setTimeout(() => {
+      nowCard.classList.remove('new-song');
+    }, 1500);
+  }
 
   async function refresh(){
     try{
       const r = await fetch(ENDPOINT, { cache: 'no-store' });
       const data = await r.json();
 
-      const nowEl = document.getElementById('now');
-      const reqEl = document.getElementById('requester');
-      const qEl = document.getElementById('queue');
-      qEl.innerHTML = '';
+      const nowTitle = document.getElementById('now-title');
+      const nowArtist = document.getElementById('now-artist');
+      const nowRequester = document.getElementById('now-requester');
+      const albumArt = document.getElementById('album-art');
 
       if(data.now){
-        nowEl.textContent = `${data.now.title} — ${data.now.artist}`;
-        reqEl.textContent = data.now.requester ? `Requested by ${data.now.requester}` : '';
+        // Detect song change and trigger glow on new song
+        const newTrackId = data.now.spotifyId || data.now.title;
+        if (currentTrackId && currentTrackId !== newTrackId) {
+          triggerNewSongGlow();
+        }
+        currentTrackId = newTrackId;
+
+        nowTitle.textContent = data.now.title;
+        nowArtist.textContent = data.now.artist;
+        nowRequester.textContent = data.now.requester ? `SR: ${data.now.requester}` : '';
+
+        // Update album art
+        if (data.now.albumArt) {
+          albumArt.innerHTML = `<img src="${data.now.albumArt}" alt="Album Art">`;
+        } else {
+          albumArt.innerHTML = `<svg viewBox="0 0 24 24" fill="white" style="width: 36px; height: 36px;">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+          </svg>`;
+        }
+
+        // Update progress state
+        if (data.now.progress !== undefined && data.now.duration !== undefined && data.now.duration > 0) {
+          const percentage = (data.now.progress / data.now.duration) * 100;
+          lastProgress = percentage;
+          targetProgress = percentage;
+          currentProgress = percentage;
+          currentDuration = data.now.duration;
+          isPlaying = data.now.isPlaying !== false;
+          lastUpdateTime = Date.now();
+        } else {
+          targetProgress = 0;
+          currentProgress = 0;
+          currentDuration = 0;
+          isPlaying = false;
+        }
+
       } else {
-        nowEl.textContent = '—';
-        reqEl.textContent = '';
+        currentTrackId = null;
+        lastProgress = 0;
+        nowTitle.textContent = '—';
+        nowArtist.textContent = '—';
+        nowRequester.textContent = '';
+        albumArt.innerHTML = `<svg viewBox="0 0 24 24" fill="white" style="width: 36px; height: 36px;">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+        </svg>`;
+        targetProgress = 0;
+        currentProgress = 0;
+        currentDuration = 0;
+        isPlaying = false;
       }
 
-      (data.queue || []).slice(0,10).forEach((t, i) => {
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `<span>${i+1}. ${t.title} — ${t.artist}</span><span class="small">${t.requester || ''}</span>`;
-        qEl.appendChild(div);
-      });
+      // Update notification display
+      updateNotificationDisplay(data);
 
     } catch (e){
-      // minimal fail state
-      document.getElementById('now').textContent = 'Queue offline';
-      document.getElementById('queue').innerHTML = '';
+      document.getElementById('now-title').textContent = 'Queue offline';
+      document.getElementById('now-artist').textContent = '';
+      targetProgress = 0;
+      isPlaying = false;
     }
   }
 
+  // Notification system
+  let currentNotification = 'next-song';
+  let queueData = null;
+  let eventTimeout = null;
+  let reminderInterval = null;
+
+  function updateNotificationDisplay(data) {
+    queueData = data;
+    if (currentNotification === 'next-song') {
+      showNextSong();
+    }
+  }
+
+  function showNextSong() {
+    const display = document.getElementById('notification-display');
+
+    if (queueData && queueData.queue && queueData.queue.length > 0) {
+      const next = queueData.queue[0];
+      const iconContent = next.albumArt
+        ? `<img src="${next.albumArt}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">`
+        : `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+
+      display.innerHTML = `
+        <div class="notification">
+          <div class="notification-icon">
+            ${iconContent}
+          </div>
+          <div class="notification-info">
+            <div class="notification-type">Up Next</div>
+            <div class="notification-title">${next.title}</div>
+            <div class="notification-subtitle">${next.artist} - requested by ${next.requester}</div>
+          </div>
+        </div>
+      `;
+    } else {
+      display.innerHTML = `
+        <div class="notification">
+          <div class="notification-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+            </svg>
+          </div>
+          <div class="notification-info">
+            <div class="notification-type">Up Next</div>
+            <div class="notification-title">Queue Empty</div>
+            <div class="notification-subtitle">Use !sr to request a song</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  function showReminder() {
+    const display = document.getElementById('notification-display');
+    display.classList.add('slide-out');
+
+    setTimeout(() => {
+      display.innerHTML = `
+        <div class="notification">
+          <div class="notification-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+            </svg>
+          </div>
+          <div class="notification-info">
+            <div class="notification-type">Song Requests</div>
+            <div class="notification-title">Request Your Favorite</div>
+            <div class="notification-subtitle">Use !sr to request your fav song next</div>
+          </div>
+        </div>
+      `;
+      display.classList.remove('slide-out');
+      display.classList.add('slide-in');
+
+      setTimeout(() => {
+        display.classList.remove('slide-in');
+      }, 50);
+    }, 400);
+
+    // Revert back to next song after 6 seconds
+    setTimeout(() => {
+      display.classList.add('slide-out');
+      setTimeout(() => {
+        showNextSong();
+        display.classList.remove('slide-out');
+        display.classList.add('slide-in');
+        setTimeout(() => display.classList.remove('slide-in'), 50);
+      }, 400);
+    }, 6000);
+  }
+
+  function showEvent(type, title, subtitle, icon) {
+    // Clear any existing timeout
+    if (eventTimeout) {
+      clearTimeout(eventTimeout);
+    }
+
+    currentNotification = type;
+    const display = document.getElementById('notification-display');
+    display.classList.add('slide-out');
+
+    setTimeout(() => {
+      display.innerHTML = `
+        <div class="notification">
+          <div class="notification-icon">
+            ${icon}
+          </div>
+          <div class="notification-info">
+            <div class="notification-type">${type}</div>
+            <div class="notification-title">${title}</div>
+            <div class="notification-subtitle">${subtitle}</div>
+          </div>
+        </div>
+      `;
+      display.classList.remove('slide-out');
+      display.classList.add('slide-in');
+
+      setTimeout(() => {
+        display.classList.remove('slide-in');
+      }, 50);
+    }, 400);
+
+    // Revert back to next song after 6 seconds
+    eventTimeout = setTimeout(() => {
+      currentNotification = 'next-song';
+      display.classList.add('slide-out');
+      setTimeout(() => {
+        showNextSong();
+        display.classList.remove('slide-out');
+        display.classList.add('slide-in');
+        setTimeout(() => display.classList.remove('slide-in'), 50);
+      }, 400);
+    }, 6000);
+  }
+
+  // Promotional messages
+  const promoMessages = [
+    {
+      type: 'Discount Code',
+      title: 'Dead Center Darts',
+      subtitle: 'Use code LOWLIFES15 for 15% off!',
+      icon: '<img src="images/dcdlogo.png" style="width: 72px; height: 72px; object-fit: contain;">'
+    },
+    {
+      type: 'Song Requests',
+      title: 'Request Your Favorite',
+      subtitle: 'Use !sr to request your fav song next',
+      icon: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>'
+    }
+  ];
+
+  let currentPromoIndex = 0;
+
+  function showPromo() {
+    currentNotification = 'promo';
+    const promo = promoMessages[currentPromoIndex];
+    const display = document.getElementById('notification-display');
+    display.classList.add('slide-out');
+
+    setTimeout(() => {
+      display.innerHTML = `
+        <div class="notification">
+          <div class="notification-icon">
+            ${promo.icon}
+          </div>
+          <div class="notification-info">
+            <div class="notification-type">${promo.type}</div>
+            <div class="notification-title">${promo.title}</div>
+            <div class="notification-subtitle">${promo.subtitle}</div>
+          </div>
+        </div>
+      `;
+      display.classList.remove('slide-out');
+      display.classList.add('slide-in');
+
+      setTimeout(() => {
+        display.classList.remove('slide-in');
+      }, 50);
+    }, 400);
+
+    // Move to next promo
+    currentPromoIndex = (currentPromoIndex + 1) % promoMessages.length;
+  }
+
+  // Cycle promos every 90 seconds
+  reminderInterval = setInterval(() => {
+    if (currentNotification === 'next-song' || currentNotification === 'promo') {
+      showPromo();
+    }
+  }, 90000);
+
+  // Listen for promo triggers from chat commands
+  const promoEventSource = new EventSource('http://localhost:8787/promo-events');
+  promoEventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('[PROMO] Received trigger:', data);
+
+      // Force show the specific promo immediately
+      currentPromoIndex = data.index;
+      showPromo();
+    } catch (e) {
+      console.error('[PROMO] Failed to parse event:', e);
+    }
+  };
+
+  // Start smooth animation loop
+  animateProgress();
+
   refresh();
-  setInterval(refresh, 5000);
+  setInterval(refresh, 2000); // Update every 2 seconds to match backend polling
 </script>
 </body>
 </html>

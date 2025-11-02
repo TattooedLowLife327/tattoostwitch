@@ -8,89 +8,279 @@
 <style>
   :root{
     --bg: rgba(0,0,0,0.0);
-    --bubble: rgba(20, 0, 30, 0.55);
-    --accent: #8a2be2;
+    --purple: #8B5CF6;
     --text: #ffffff;
+    --muted: #a3a3a3;
+    --font: system-ui, -apple-system, sans-serif;
     --fade: 12s;
-    --font: Helvetica, Arial, sans-serif;
     --max: 30;
   }
-  *{ box-sizing: border-box; }
-  html,body{
-    margin:0; padding:0; background:var(--bg); color:var(--text);
-    font-family: var(--font); overflow:hidden;
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overflow: visible;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    position: relative;
   }
-  #log{
+
+  .card {
     position: absolute;
-    bottom: 0; left: 0; right: 0;
-    display: flex; flex-direction: column; gap: 10px;
-    padding: 12px;
+    bottom: 0;
+    left: 0;
+    width: 345px;
+    height: 450px;
+    background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+    transform: scale(1.5);
+    transform-origin: bottom left;
   }
-  .msg{
-    display:flex; gap:10px; align-items:flex-start;
-    background: linear-gradient(135deg, rgba(25,0,35,0.6), rgba(75,0,130,0.28));
-    border-left: 3px solid var(--accent);
-    padding: 10px 12px; border-radius: 10px;
-    animation: rise 0.25s ease-out, fadeout var(--fade) linear forwards;
+
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%);
+    border-radius: 12px;
+    pointer-events: none;
+    z-index: 1;
   }
-  .name{
-    font-weight:700; color: var(--accent);
-    margin-right: 6px; white-space: nowrap;
+
+  .card-content {
+    position: relative;
+    padding: 16px;
+    z-index: 2;
   }
-  .text{ white-space: pre-wrap; word-break: break-word; }
-  @keyframes rise { from{ transform: translateY(10px); opacity:0 } to{ transform: translateY(0); opacity:1 } }
-  @keyframes fadeout { 0%, 85%{ opacity:1 } 100%{ opacity:0 } }
+
+  #log {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  #log::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+  }
+
+  .msg {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    animation: rise 0.3s ease-out;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    background: transparent;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+
+  .name {
+    font-weight: 500;
+    font-size: 22px;
+    white-space: nowrap;
+  }
+
+  .timestamp {
+    display: none;
+  }
+
+  .text {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.625;
+  }
+
+  @keyframes rise {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeout {
+    0%, 85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Purple color variations for different users */
+  .color-1 { color: #8B5CF6; }
+  .color-2 { color: #A855F7; }
+  .color-3 { color: #C084FC; }
+  .color-4 { color: #7C3AED; }
+  .color-5 { color: #DDD6FE; }
+  .color-6 { color: #A78BFA; }
 </style>
 </head>
 <body>
-<div id="log"></div>
+<div class="card">
+  <div class="card-overlay"></div>
+  <div class="card-content">
+    <div id="log"></div>
+  </div>
+</div>
 
-<script src="https://unpkg.com/tmi.js@1.8.5/dist/tmi.min.js"></script>
 <script>
-  // ===== CONFIG =====
-  const urlParams = new URLSearchParams(window.location.search);
-  const CHANNEL = urlParams.get('channel') || 'defaultchannel'; // read from ?channel=yourname
   const MAX_MSG = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max')) || 30;
-  const HIDE_COMMANDS = true;
-  const HIDE_BOTS = ['streamelements','nightbot','streamlabs'];
-
   const log = document.getElementById('log');
 
-  function pushMessage(user, text){
+  // User color mapping (fallback for users without Twitch colors)
+  const userColors = {};
+  let colorIndex = 1;
+
+  function getUserFallbackColor(username) {
+    if (!userColors[username]) {
+      userColors[username] = `color-${colorIndex}`;
+      colorIndex = (colorIndex % 6) + 1;
+    }
+    return userColors[username];
+  }
+
+  function getTimestamp() {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 should be 12
+    return `${hours}:${minutes} ${ampm}`;
+  }
+
+  function getPlatformIcon(platform) {
+    if (platform === 'twitch') {
+      return '<img src="images/twitch.png" alt="Twitch">';
+    } else if (platform === 'facebook') {
+      return '<img src="images/facebook.png" alt="Facebook">';
+    }
+    return '<img src="images/twitch.png" alt="Platform">';
+  }
+
+  function pushMessage(user, text, emotes, color, platform = 'twitch'){
     const el = document.createElement('div');
     el.className = 'msg';
-    el.innerHTML = `<span class="name">${user}:</span><span class="text">${escapeHTML(text)}</span>`;
+    const formattedText = formatEmotes(text, emotes);
+    const timestamp = getTimestamp();
+
+    // Use Twitch color if provided, otherwise fall back to purple variations
+    const nameColor = color || '';
+    const colorClass = color ? '' : getUserFallbackColor(user);
+
+    el.innerHTML = `
+      <div class="avatar">
+        ${getPlatformIcon(platform)}
+      </div>
+      <div class="content">
+        <div class="header">
+          <span class="name ${colorClass}" style="${nameColor ? `color: ${nameColor}` : ''}">${escapeHTML(user)}</span>
+          <span class="timestamp">${timestamp}</span>
+        </div>
+        <div class="text">${formattedText}</div>
+      </div>
+    `;
     log.appendChild(el);
     while(log.children.length > MAX_MSG){
       log.removeChild(log.firstChild);
     }
+
+    // Auto-scroll to bottom to show newest messages
+    log.scrollTop = log.scrollHeight;
   }
 
   function escapeHTML(s){
     return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  const client = new tmi.Client({
-    connection: { secure: true, reconnect: true },
-    channels: [CHANNEL]
-  });
+  function formatEmotes(text, emotes) {
+    if (!emotes) return escapeHTML(text);
 
-  client.connect();
+    // Strip out emotes completely (your emote wall will show them)
+    const replacements = [];
+    for (const emoteId in emotes) {
+      emotes[emoteId].forEach(position => {
+        const [start, end] = position.split('-').map(Number);
+        replacements.push({ start, end });
+      });
+    }
 
-  client.on('message', (channel, tags, message, self) => {
-    if(self) return;
-    const user = (tags['display-name'] || tags.username || '').toString();
-    const uname = (tags.username || '').toLowerCase();
+    // Sort in reverse order to remove from end to start
+    replacements.sort((a, b) => b.start - a.start);
 
-    if (HIDE_COMMANDS && message.trim().startsWith('!')) return;
-    if (HIDE_BOTS.includes(uname)) return;
+    let result = text;
+    replacements.forEach(({ start, end }) => {
+      // Remove emote text and any extra spaces
+      result = result.substring(0, start) + result.substring(end + 1);
+    });
 
-    pushMessage(user, message);
-  });
+    // Clean up extra spaces
+    result = result.replace(/\s+/g, ' ').trim();
 
-  client.on('connected', () => {
-    pushMessage('SYSTEM', `Chat connected to #${CHANNEL}.`);
-  });
+    return escapeHTML(result);
+  }
+
+  // Connect to bot's chat stream
+  const eventSource = new EventSource('http://localhost:8787/chat-stream');
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      pushMessage(data.user, data.message, data.emotes, data.color, data.platform || 'twitch');
+    } catch (e) {
+      console.error('Failed to parse chat message:', e);
+    }
+  };
+
+  eventSource.onerror = (error) => {
+    console.error('Chat stream error:', error);
+  };
 </script>
 </body>
 </html>

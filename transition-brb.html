@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BRB Transition</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    width: 3440px;
+    height: 1440px;
+    overflow: hidden;
+    background: transparent;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  .slideshow {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+  }
+
+  .slide.active {
+    opacity: 1;
+  }
+
+  .slide-1 {
+    background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+  }
+
+  .slide-2 {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  }
+
+  .content {
+    text-align: center;
+    color: white;
+  }
+
+  .main-text {
+    font-size: 180px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 12px;
+    text-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    margin-bottom: 30px;
+  }
+
+  .sub-text {
+    font-size: 64px;
+    font-weight: 300;
+    letter-spacing: 6px;
+    opacity: 0.9;
+  }
+</style>
+</head>
+<body>
+<div class="slideshow">
+  <div class="slide slide-1 active">
+    <div class="content">
+      <div class="main-text">SWITCHING</div>
+      <div class="sub-text">Scenes</div>
+    </div>
+  </div>
+  <div class="slide slide-2">
+    <div class="content">
+      <div class="main-text">BRB</div>
+      <div class="sub-text">Be Right Back</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+
+  function showSlide(index) {
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === index);
+    });
+  }
+
+  // Auto-advance slideshow
+  setTimeout(() => {
+    currentSlide = 1;
+    showSlide(currentSlide);
+  }, 1500);
+
+  // Loop back to start after completing
+  setTimeout(() => {
+    currentSlide = 0;
+    showSlide(currentSlide);
+  }, 3500);
+</script>
+</body>
+</html>
