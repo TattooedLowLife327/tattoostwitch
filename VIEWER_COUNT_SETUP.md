@@ -60,7 +60,7 @@ Note: TikTok API access requires business verification and may take several days
 
 1. Make sure your bot is running: `node bot.js`
 2. In OBS, add a new Browser Source
-3. Set URL to: `http://localhost:8787/viewer-count.html`
+3. Set URL to: `http://localhost:<PORT>/viewer-count.html`
 4. Set width/height as needed (e.g., 200x150)
 5. Widget updates every 30 seconds automatically
 
@@ -77,7 +77,7 @@ Edit `viewer-count.html` to customize:
 
 Test the API endpoint directly:
 ```bash
-curl http://localhost:8787/viewer-counts
+curl http://localhost:<PORT>/viewer-counts
 ```
 
 Response example:

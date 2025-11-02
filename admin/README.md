@@ -13,7 +13,7 @@
 2. **Expose your local bot to the internet using ngrok:**
    ```bash
    # Install ngrok from ngrok.com
-   ngrok http 8787
+   ngrok http <PORT>
    ```
 
 3. **Update the API URL:**
