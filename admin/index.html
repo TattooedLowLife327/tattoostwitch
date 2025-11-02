@@ -201,11 +201,21 @@
   }
 
   .status {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     padding: 10px;
     border-radius: 8px;
     margin-bottom: 20px;
     font-weight: 600;
+  }
+
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
   }
 
   .status.connected {
@@ -213,9 +223,29 @@
     color: #4caf50;
   }
 
+  .status.connected .status-dot {
+    background: #4caf50;
+    box-shadow: 0 0 8px #4caf50;
+  }
+
   .status.disconnected {
     background: rgba(244, 67, 54, 0.2);
     color: #f44336;
+  }
+
+  .status.disconnected .status-dot {
+    background: #f44336;
+    box-shadow: 0 0 8px #f44336;
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   .logout-btn {
@@ -239,7 +269,8 @@
   <h1>Stream Control</h1>
 
   <div id="connection-status" class="status disconnected">
-    Connecting...
+    <span class="status-dot"></span>
+    <span>Connecting...</span>
   </div>
 
   <div class="section">
@@ -434,13 +465,16 @@
   }
 
   async function checkConnection() {
+    const statusEl = document.getElementById('connection-status');
+    const statusText = statusEl.querySelector('span:last-child');
+
     try {
       await fetch(`${API_URL}/queue`);
-      document.getElementById('connection-status').textContent = 'Connected';
-      document.getElementById('connection-status').className = 'status connected';
+      statusText.textContent = 'Connected';
+      statusEl.className = 'status connected';
     } catch (e) {
-      document.getElementById('connection-status').textContent = 'Disconnected';
-      document.getElementById('connection-status').className = 'status disconnected';
+      statusText.textContent = 'Disconnected';
+      statusEl.className = 'status disconnected';
     }
   }
 
