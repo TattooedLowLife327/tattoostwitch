@@ -1,8 +1,7 @@
-[build]
-  command = "npm run build"
-  publish = "."
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
-[build.environment]
-  NODE_VERSION = "22.0.0"
-  PORT = "8787"
-  SECRETS_SCAN_ENABLED = "false"
+[build]
+  publish = "."

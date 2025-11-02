@@ -680,6 +680,27 @@ app.post('/trigger-promo', (req, res) => {
   res.json({ success: true });
 });
 
+// Reset bot queues
+app.post('/reset-bot', (req, res) => {
+  const oldPending = pending.length;
+  const oldApproved = approvedQueue.length;
+
+  // Clear all queues
+  pending = [];
+  approvedQueue = [];
+  nowPlaying = null;
+  nextPendingId = 1;
+
+  console.log(`[API RESET] Cleared ${oldPending} pending and ${oldApproved} approved songs`);
+  res.json({
+    success: true,
+    cleared: {
+      pending: oldPending,
+      approved: oldApproved
+    }
+  });
+});
+
 // Get viewer counts for all platforms
 app.get('/viewer-counts', async (req, res) => {
   try {

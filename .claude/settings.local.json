@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(taskkill:*)",
-      "Bash(node bot.js:*)"
+      "Bash(node bot.js:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

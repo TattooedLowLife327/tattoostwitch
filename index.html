@@ -1,73 +1,466 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-store" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tattoo's Twitch Overlays</title>
-  <style>
-    :root {
-      --bg: #000;
-      --accent: #9b4dff;
-      --text: #fff;
-      --font: Helvetica, Arial, sans-serif;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#8B5CF6" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<title>Tattoo's Stream Control</title>
+<style>
+  :root {
+    --purple: #8B5CF6;
+    --dark: #111111;
+    --text: #ffffff;
+    --muted: #a3a3a3;
+  }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 20px;
-      color: var(--accent);
-      letter-spacing: 1px;
-    }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+  }
 
-    a {
-      display: inline-block;
-      margin: 10px 0;
-      padding: 10px 18px;
-      color: var(--text);
-      background: rgba(155, 77, 255, 0.15);
-      border: 1px solid var(--accent);
-      border-radius: 8px;
-      text-decoration: none;
-      font-size: 1.2rem;
-      transition: 0.2s ease;
-    }
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
 
-    a:hover {
-      background: var(--accent);
-      color: var(--bg);
-      transform: scale(1.05);
-    }
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: var(--purple);
+    font-size: 28px;
+  }
 
-    footer {
-      position: absolute;
-      bottom: 20px;
-      font-size: 0.9rem;
-      color: #aaa;
-    }
-  </style>
+  .login-form {
+    background: rgba(17, 17, 17, 0.95);
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    border-radius: 12px;
+    padding: 30px;
+    margin-top: 100px;
+  }
+
+  .login-form h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--purple);
+  }
+
+  input {
+    width: 100%;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 16px;
+    margin-bottom: 15px;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--purple);
+  }
+
+  .btn {
+    width: 100%;
+    padding: 15px;
+    background: var(--purple);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn:active {
+    transform: scale(0.98);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .error {
+    color: #ff6b6b;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .section {
+    background: rgba(17, 17, 17, 0.95);
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .section h2 {
+    color: var(--purple);
+    margin-bottom: 15px;
+    font-size: 20px;
+  }
+
+  .queue-item {
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .queue-item .title {
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+
+  .queue-item .info {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .btn-small {
+    flex: 1;
+    padding: 10px;
+    background: var(--purple);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-small.deny {
+    background: #ff6b6b;
+  }
+
+  .scoreboard-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+
+  .score-section {
+    text-align: center;
+  }
+
+  .score-section label {
+    display: block;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .score-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .score-display {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--purple);
+    min-width: 60px;
+  }
+
+  .score-btn {
+    width: 40px;
+    height: 40px;
+    background: var(--purple);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .status {
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 600;
+  }
+
+  .status.connected {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+  }
+
+  .status.disconnected {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+  }
+
+  .logout-btn {
+    background: #ff6b6b;
+    margin-top: 20px;
+  }
+</style>
 </head>
 <body>
-  <h1>LLoGB Stream Overlays</h1>
 
-  <a href="/chat-overlay.html" target="_blank">Chat Overlay</a><br>
-  <a href="/spotify-queue.html" target="_blank">Spotify Queue</a><br>
-  <a href="/callback.html" target="_blank">Spotify Callback</a>
+<div id="login-screen" class="container">
+  <div class="login-form">
+    <h2>Stream Control Login</h2>
+    <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" />
+    <button class="btn" onclick="login()">Login</button>
+    <div id="login-error" class="error hidden"></div>
+  </div>
+</div>
 
-  <footer>© 2025 TattooedLowLife — LLoGB</footer>
+<div id="admin-screen" class="container hidden">
+  <h1>Stream Control</h1>
+
+  <div id="connection-status" class="status disconnected">
+    Connecting...
+  </div>
+
+  <div class="section">
+    <h2>Pending Song Requests</h2>
+    <div id="pending-queue"></div>
+  </div>
+
+  <div class="section">
+    <h2>Scoreboard</h2>
+    <div class="scoreboard-controls">
+      <div class="score-section">
+        <label>Player 1 (TATTOO)</label>
+        <div class="score-controls">
+          <button class="score-btn" onclick="updateScore('player1', -1)">-</button>
+          <div class="score-display" id="score1">0</div>
+          <button class="score-btn" onclick="updateScore('player1', 1)">+</button>
+        </div>
+      </div>
+      <div class="score-section">
+        <label>Player 2 (OPEN)</label>
+        <div class="score-controls">
+          <button class="score-btn" onclick="updateScore('player2', -1)">-</button>
+          <div class="score-display" id="score2">0</div>
+          <button class="score-btn" onclick="updateScore('player2', 1)">+</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn" style="margin-top: 15px;" onclick="resetScores()">Reset Scores</button>
+  </div>
+
+  <div class="section">
+    <h2>Quick Actions</h2>
+    <button class="btn" style="margin-bottom: 10px;" onclick="skipSong()">Skip Current Song</button>
+    <button class="btn" style="margin-bottom: 10px;" onclick="triggerPromo()">Trigger DCD Promo</button>
+    <button class="btn" style="margin-bottom: 10px; background: #ff6b6b;" onclick="resetBot()">Reset Bot (Clear All Queues)</button>
+  </div>
+
+  <button class="btn logout-btn" onclick="logout()">Logout</button>
+</div>
+
+<script>
+  const API_URL = localStorage.getItem('apiUrl') || 'http://localhost:8787';
+  const CORRECT_PIN = '1337'; // Change this to your desired PIN
+
+  let scores = { player1: 0, player2: 0 };
+
+  function login() {
+    const pin = document.getElementById('pin-input').value;
+    const errorEl = document.getElementById('login-error');
+
+    if (pin === CORRECT_PIN) {
+      localStorage.setItem('authenticated', 'true');
+      showAdmin();
+    } else {
+      errorEl.textContent = 'Incorrect PIN';
+      errorEl.classList.remove('hidden');
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('authenticated');
+    document.getElementById('admin-screen').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+  }
+
+  function showAdmin() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('admin-screen').classList.remove('hidden');
+    startUpdates();
+  }
+
+  async function updatePendingQueue() {
+    try {
+      const res = await fetch(`${API_URL}/queue`);
+      const data = await res.json();
+
+      const pendingEl = document.getElementById('pending-queue');
+      const pending = data.pending || [];
+
+      if (pending.length === 0) {
+        pendingEl.innerHTML = '<p style="color: var(--muted); text-align: center;">No pending requests</p>';
+        return;
+      }
+
+      pendingEl.innerHTML = pending.map(song => `
+        <div class="queue-item">
+          <div class="title">${song.title}</div>
+          <div class="info">${song.artist} - requested by ${song.requester}</div>
+          <div class="btn-group">
+            <button class="btn-small" onclick="approveSong('${song.spotifyId}')">Approve</button>
+            <button class="btn-small deny" onclick="denySong('${song.spotifyId}')">Deny</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      console.error('Failed to fetch queue:', e);
+    }
+  }
+
+  async function approveSong(spotifyId) {
+    try {
+      await fetch(`${API_URL}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spotifyId })
+      });
+      updatePendingQueue();
+    } catch (e) {
+      alert('Failed to approve song');
+    }
+  }
+
+  async function denySong(spotifyId) {
+    try {
+      await fetch(`${API_URL}/deny`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spotifyId })
+      });
+      updatePendingQueue();
+    } catch (e) {
+      alert('Failed to deny song');
+    }
+  }
+
+  async function updateScore(player, delta) {
+    scores[player] = Math.max(0, scores[player] + delta);
+    document.getElementById(player === 'player1' ? 'score1' : 'score2').textContent = scores[player];
+
+    try {
+      await fetch(`${API_URL}/scoreboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scores)
+      });
+    } catch (e) {
+      console.error('Failed to update scoreboard:', e);
+    }
+  }
+
+  async function resetScores() {
+    scores = { player1: 0, player2: 0 };
+    document.getElementById('score1').textContent = '0';
+    document.getElementById('score2').textContent = '0';
+
+    try {
+      await fetch(`${API_URL}/scoreboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scores)
+      });
+    } catch (e) {
+      console.error('Failed to reset scoreboard:', e);
+    }
+  }
+
+  async function skipSong() {
+    try {
+      await fetch(`${API_URL}/skip`, { method: 'POST' });
+      alert('Song skipped');
+    } catch (e) {
+      alert('Failed to skip song');
+    }
+  }
+
+  async function triggerPromo() {
+    try {
+      await fetch(`${API_URL}/trigger-promo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index: 0 })
+      });
+      alert('Promo triggered');
+    } catch (e) {
+      alert('Failed to trigger promo');
+    }
+  }
+
+  async function resetBot() {
+    if (!confirm('Are you sure you want to clear all pending and approved song queues? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/reset-bot`, { method: 'POST' });
+      const data = await res.json();
+      alert(`Bot reset! Cleared ${data.cleared.pending} pending and ${data.cleared.approved} approved songs.`);
+      updatePendingQueue();
+    } catch (e) {
+      alert('Failed to reset bot');
+    }
+  }
+
+  async function checkConnection() {
+    try {
+      await fetch(`${API_URL}/queue`);
+      document.getElementById('connection-status').textContent = 'Connected';
+      document.getElementById('connection-status').className = 'status connected';
+    } catch (e) {
+      document.getElementById('connection-status').textContent = 'Disconnected';
+      document.getElementById('connection-status').className = 'status disconnected';
+    }
+  }
+
+  function startUpdates() {
+    updatePendingQueue();
+    checkConnection();
+    setInterval(updatePendingQueue, 3000);
+    setInterval(checkConnection, 10000);
+  }
+
+  // Check if already authenticated
+  if (localStorage.getItem('authenticated') === 'true') {
+    showAdmin();
+  }
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+
 </body>
 </html>
