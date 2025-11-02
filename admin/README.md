@@ -2,12 +2,7 @@
 
 ## Deployment to Netlify
 
-1. **Create PWA icons:**
-   - Create icon-192.png (192x192 purple icon)
-   - Create icon-512.png (512x512 purple icon)
-   - You can use any image editor or online tool like https://www.favicon-generator.org/
-
-2. **Upload these files to your tattoostwitch.netlify.app site:**
+1. **Upload these files to your tattoostwitch.netlify.app site:**
    - index.html
    - manifest.json
    - sw.js
@@ -15,13 +10,13 @@
    - icon-192.png
    - icon-512.png
 
-3. **Expose your local bot to the internet using ngrok:**
+2. **Expose your local bot to the internet using ngrok:**
    ```bash
    # Install ngrok from ngrok.com
    ngrok http 8787
    ```
 
-4. **Update the API URL:**
+3. **Update the API URL:**
    - Open the deployed admin site
    - Open browser console and run:
    ```javascript
@@ -29,7 +24,7 @@
    ```
    - Refresh the page
 
-5. **Change the PIN:**
+4. **Change the PIN:**
    - Edit `index.html` line 284
    - Change `const CORRECT_PIN = '1337';` to your desired PIN
 
