@@ -144,6 +144,9 @@ let approvedQueue = [];
 let pending = [];
 let nextPendingId = 1;
 
+// ====== MODE STATE ======
+let currentMode = 'tourney'; // Options: 'tourney', 'lobby', 'cash'
+
 // ====== SPOTIFY PLAYBACK POLLING ======
 async function updateCurrentPlayback() {
   try {
@@ -159,10 +162,26 @@ async function updateCurrentPlayback() {
       // Find requester from our approved queue if it exists
       const queueItem = approvedQueue.find(q => q.spotifyId === track.id);
       let requester = queueItem ? queueItem.requester : null;
+      let playlistName = null;
 
       // If not in queue but we have the same track in nowPlaying, preserve its requester
       if (!requester && nowPlaying && nowPlaying.spotifyId === track.id) {
         requester = nowPlaying.requester;
+        playlistName = nowPlaying.playlistName;
+      }
+
+      // If no requester, get playlist name
+      if (!requester && data.body.context) {
+        const contextUri = data.body.context.uri;
+        if (contextUri && contextUri.startsWith('spotify:playlist:')) {
+          try {
+            const playlistId = contextUri.split(':')[2];
+            const playlistInfo = await spotify.getPlaylist(playlistId);
+            playlistName = playlistInfo.body.name;
+          } catch (err) {
+            // Silently fail
+          }
+        }
       }
 
       nowPlaying = {
@@ -174,7 +193,8 @@ async function updateCurrentPlayback() {
         progress: progress,
         duration: duration,
         isPlaying: isPlaying,
-        requester: requester
+        requester: requester,
+        playlistName: playlistName
       };
 
       // Remove from approved queue if it was there
@@ -600,8 +620,74 @@ let scoreboard = {
 };
 
 // ====== ENDPOINTS ======
-app.get('/queue', (_req, res) => {
-  res.json({ now: nowPlaying, queue: approvedQueue, pending });
+app.get('/queue', async (_req, res) => {
+  try {
+    let displayQueue = [...approvedQueue];
+
+    // If no user-requested songs, get upcoming tracks from Spotify queue
+    if (displayQueue.length === 0) {
+      await ensureSpotifyToken();
+      const queueData = await spotify.getMyCurrentPlayingTrack();
+
+      if (queueData.body && queueData.body.context) {
+        // Get current context (playlist info)
+        const contextUri = queueData.body.context.uri;
+        let playlistName = 'Playlist';
+
+        if (contextUri && contextUri.startsWith('spotify:playlist:')) {
+          try {
+            const playlistId = contextUri.split(':')[2];
+            const playlistInfo = await spotify.getPlaylist(playlistId);
+            playlistName = playlistInfo.body.name;
+          } catch (err) {
+            console.error('[QUEUE] Failed to get playlist name:', err.message);
+          }
+        }
+
+        // Get upcoming tracks from playlist
+        if (contextUri && contextUri.startsWith('spotify:playlist:')) {
+          try {
+            const playlistId = contextUri.split(':')[2];
+            const playlistTracks = await spotify.getPlaylistTracks(playlistId, { limit: 50 });
+
+            // Find current track position in playlist
+            const currentTrackUri = queueData.body.item?.uri;
+            if (currentTrackUri && playlistTracks.body.items) {
+              const currentIndex = playlistTracks.body.items.findIndex(
+                item => item.track && item.track.uri === currentTrackUri
+              );
+
+              if (currentIndex !== -1 && currentIndex < playlistTracks.body.items.length - 1) {
+                // Get next 3 tracks after current
+                const upcomingTracks = playlistTracks.body.items
+                  .slice(currentIndex + 1, currentIndex + 4)
+                  .filter(item => item.track)
+                  .map(item => item.track);
+
+                displayQueue = upcomingTracks.map(track => ({
+                  title: track.name,
+                  artist: track.artists.map(a => a.name).join(', '),
+                  album: track.album.name,
+                  albumArt: track.album.images[0]?.url || null,
+                  spotifyId: track.id,
+                  uri: track.uri,
+                  requester: null,
+                  playlistName: playlistName
+                }));
+              }
+            }
+          } catch (err) {
+            console.error('[QUEUE] Failed to get playlist tracks:', err.message);
+          }
+        }
+      }
+    }
+
+    res.json({ now: nowPlaying, queue: displayQueue, pending });
+  } catch (err) {
+    console.error('[QUEUE ERROR]', err);
+    res.json({ now: nowPlaying, queue: approvedQueue, pending });
+  }
 });
 
 app.get('/scoreboard', (_req, res) => {
@@ -747,6 +833,25 @@ app.get('/viewer-counts', async (req, res) => {
   } catch (err) {
     console.error('[VIEWER COUNTS ERROR]', err);
     res.status(500).json({ error: 'Failed to fetch viewer counts' });
+  }
+});
+
+// Get current mode
+app.get('/mode', (req, res) => {
+  res.json({ mode: currentMode });
+});
+
+// Set mode (from admin panel)
+app.post('/set-mode', (req, res) => {
+  const { mode } = req.body;
+  const validModes = ['tourney', 'lobby', 'cash'];
+
+  if (validModes.includes(mode)) {
+    currentMode = mode;
+    console.log(`[API MODE] Changed to: ${mode}`);
+    res.json({ success: true, mode: currentMode });
+  } else {
+    res.status(400).json({ error: 'Invalid mode. Valid options: tourney, lobby, cash' });
   }
 });
 
