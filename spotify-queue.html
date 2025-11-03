@@ -36,6 +36,7 @@
 
   .now {
     width: 100%;
+    height: 290px;
   }
 
   .card {
@@ -91,37 +92,6 @@
     z-index: 2;
   }
 
-  /* Glow from behind when new song starts */
-  .now .glow-background {
-    position: absolute;
-    inset: -20px;
-    background: var(--purple);
-    border-radius: 12px;
-    opacity: 0;
-    pointer-events: none;
-    z-index: -1;
-    filter: blur(40px);
-  }
-
-  @keyframes glowFlash {
-    0% {
-      opacity: 0;
-      filter: blur(20px) brightness(2);
-    }
-    40% {
-      opacity: 1;
-      filter: blur(25px) brightness(3);
-    }
-    100% {
-      opacity: 0;
-      filter: blur(30px) brightness(1.5);
-    }
-  }
-
-  .now.new-song .glow-background {
-    animation: glowFlash 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
   .card-overlay {
     position: absolute;
     inset: 0;
@@ -143,9 +113,11 @@
 
   .player-layout {
     display: flex;
-    flex-direction: row;
-    gap: 12px;
-    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
   }
 
   /* Album Art */
@@ -165,11 +137,11 @@
 
   .album-art {
     position: relative;
-    width: 72px;
-    height: 72px;
+    width: 160px;
+    height: 160px;
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 2px solid rgba(139, 92, 246, 0.4);
-    border-radius: 8px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -201,10 +173,11 @@
 
   .music-note {
     position: absolute;
-    color: var(--purple);
+    color: #C084FC;
     opacity: 0;
-    font-size: 16px;
+    font-size: 24px;
     animation: float-up 4s ease-in infinite;
+    text-shadow: 0 0 10px #C084FC, 0 0 20px #C084FC;
   }
 
   .music-note:nth-child(1) {
@@ -243,57 +216,49 @@
 
   /* Player Info */
   .player-info {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 6px;
-    min-width: 0;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    width: 100%;
+    padding: 0 20px;
   }
 
   .track-name {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.2;
+    line-height: 1.3;
+    width: 100%;
   }
 
   .track-artist {
-    font-size: 15px;
+    font-size: 18px;
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.2;
+    line-height: 1.3;
+    width: 100%;
   }
 
   .track-requester {
-    font-size: 12px;
+    font-size: 16px;
     color: var(--purple);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.2;
-  }
-
-  .track-duration {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 4px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    line-height: 1.3;
+    width: 100%;
   }
 
   /* Controls */
   .controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 8px;
+    display: none;
   }
 
   .control-btn {
@@ -423,7 +388,6 @@
 <div class="wrap">
   <!-- Now Playing Section -->
   <div class="card now">
-    <div class="glow-background"></div>
     <div class="card-overlay"></div>
     <div class="card-content">
       <div class="player-layout">
@@ -431,7 +395,7 @@
         <div class="album-art-container">
           <div class="album-glow"></div>
           <div class="album-art" id="album-art">
-            <svg viewBox="0 0 24 24" fill="white" style="width: 36px; height: 36px;">
+            <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
             </svg>
           </div>
@@ -447,7 +411,6 @@
           <div class="track-name" id="now-title">—</div>
           <div class="track-artist" id="now-artist">—</div>
           <div class="track-requester" id="now-requester"></div>
-          <div class="track-duration" id="now-duration">0:00 / 0:00</div>
 
           <!-- Controls -->
           <div class="controls">
@@ -558,26 +521,7 @@
     }
 
     nowCard.style.setProperty('--progress', currentProgress);
-
-    // Update duration display
-    const durationEl = document.getElementById('now-duration');
-    if (durationEl && currentDuration > 0) {
-      const currentTime = (currentProgress / 100) * currentDuration;
-      durationEl.textContent = `${formatTime(currentTime)} / ${formatTime(currentDuration)}`;
-    }
-
     requestAnimationFrame(animateProgress);
-  }
-
-  // Trigger glow when new song starts
-  function triggerNewSongGlow() {
-    const nowCard = document.querySelector('.now');
-    if (!nowCard) return;
-
-    nowCard.classList.add('new-song');
-    setTimeout(() => {
-      nowCard.classList.remove('new-song');
-    }, 1500);
   }
 
   async function refresh(){
@@ -591,22 +535,27 @@
       const albumArt = document.getElementById('album-art');
 
       if(data.now){
-        // Detect song change and trigger glow on new song
+        // Detect song change
         const newTrackId = data.now.spotifyId || data.now.title;
-        if (currentTrackId && currentTrackId !== newTrackId) {
-          triggerNewSongGlow();
-        }
         currentTrackId = newTrackId;
 
         nowTitle.textContent = data.now.title;
         nowArtist.textContent = data.now.artist;
-        nowRequester.textContent = data.now.requester ? `SR: ${data.now.requester}` : '';
+
+        // Show requester if available, otherwise show playlist name
+        if (data.now.requester) {
+          nowRequester.textContent = `SR: ${data.now.requester}`;
+        } else if (data.now.playlistName) {
+          nowRequester.textContent = data.now.playlistName;
+        } else {
+          nowRequester.textContent = '';
+        }
 
         // Update album art
         if (data.now.albumArt) {
           albumArt.innerHTML = `<img src="${data.now.albumArt}" alt="Album Art">`;
         } else {
-          albumArt.innerHTML = `<svg viewBox="0 0 24 24" fill="white" style="width: 36px; height: 36px;">
+          albumArt.innerHTML = `<svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
           </svg>`;
         }
@@ -636,8 +585,7 @@
         nowTitle.textContent = '—';
         nowArtist.textContent = '—';
         nowRequester.textContent = '';
-        document.getElementById('now-duration').textContent = '0:00 / 0:00';
-        albumArt.innerHTML = `<svg viewBox="0 0 24 24" fill="white" style="width: 36px; height: 36px;">
+        albumArt.innerHTML = `<svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
         </svg>`;
         targetProgress = 0;
@@ -680,6 +628,14 @@
         ? `<img src="${next.albumArt}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">`
         : `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
 
+      // Show requester or playlist name
+      let subtitle = next.artist;
+      if (next.requester) {
+        subtitle += ` - requested by ${next.requester}`;
+      } else if (next.playlistName) {
+        subtitle += ` - ${next.playlistName}`;
+      }
+
       display.innerHTML = `
         <div class="notification">
           <div class="notification-icon">
@@ -688,7 +644,7 @@
           <div class="notification-info">
             <div class="notification-type">Up Next</div>
             <div class="notification-title">${next.title}</div>
-            <div class="notification-subtitle">${next.artist} - requested by ${next.requester}</div>
+            <div class="notification-subtitle">${subtitle}</div>
           </div>
         </div>
       `;
@@ -799,7 +755,7 @@
       type: 'Discount Code',
       title: 'Dead Center Darts',
       subtitle: 'Use code LOWLIFES15 for 15% off!',
-      icon: '<img src="images/dcdlogo.png" style="width: 72px; height: 72px; object-fit: contain;">'
+      icon: '<div style="background: transparent; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"><img src="images/dcdlogo.png" style="width: 120px; height: 120px; object-fit: contain;"></div>'
     },
     {
       type: 'Song Requests',
