@@ -5,7 +5,16 @@
       "Bash(node bot.js:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(where:*)",
+      "Bash(npx localtunnel --port 8787)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(ngrok http:*)",
+      "Bash(timeout 3 ping:*)",
+      "Bash(nul)",
+      "Bash(pm2 start:*)",
+      "Bash(node --check:*)"
     ],
     "deny": [],
     "ask": []

@@ -456,7 +456,7 @@
 </div>
 
 <script>
-  const ENDPOINT = 'http://localhost:8787/queue';
+  const ENDPOINT = '/api/queue';
 
   let currentProgress = 0;
   let targetProgress = 0;
@@ -478,8 +478,8 @@
   // Toggle play/pause
   async function togglePlay() {
     try {
-      const endpoint = isPlaying ? 'http://localhost:8787/pause' : 'http://localhost:8787/play';
-      await fetch(endpoint, { method: 'POST' });
+      const endpoint = isPlaying ? '/api/play-pause' : '/api/play-pause';
+      await fetch(endpoint, { method: 'POST', body: JSON.stringify({ action: isPlaying ? 'pause' : 'play' }), headers: { 'Content-Type': 'application/json' } });
       refresh();
     } catch (e) {
       console.error('Failed to toggle playback:', e);
@@ -489,7 +489,7 @@
   // Skip current song
   async function skipSong() {
     try {
-      await fetch('http://localhost:8787/skip', { method: 'POST' });
+      await fetch('/api/skip-song', { method: 'POST' });
       refresh();
     } catch (e) {
       console.error('Failed to skip song:', e);
@@ -849,7 +849,7 @@
   animateProgress();
 
   refresh();
-  setInterval(refresh, 2000); // Update every 2 seconds to match backend polling
+  setInterval(refresh, 5000); // Update every 5 seconds (optimized)
 </script>
 </body>
 </html>

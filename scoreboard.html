@@ -129,7 +129,7 @@
 </div>
 
 <script>
-  const ENDPOINT = 'http://localhost:8787/scoreboard';
+  const ENDPOINT = '/api/scoreboard';
 
   async function updateScoreboard() {
     try {
@@ -152,7 +152,7 @@
   }
 
   updateScoreboard();
-  setInterval(updateScoreboard, 2000);
+  setInterval(updateScoreboard, 5000); // Optimized polling
 </script>
 </body>
 </html>
