@@ -869,6 +869,17 @@
     }
   }
 
+  async function checkModeVisibilityUpdate() {
+    try {
+      const response = await fetch('/api/settings', { cache: 'no-store' });
+      const settings = await response.json();
+      const modeDisplayVisible = settings.modeDisplayVisible !== 'false';
+      updateModeVisibilityUI(modeDisplayVisible);
+    } catch (e) {
+      console.error('Failed to check mode visibility update:', e);
+    }
+  }
+
   async function activateBRB(minutes) {
     try {
       await fetch('/api/screen-overlay', {
@@ -1063,9 +1074,11 @@
     checkConnection();
     updateModeDisplay();
     loadSettings();
+    checkModeVisibilityUpdate();
     setInterval(updatePendingQueue, 3000);
     setInterval(checkConnection, 10000);
     setInterval(updateModeDisplay, 5000);
+    setInterval(checkModeVisibilityUpdate, 5000);
   }
 
   // Check if already authenticated
