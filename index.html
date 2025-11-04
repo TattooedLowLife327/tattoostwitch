@@ -516,6 +516,16 @@
       <input type="number" id="promo-minutes" min="1" max="60" value="15" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" onchange="updatePromoInterval()" />
     </div>
 
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 1 Name</label>
+      <input type="text" id="player1-name" placeholder="TATTOO" value="TATTOO" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 2 Name</label>
+      <input type="text" id="player2-name" placeholder="OPEN" value="OPEN" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+    </div>
+
     <button class="btn" onclick="saveSettings()" style="width: 100%; background: #10b981;">Save All Settings</button>
   </div>
 
@@ -827,7 +837,10 @@
       const data = await res.json();
       specialUsers = data.specialUsers || [];
       document.getElementById('promo-minutes').value = data.promoMinutes || 15;
+      document.getElementById('player1-name').value = data.player1Name || 'TATTOO';
+      document.getElementById('player2-name').value = data.player2Name || 'OPEN';
       renderSpecialUsers();
+      updateScoreboardLabels();
     } catch (e) {
       console.error('Failed to load settings:', e);
     }
@@ -871,22 +884,34 @@
   async function saveSettings() {
     try {
       const promoMinutes = parseInt(document.getElementById('promo-minutes').value);
+      const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
+      const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           specialUsers,
-          promoMinutes
+          promoMinutes,
+          player1Name,
+          player2Name
         })
       });
       if (res.ok) {
-        alert('Settings saved! Restart bot.js for changes to take effect.');
+        updateScoreboardLabels();
+        alert('Settings saved!');
       } else {
         alert('Failed to save settings');
       }
     } catch (e) {
       alert('Failed to save settings');
     }
+  }
+
+  function updateScoreboardLabels() {
+    const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
+    const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
+    document.querySelector('.score-section:nth-child(1) label').textContent = `Player 1 (${player1Name})`;
+    document.querySelector('.score-section:nth-child(2) label').textContent = `Player 2 (${player2Name})`;
   }
 
   function startUpdates() {
