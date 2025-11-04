@@ -129,7 +129,21 @@
 </div>
 
 <script>
-  const ENDPOINT = 'http://localhost:8787/scoreboard';
+  const ENDPOINT = '/api/scoreboard';
+
+  async function loadBackgroundFromSettings() {
+    try {
+      const response = await fetch('/api/settings', { cache: 'no-store' });
+      const settings = await response.json();
+      const bgUrl = settings.obsBackgroundUrl;
+
+      if (bgUrl && bgUrl.trim()) {
+        document.body.style.background = `url('${bgUrl}') center center / cover no-repeat fixed`;
+      }
+    } catch (error) {
+      console.error('Failed to load background:', error);
+    }
+  }
 
   async function updateScoreboard() {
     try {
@@ -151,8 +165,9 @@
     }
   }
 
+  loadBackgroundFromSettings();
   updateScoreboard();
-  setInterval(updateScoreboard, 2000);
+  setInterval(updateScoreboard, 1000); // Fast updates for instant feedback
 </script>
 </body>
 </html>

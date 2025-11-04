@@ -26,7 +26,7 @@
 
   body {
     font-family: system-ui, -apple-system, sans-serif;
-    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    background: url('images/background.png') center center / cover no-repeat fixed;
     color: var(--text);
     min-height: 100vh;
     padding: 20px;
@@ -127,11 +127,17 @@
   .queue-item .title {
     font-weight: 600;
     margin-bottom: 5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 
   .queue-item .info {
     color: var(--muted);
     font-size: 14px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 
   .btn-group {
@@ -255,6 +261,296 @@
     background: #ff6b6b;
     margin-top: 20px;
   }
+
+  .spotify-player {
+    position: relative;
+    background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 290px;
+  }
+
+  .spotify-player::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 12px;
+    padding: 3px;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      rgba(139, 92, 246, 1) 0deg,
+      rgba(168, 85, 247, 1) calc(var(--progress, 0) * 3.6deg),
+      transparent calc(var(--progress, 0) * 3.6deg)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+    filter: blur(6px) brightness(1.5);
+    opacity: 1;
+  }
+
+  .spotify-player::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 12px;
+    padding: 2px;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      #8B5CF6 0deg,
+      #A855F7 calc(var(--progress, 0) * 3.6deg),
+      transparent calc(var(--progress, 0) * 3.6deg)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .player-layout {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+
+  .album-art-container {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .album-glow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(168, 85, 247, 0.2) 100%);
+    border-radius: 8px;
+    filter: blur(12px);
+    transform: scale(1.05);
+  }
+
+  .album-art {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border: 2px solid rgba(139, 92, 246, 0.4);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .album-art:hover {
+    transform: scale(1.05);
+    border-color: rgba(139, 92, 246, 0.6);
+  }
+
+  .album-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  .music-notes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 3;
+  }
+
+  .music-notes.paused .music-note {
+    animation-play-state: paused;
+    opacity: 0;
+  }
+
+  .music-note {
+    position: absolute;
+    color: #FFFFFF;
+    opacity: 0;
+    font-size: 28px;
+    font-weight: 900;
+    animation: float-up 4s ease-in infinite;
+    text-shadow:
+      -1px -1px 0 #000,
+      1px -1px 0 #000,
+      -1px 1px 0 #000,
+      1px 1px 0 #000,
+      0 0 15px #A855F7,
+      0 0 30px #A855F7,
+      0 0 45px #8B5CF6;
+    -webkit-text-stroke: 1px rgba(0, 0, 0, 0.5);
+  }
+
+  .music-note:nth-child(1) {
+    left: 10%;
+    animation-delay: 0s;
+  }
+
+  .music-note:nth-child(2) {
+    left: 50%;
+    animation-delay: 1.5s;
+  }
+
+  .music-note:nth-child(3) {
+    left: 80%;
+    animation-delay: 3s;
+  }
+
+  @keyframes float-up {
+    0% {
+      bottom: -10px;
+      opacity: 0;
+      transform: translateY(0) rotate(0deg);
+    }
+    20% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      bottom: 100%;
+      opacity: 0;
+      transform: translateY(-20px) rotate(15deg);
+    }
+  }
+
+  .player-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    width: 100%;
+    padding: 0 20px;
+  }
+
+  .track-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    word-wrap: break-word;
+    line-height: 1.3;
+    width: 100%;
+  }
+
+  .track-artist {
+    font-size: 18px;
+    color: var(--muted);
+    word-wrap: break-word;
+    line-height: 1.3;
+    width: 100%;
+  }
+
+  .track-playlist {
+    font-size: 16px;
+    color: var(--purple);
+    word-wrap: break-word;
+    line-height: 1.3;
+    width: 100%;
+  }
+
+  .spotify-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 15px;
+  }
+
+  .control-btn {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--purple) 0%, rgba(168, 85, 247, 1) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  }
+
+  .control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+  }
+
+  .control-btn:active {
+    transform: scale(0.95);
+  }
+
+  .volume-control {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .volume-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(139, 92, 246, 0.3);
+    outline: none;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple) 0%, rgba(168, 85, 247, 1) 100%);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
+    transition: all 0.2s;
+  }
+
+  .volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple) 0%, rgba(168, 85, 247, 1) 100%);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
+    transition: all 0.2s;
+  }
+
+  .volume-slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
+  }
+
+  .volume-label {
+    min-width: 40px;
+    text-align: right;
+    color: var(--purple);
+    font-size: 14px;
+    font-weight: 600;
+  }
 </style>
 </head>
 <body>
@@ -262,7 +558,7 @@
 <div id="login-screen" class="container">
   <div class="login-form">
     <h2>Stream Control Login</h2>
-    <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" />
+    <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" inputmode="numeric" />
     <button class="btn" onclick="login()">Login</button>
     <div id="login-error" class="error hidden"></div>
   </div>
@@ -277,12 +573,64 @@
   </div>
 
   <div class="section">
+    <h2>Now Playing</h2>
+    <div class="spotify-player">
+      <div class="player-layout">
+        <!-- Album Art -->
+        <div class="album-art-container">
+          <div class="album-glow"></div>
+          <div class="album-art" id="album-art">
+            <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+            </svg>
+          </div>
+          <div class="music-notes" id="music-notes">
+            <div class="music-note">♪</div>
+            <div class="music-note">♫</div>
+            <div class="music-note">♪</div>
+          </div>
+        </div>
+
+        <!-- Player Info -->
+        <div class="player-info">
+          <div class="track-title" id="track-title">—</div>
+          <div class="track-artist" id="track-artist">—</div>
+          <div class="track-playlist" id="track-playlist"></div>
+        </div>
+      </div>
+    </div>
+    <div class="spotify-controls">
+      <button class="control-btn" onclick="togglePlayPause()" id="play-pause-btn">▶</button>
+      <button class="control-btn" onclick="skipSong()">⏭</button>
+      <div class="volume-control">
+        <span>🔊</span>
+        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="50" oninput="updateVolume(this.value)" />
+        <span class="volume-label" id="volume-label">50%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Pending Song Requests</h2>
     <div id="pending-queue"></div>
   </div>
 
   <div class="section">
-    <h2>Scoreboard</h2>
+    <h2 style="display: flex; justify-content: space-between; align-items: center;">
+      Scoreboard
+      <button onclick="toggleScoreboardEdit()" style="background: none; border: none; color: var(--purple); cursor: pointer; font-size: 20px; padding: 5px;">✏️</button>
+    </h2>
+    <div id="scoreboard-edit-section" class="hidden" style="margin-bottom: 15px;">
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 1 Name</label>
+        <input type="text" id="player1-name" placeholder="TATTOO" value="TATTOO" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 2 Name</label>
+        <input type="text" id="player2-name" placeholder="OPEN" value="OPEN" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <button class="btn" onclick="saveScoreboardNames()" style="width: 100%; background: #10b981;">Save Names</button>
+    </div>
     <div class="scoreboard-controls">
       <div class="score-section">
         <label>Player 1 (TATTOO)</label>
@@ -305,7 +653,10 @@
   </div>
 
   <div class="section">
-    <h2>Mode Display</h2>
+    <h2 style="display: flex; justify-content: space-between; align-items: center;">
+      Mode Display
+      <button onclick="toggleModeDisplayVisibility()" id="mode-visibility-btn" style="background: none; border: none; color: var(--purple); cursor: pointer; font-size: 20px; padding: 5px;" title="Toggle Mode Display Visibility">👁️</button>
+    </h2>
     <div style="display: flex; gap: 10px;">
       <button class="btn" style="flex: 1;" onclick="setMode('tourney')">Tourney Play</button>
       <button class="btn" style="flex: 1;" onclick="setMode('lobby')">Open Lobby</button>
@@ -313,7 +664,19 @@
     </div>
     <div id="current-mode" style="text-align: center; margin-top: 10px; color: var(--muted); font-size: 14px;">
       Current: <span id="mode-text" style="color: var(--purple); font-weight: 600;">TOURNEY PLAY</span>
+      <span id="mode-visibility-status" style="display: block; margin-top: 5px; font-size: 12px; color: var(--muted);"></span>
     </div>
+  </div>
+
+  <div class="section">
+    <h2>BRB / Screen Control</h2>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+      <button class="btn" style="flex: 1;" onclick="activateBRB(5)">BRB 5min</button>
+      <button class="btn" style="flex: 1;" onclick="activateBRB(10)">BRB 10min</button>
+      <button class="btn" style="flex: 1;" onclick="activateBRB(15)">BRB 15min</button>
+    </div>
+    <button class="btn" style="margin-bottom: 10px; background: #6c757d;" onclick="deactivateScreen()">Dismiss Screen</button>
+    <button class="btn" style="margin-bottom: 10px; background: var(--purple);" onclick="activateTechDifficulties()">Tech Difficulties</button>
   </div>
 
   <div class="section">
@@ -324,25 +687,42 @@
   </div>
 
   <div class="section">
-    <h2>Settings</h2>
-    <label style="display: block; color: var(--muted); margin-bottom: 8px; font-size: 14px;">Bot API URL</label>
-    <input type="text" id="api-url-input" placeholder="https://your-tunnel-url.loca.lt" style="margin-bottom: 10px;" />
-    <div style="display: flex; gap: 10px;">
-      <button class="btn" style="flex: 1;" onclick="saveApiUrl()">Save URL</button>
-      <button class="btn" style="flex: 1; background: #6c757d;" onclick="resetToLocalhost()">Reset to Localhost</button>
+    <h2>Bot Settings</h2>
+
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Special Users</label>
+      <div id="special-users-list" style="margin-bottom: 10px;"></div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="new-special-user" placeholder="Username" style="flex: 1; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+        <button class="btn" onclick="addSpecialUser()" style="padding: 10px 20px;">Add</button>
+      </div>
     </div>
-    <div id="current-api" style="text-align: center; margin-top: 10px; color: var(--muted); font-size: 12px;">
-      Current: <span id="api-url-display" style="color: var(--purple); font-weight: 600; word-break: break-all;"></span>
+
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Promo Interval (minutes)</label>
+      <input type="number" id="promo-minutes" min="1" max="60" value="15" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" onchange="updatePromoInterval()" />
     </div>
+
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">PWA Background URL</label>
+      <input type="text" id="pwa-background-url" placeholder="images/background.png" value="images/background.png" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">Relative path or full URL</small>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">OBS Overlays Background URL</label>
+      <input type="text" id="obs-background-url" placeholder="Leave empty for transparent" value="" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">Relative path or full URL (leave empty for transparent)</small>
+    </div>
+
+    <button class="btn" onclick="saveSettings()" style="width: 100%; background: #10b981;">Save All Settings</button>
   </div>
 
   <button class="btn logout-btn" onclick="logout()">Logout</button>
 </div>
 
 <script>
-  let API_URL = localStorage.getItem('apiUrl') || 'http://localhost:8787';
-  const CORRECT_PIN = '92522'; // Change this to your desired PIN
-
+  const CORRECT_PIN = '92522';
   let scores = { player1: 0, player2: 0 };
 
   function login() {
@@ -372,8 +752,59 @@
 
   async function updatePendingQueue() {
     try {
-      const res = await fetch(`${API_URL}/queue`);
+      const res = await fetch('/api/queue');
       const data = await res.json();
+
+      // Update now playing
+      const now = data.now;
+      if (now && now.title) {
+        console.log('[NOW PLAYING]', now);
+        document.getElementById('track-title').textContent = now.title;
+        document.getElementById('track-artist').textContent = now.artist || '-';
+
+        // Update album art
+        const albumArtDiv = document.getElementById('album-art');
+        if (now.albumArt) {
+          console.log('[ALBUM ART]', now.albumArt);
+          albumArtDiv.innerHTML = `<img src="${now.albumArt}" alt="Album Art" />`;
+        } else {
+          console.log('[ALBUM ART] Missing from API response');
+          albumArtDiv.innerHTML = '<svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>';
+        }
+
+        // Control music notes animation
+        const musicNotes = document.getElementById('music-notes');
+        if (now.isPlaying) {
+          musicNotes.classList.remove('paused');
+        } else {
+          musicNotes.classList.add('paused');
+        }
+        // Show requester if song was requested, otherwise playlist name, otherwise default
+        let playlistText;
+        if (now.requester) {
+          // If broadcaster requested it, show display name
+          if (now.requester.toLowerCase() === 'thetattooedlowlife') {
+            playlistText = 'TheTattooedLowLife';
+          } else {
+            playlistText = now.requester;
+          }
+        } else if (now.playlistName) {
+          // No requester, show playlist name
+          playlistText = now.playlistName;
+        } else {
+          // Default
+          playlistText = 'TheTattooedLowLife';
+        }
+        document.getElementById('track-playlist').textContent = playlistText;
+        document.getElementById('play-pause-btn').textContent = now.isPlaying ? '⏸' : '▶';
+        isPlaying = now.isPlaying !== false; // Sync the isPlaying state
+      } else {
+        document.getElementById('track-title').textContent = 'No track playing';
+        document.getElementById('track-artist').textContent = '-';
+        document.getElementById('track-playlist').textContent = 'TheTattooedLowLife';
+        document.getElementById('play-pause-btn').textContent = '▶';
+        isPlaying = false; // Sync the isPlaying state
+      }
 
       const pendingEl = document.getElementById('pending-queue');
       const pending = data.pending || [];
@@ -398,9 +829,37 @@
     }
   }
 
+  let isPlaying = false;
+  async function togglePlayPause() {
+    try {
+      await fetch('/api/play-pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: isPlaying ? 'pause' : 'play' })
+      });
+      isPlaying = !isPlaying;
+      document.getElementById('play-pause-btn').textContent = isPlaying ? '⏸' : '▶';
+    } catch (e) {
+      console.error('Failed to toggle play/pause:', e);
+    }
+  }
+
+  async function updateVolume(volume) {
+    document.getElementById('volume-label').textContent = `${volume}%`;
+    try {
+      await fetch('/api/set-volume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ volume: parseInt(volume) })
+      });
+    } catch (e) {
+      console.error('Failed to update volume:', e);
+    }
+  }
+
   async function approveSong(spotifyId) {
     try {
-      await fetch(`${API_URL}/approve`, {
+      await fetch('/api/approve-song', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spotifyId })
@@ -413,7 +872,7 @@
 
   async function denySong(spotifyId) {
     try {
-      await fetch(`${API_URL}/deny`, {
+      await fetch('/api/deny-song', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spotifyId })
@@ -429,7 +888,7 @@
     document.getElementById(player === 'player1' ? 'score1' : 'score2').textContent = scores[player];
 
     try {
-      await fetch(`${API_URL}/scoreboard`, {
+      await fetch('/api/scoreboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scores)
@@ -445,7 +904,7 @@
     document.getElementById('score2').textContent = '0';
 
     try {
-      await fetch(`${API_URL}/scoreboard`, {
+      await fetch('/api/scoreboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scores)
@@ -457,7 +916,7 @@
 
   async function skipSong() {
     try {
-      await fetch(`${API_URL}/skip`, { method: 'POST' });
+      await fetch('/api/skip-song', { method: 'POST' });
       alert('Song skipped');
     } catch (e) {
       alert('Failed to skip song');
@@ -466,7 +925,7 @@
 
   async function triggerPromo() {
     try {
-      await fetch(`${API_URL}/trigger-promo`, {
+      await fetch('/api/trigger-promo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ index: 0 })
@@ -483,7 +942,7 @@
     }
 
     try {
-      const res = await fetch(`${API_URL}/reset-bot`, { method: 'POST' });
+      const res = await fetch('/api/reset-queue', { method: 'POST' });
       const data = await res.json();
       alert(`Bot reset! Cleared ${data.cleared.pending} pending and ${data.cleared.approved} approved songs.`);
       updatePendingQueue();
@@ -494,7 +953,7 @@
 
   async function setMode(mode) {
     try {
-      const res = await fetch(`${API_URL}/set-mode`, {
+      const res = await fetch('/api/mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode })
@@ -508,7 +967,7 @@
 
   async function updateModeDisplay() {
     try {
-      const res = await fetch(`${API_URL}/mode`);
+      const res = await fetch('/api/mode');
       const data = await res.json();
       const modeText = document.getElementById('mode-text');
 
@@ -524,72 +983,277 @@
     }
   }
 
+  async function toggleModeDisplayVisibility() {
+    try {
+      // Get current settings first
+      const settingsRes = await fetch('/api/settings');
+      const currentSettings = await settingsRes.json();
+
+      // Toggle visibility (settings stores strings, not booleans)
+      const currentlyVisible = currentSettings.modeDisplayVisible !== 'false'; // Default to true if not set
+      const newVisibility = !currentlyVisible;
+
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'modeDisplayVisible',
+          value: newVisibility.toString()
+        })
+      });
+
+      if (res.ok) {
+        updateModeVisibilityUI(newVisibility);
+        alert(`Mode Display ${newVisibility ? 'shown' : 'hidden'} in OBS`);
+      } else {
+        alert('Failed to toggle visibility');
+      }
+    } catch (e) {
+      console.error('Failed to toggle mode display visibility:', e);
+      alert('Failed to toggle visibility');
+    }
+  }
+
+  function updateModeVisibilityUI(isVisible) {
+    const btn = document.getElementById('mode-visibility-btn');
+    const status = document.getElementById('mode-visibility-status');
+
+    if (isVisible) {
+      btn.textContent = '👁️';
+      status.textContent = 'Visible in OBS';
+      status.style.color = '#4caf50';
+    } else {
+      btn.textContent = '👁️‍🗨️';
+      status.textContent = 'Hidden in OBS';
+      status.style.color = '#ff6b6b';
+    }
+  }
+
   async function checkConnection() {
     const statusEl = document.getElementById('connection-status');
     const statusText = statusEl.querySelector('span:last-child');
 
-    console.log('[DEBUG] Checking connection to:', API_URL);
-
     try {
-      const response = await fetch(`${API_URL}/queue`);
-      console.log('[DEBUG] Connection response:', response.status, response.statusText);
+      const response = await fetch('/api/queue');
       statusText.textContent = 'Connected';
       statusEl.className = 'status connected';
     } catch (e) {
-      console.error('[DEBUG] Connection failed:', e.message, '| URL:', API_URL);
+      console.error('Connection failed:', e.message);
       statusText.textContent = 'Disconnected';
       statusEl.className = 'status disconnected';
     }
   }
 
-  function saveApiUrl() {
-    const input = document.getElementById('api-url-input');
-    const url = input.value.trim();
-
-    if (!url) {
-      alert('Please enter a valid URL');
-      return;
+  async function checkModeVisibilityUpdate() {
+    try {
+      const response = await fetch('/api/settings', { cache: 'no-store' });
+      const settings = await response.json();
+      const modeDisplayVisible = settings.modeDisplayVisible !== 'false';
+      updateModeVisibilityUI(modeDisplayVisible);
+    } catch (e) {
+      console.error('Failed to check mode visibility update:', e);
     }
-
-    // Remove trailing slash if present
-    const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
-
-    localStorage.setItem('apiUrl', cleanUrl);
-    API_URL = cleanUrl;
-
-    document.getElementById('api-url-display').textContent = cleanUrl;
-    alert('API URL saved! Reconnecting...');
-
-    // Reconnect with new URL
-    checkConnection();
-    updatePendingQueue();
   }
 
-  function resetToLocalhost() {
-    localStorage.setItem('apiUrl', 'http://localhost:8787');
-    API_URL = 'http://localhost:8787';
+  async function activateBRB(minutes) {
+    try {
+      await fetch('/api/screen-overlay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'brb',
+          isActive: true,
+          durationMinutes: minutes
+        })
+      });
+      alert(`BRB screen activated for ${minutes} minutes`);
+    } catch (e) {
+      alert('Failed to activate BRB screen');
+    }
+  }
 
-    document.getElementById('api-url-input').value = '';
-    document.getElementById('api-url-display').textContent = 'http://localhost:8787';
+  async function activateTechDifficulties() {
+    try {
+      await fetch('/api/screen-overlay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'tech_difficulties',
+          isActive: true
+        })
+      });
+      alert('Tech Difficulties screen activated');
+    } catch (e) {
+      alert('Failed to activate Tech Difficulties screen');
+    }
+  }
 
-    alert('Reset to localhost! Reconnecting...');
+  async function deactivateScreen() {
+    try {
+      await fetch('/api/screen-overlay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isActive: false
+        })
+      });
+      alert('Screen overlay dismissed');
+    } catch (e) {
+      alert('Failed to dismiss screen');
+    }
+  }
 
-    // Reconnect with localhost
-    checkConnection();
-    updatePendingQueue();
+  let specialUsers = [];
+
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      specialUsers = data.specialUsers || [];
+      document.getElementById('promo-minutes').value = data.promoMinutes || 15;
+      document.getElementById('player1-name').value = data.player1Name || 'TATTOO';
+      document.getElementById('player2-name').value = data.player2Name || 'OPEN';
+      document.getElementById('pwa-background-url').value = data.pwaBackgroundUrl || 'images/background.png';
+      document.getElementById('obs-background-url').value = data.obsBackgroundUrl || '';
+      renderSpecialUsers();
+      updateScoreboardLabels();
+      updatePWABackground();
+
+      // Load mode display visibility (default to true if not set)
+      const modeDisplayVisible = data.modeDisplayVisible !== 'false'; // String comparison for settings
+      updateModeVisibilityUI(modeDisplayVisible);
+    } catch (e) {
+      console.error('Failed to load settings:', e);
+    }
+  }
+
+  function renderSpecialUsers() {
+    const list = document.getElementById('special-users-list');
+    if (specialUsers.length === 0) {
+      list.innerHTML = '<div style="color: var(--muted); font-size: 14px; padding: 10px; text-align: center;">No special users added</div>';
+      return;
+    }
+    list.innerHTML = specialUsers.map(user => `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; margin-bottom: 8px;">
+        <span style="color: var(--text); font-size: 14px;">${user}</span>
+        <button onclick="removeSpecialUser('${user}')" style="background: #ff6b6b; border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
+      </div>
+    `).join('');
+  }
+
+  function addSpecialUser() {
+    const input = document.getElementById('new-special-user');
+    const username = input.value.trim();
+    if (!username) {
+      alert('Please enter a username');
+      return;
+    }
+    if (specialUsers.includes(username.toLowerCase())) {
+      alert('User already in list');
+      return;
+    }
+    specialUsers.push(username.toLowerCase());
+    input.value = '';
+    renderSpecialUsers();
+  }
+
+  function removeSpecialUser(username) {
+    specialUsers = specialUsers.filter(u => u !== username);
+    renderSpecialUsers();
+  }
+
+  async function saveSettings() {
+    try {
+      const promoMinutes = parseInt(document.getElementById('promo-minutes').value);
+      const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
+      const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
+      const pwaBackgroundUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
+      const obsBackgroundUrl = document.getElementById('obs-background-url').value.trim() || '';
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specialUsers,
+          promoMinutes,
+          player1Name,
+          player2Name,
+          pwaBackgroundUrl,
+          obsBackgroundUrl
+        })
+      });
+      if (res.ok) {
+        updateScoreboardLabels();
+        updatePWABackground();
+        alert('Settings saved!');
+      } else {
+        alert('Failed to save settings');
+      }
+    } catch (e) {
+      alert('Failed to save settings');
+    }
+  }
+
+  function updateScoreboardLabels() {
+    const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
+    const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
+    document.querySelector('.score-section:nth-child(1) label').textContent = `Player 1 (${player1Name})`;
+    document.querySelector('.score-section:nth-child(2) label').textContent = `Player 2 (${player2Name})`;
+  }
+
+  function updatePWABackground() {
+    const bgUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
+    document.body.style.background = `url('${bgUrl}') center center / cover no-repeat fixed`;
+  }
+
+  function toggleScoreboardEdit() {
+    const editSection = document.getElementById('scoreboard-edit-section');
+    editSection.classList.toggle('hidden');
+  }
+
+  async function saveScoreboardNames() {
+    try {
+      const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
+      const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
+
+      // Get current settings first
+      const settingsRes = await fetch('/api/settings');
+      const currentSettings = await settingsRes.json();
+
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specialUsers: currentSettings.specialUsers || [],
+          promoMinutes: currentSettings.promoMinutes || 15,
+          player1Name,
+          player2Name,
+          pwaBackgroundUrl: currentSettings.pwaBackgroundUrl || 'images/background.png',
+          obsBackgroundUrl: currentSettings.obsBackgroundUrl || ''
+        })
+      });
+
+      if (res.ok) {
+        updateScoreboardLabels();
+        alert('Player names saved!');
+        toggleScoreboardEdit();
+      } else {
+        alert('Failed to save names');
+      }
+    } catch (e) {
+      alert('Failed to save names');
+    }
   }
 
   function startUpdates() {
-    // Display current API URL
-    document.getElementById('api-url-display').textContent = API_URL;
-    document.getElementById('api-url-input').value = API_URL !== 'http://localhost:8787' ? API_URL : '';
-
     updatePendingQueue();
     checkConnection();
     updateModeDisplay();
+    loadSettings();
+    checkModeVisibilityUpdate();
     setInterval(updatePendingQueue, 3000);
     setInterval(checkConnection, 10000);
     setInterval(updateModeDisplay, 5000);
+    setInterval(checkModeVisibilityUpdate, 5000);
   }
 
   // Check if already authenticated

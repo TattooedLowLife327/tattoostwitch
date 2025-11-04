@@ -4,47 +4,51 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import SpotifyWebApi from 'spotify-web-api-node';
+import { neon } from '@neondatabase/serverless';
 
 // ====== ENV VARIABLES ======
 const {
   TWITCH_BOT_USERNAME,
   TWITCH_CHANNEL,
   TWITCH_OAUTH_TOKEN,
-  TWITCH_CLIENT_ID,
-  TWITCH_CLIENT_SECRET,
   SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET,
   SPOTIFY_REFRESH_TOKEN,
-  PROMO_MINUTES,
-  SPECIAL_USERS,
-  DECAPI_TOKEN,
-  FACEBOOK_ACCESS_TOKEN,
-  FACEBOOK_PAGE_ID,
-  TIKTOK_ACCESS_TOKEN,
-  TIKTOK_USERNAME
+  DATABASE_URL,
+  NETLIFY_URL,
+  SPECIAL_USERS
 } = process.env;
 
 const PORT = process.env.PORT || 8787;
-
-// Parse special users from env (comma-separated list)
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 
-console.log('=== ENV DEBUG ===');
+console.log('=== LIGHTWEIGHT BOT STARTING ===');
 console.log('TWITCH_CHANNEL:', TWITCH_CHANNEL);
-console.log('TWITCH_BOT_USERNAME:', TWITCH_BOT_USERNAME);
-console.log('SPECIAL_USERS:', specialUsersList.length > 0 ? specialUsersList.join(', ') : 'none configured');
-console.log('================');
+console.log('DATABASE_URL:', DATABASE_URL ? 'Set' : 'Missing');
+console.log('NETLIFY_URL:', NETLIFY_URL || 'Not set (will use relative paths)');
+console.log('================================');
 
-if (!TWITCH_CHANNEL || !TWITCH_CLIENT_ID || !SPOTIFY_CLIENT_ID) {
-  console.error('Missing required environment variables. Check Netlify settings.');
+if (!TWITCH_CHANNEL || !SPOTIFY_CLIENT_ID || !DATABASE_URL) {
+  console.error('Missing required environment variables');
   process.exit(1);
 }
 
-// ====== EXPRESS SETUP ======
+// ====== DATABASE ======
+const db = neon(DATABASE_URL);
+
+async function query(sql, params = []) {
+  try {
+    return await db(sql, params);
+  } catch (error) {
+    console.error('Database error:', error);
+    throw error;
+  }
+}
+
+// ====== EXPRESS (SSE ONLY) ======
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
 
 // ====== SPOTIFY ======
 const spotify = new SpotifyWebApi({
@@ -58,96 +62,13 @@ async function ensureSpotifyToken() {
     const data = await spotify.refreshAccessToken();
     spotify.setAccessToken(data.body['access_token']);
   } catch (err) {
-    console.error('Spotify token refresh failed:', err?.body?.error || err?.message || err);
+    console.error('Spotify token refresh failed:', err?.body?.error || err?.message);
   }
 }
 
-// ====== TWITCH HELIX TOKEN ======
-let helixAppToken = null;
-let helixTokenExp = 0;
-async function getAppAccessToken() {
-  const now = Math.floor(Date.now() / 1000);
-  if (helixAppToken && now < helixTokenExp - 60) return helixAppToken;
+// ====== SPOTIFY PLAYBACK MONITORING ======
+let previousTrackId = null;
 
-  const res = await fetch(`https://id.twitch.tv/oauth2/token`, {
-    method: 'POST',
-    body: new URLSearchParams({
-      client_id: TWITCH_CLIENT_ID,
-      client_secret: TWITCH_CLIENT_SECRET,
-      grant_type: 'client_credentials'
-    })
-  });
-  const data = await res.json();
-  helixAppToken = data.access_token;
-  helixTokenExp = now + (data.expires_in || 3600);
-  return helixAppToken;
-}
-
-async function getViewerCount(login) {
-  const token = await getAppAccessToken();
-  const r = await fetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(login)}`, {
-    headers: { 'Client-ID': TWITCH_CLIENT_ID, Authorization: `Bearer ${token}` }
-  });
-  const j = await r.json();
-  return j.data?.[0]?.viewer_count ?? null;
-}
-
-async function getFacebookViewerCount() {
-  if (!FACEBOOK_ACCESS_TOKEN || !FACEBOOK_PAGE_ID) return null;
-
-  try {
-    // Get current live videos for the page
-    const res = await fetch(
-      `https://graph.facebook.com/v18.0/${FACEBOOK_PAGE_ID}/live_videos?fields=live_views,status&access_token=${FACEBOOK_ACCESS_TOKEN}`
-    );
-    const data = await res.json();
-
-    // Find the currently live video
-    const liveVideo = data.data?.find(video => video.status === 'LIVE');
-    return liveVideo?.live_views ?? null;
-  } catch (err) {
-    console.error('[FACEBOOK] Failed to get viewer count:', err.message);
-    return null;
-  }
-}
-
-async function getTikTokViewerCount() {
-  if (!TIKTOK_ACCESS_TOKEN || !TIKTOK_USERNAME) return null;
-
-  try {
-    // TikTok API endpoint for live room info
-    const res = await fetch(
-      `https://open.tiktokapis.com/v2/live/info/?username=${encodeURIComponent(TIKTOK_USERNAME)}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${TIKTOK_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    const data = await res.json();
-
-    // Check if live and return viewer count
-    if (data.data?.room_info?.status === 2) {
-      return data.data.room_info.user_count ?? null;
-    }
-    return null;
-  } catch (err) {
-    console.error('[TIKTOK] Failed to get viewer count:', err.message);
-    return null;
-  }
-}
-
-// ====== QUEUE STATE ======
-let nowPlaying = null;
-let approvedQueue = [];
-let pending = [];
-let nextPendingId = 1;
-
-// ====== MODE STATE ======
-let currentMode = 'tourney'; // Options: 'tourney', 'lobby', 'cash'
-
-// ====== SPOTIFY PLAYBACK POLLING ======
 async function updateCurrentPlayback() {
   try {
     await ensureSpotifyToken();
@@ -158,22 +79,32 @@ async function updateCurrentPlayback() {
       const progress = data.body.progress_ms || 0;
       const duration = track.duration_ms || 0;
       const isPlaying = data.body.is_playing || false;
+      const trackId = track.id;
 
-      // Find requester from our approved queue if it exists
-      const queueItem = approvedQueue.find(q => q.spotifyId === track.id);
-      let requester = queueItem ? queueItem.requester : null;
+      // Only fetch playlist info if track changed
       let playlistName = null;
+      if (trackId !== previousTrackId) {
+        console.log('[SPOTIFY] Track changed:', track.name);
 
-      // If not in queue but we have the same track in nowPlaying, preserve its requester
-      if (!requester && nowPlaying && nowPlaying.spotifyId === track.id) {
-        requester = nowPlaying.requester;
-        playlistName = nowPlaying.playlistName;
-      }
+        // Check if this track is from our queue
+        const queuedSong = await query(
+          'SELECT * FROM song_requests WHERE spotify_id = $1 AND status = $2 LIMIT 1',
+          [trackId, 'approved']
+        );
 
-      // If no requester, get context name (playlist, album, etc.)
-      if (!requester && data.body.context) {
-        const contextUri = data.body.context.uri;
-        if (contextUri) {
+        let requester = null;
+        if (queuedSong && queuedSong[0]) {
+          requester = queuedSong[0].requester;
+          // Mark as playing
+          await query(
+            'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE spotify_id = $2',
+            ['playing', trackId]
+          );
+        }
+
+        // Get context (playlist/album) only when track changes
+        if (!requester && data.body.context) {
+          const contextUri = data.body.context.uri;
           try {
             if (contextUri.startsWith('spotify:playlist:')) {
               const playlistId = contextUri.split(':')[2];
@@ -189,64 +120,161 @@ async function updateCurrentPlayback() {
               playlistName = `${artistInfo.body.name} Radio`;
             }
           } catch (err) {
-            // Silently fail
-            console.error('[SPOTIFY] Failed to get context name:', err.message);
+            console.error('[SPOTIFY] Failed to get context:', err.message);
           }
         }
-      }
 
-      // If still no playlist name and no requester, use album name
-      if (!requester && !playlistName && track.album) {
-        playlistName = track.album.name;
-      }
+        if (!playlistName) {
+          playlistName = track.album.name;
+        }
 
-      nowPlaying = {
-        title: track.name,
-        artist: track.artists.map(a => a.name).join(', '),
-        album: track.album.name,
-        albumArt: track.album.images[0]?.url || null,
-        spotifyId: track.id,
-        progress: progress,
-        duration: duration,
-        isPlaying: isPlaying,
-        requester: requester,
-        playlistName: playlistName
-      };
+        // Update current_track in database
+        await query(
+          `UPDATE current_track
+           SET spotify_id = $1, title = $2, artist = $3, album = $4,
+               album_art = $5, requester = $6, playlist_name = $7,
+               progress_ms = $8, duration_ms = $9, is_playing = $10,
+               updated_at = NOW()
+           WHERE id = 1`,
+          [
+            trackId,
+            track.name,
+            track.artists.map(a => a.name).join(', '),
+            track.album.name,
+            track.album.images[0]?.url || null,
+            requester,
+            playlistName,
+            progress,
+            duration,
+            isPlaying
+          ]
+        );
 
-      // Remove from approved queue if it was there
-      if (queueItem) {
-        const idx = approvedQueue.indexOf(queueItem);
-        if (idx !== -1) approvedQueue.splice(idx, 1);
+        previousTrackId = trackId;
+      } else {
+        // Same track, just update progress
+        await query(
+          `UPDATE current_track
+           SET progress_ms = $1, is_playing = $2, updated_at = NOW()
+           WHERE id = 1`,
+          [progress, isPlaying]
+        );
       }
     } else {
       // Nothing playing
-      if (nowPlaying) {
-        console.log('[SPOTIFY] Playback stopped or paused');
+      if (previousTrackId) {
+        console.log('[SPOTIFY] Playback stopped');
+        previousTrackId = null;
+        await query(
+          'UPDATE current_track SET spotify_id = NULL, is_playing = false, updated_at = NOW() WHERE id = 1'
+        );
       }
-      nowPlaying = null;
     }
   } catch (err) {
-    // Don't spam errors, just log once
     if (!updateCurrentPlayback.lastError || Date.now() - updateCurrentPlayback.lastError > 60000) {
-      console.error('[SPOTIFY] Failed to get current playback:', err.message);
+      console.error('[SPOTIFY] Playback update error:', err.message);
       updateCurrentPlayback.lastError = Date.now();
     }
   }
 }
 
-// Poll Spotify every 2 seconds for current playback
-setInterval(updateCurrentPlayback, 2000);
-updateCurrentPlayback(); // Initial call
+// Poll Spotify every 5 seconds (optimized from 2s)
+setInterval(updateCurrentPlayback, 5000);
+updateCurrentPlayback();
 
-// ====== SPECIAL USER TRACKING ======
-const seenUsers = new Set();
-const lastSeenMap = new Map(); // Track last activity timestamp for each user
+// ====== APPROVED SONG QUEUE PROCESSOR ======
+async function processApprovedSongs() {
+  try {
+    // Get all approved songs
+    const approved = await query(
+      'SELECT * FROM song_requests WHERE status = $1 ORDER BY created_at ASC LIMIT 10',
+      ['approved']
+    );
+
+    if (approved && approved.length > 0) {
+      for (const song of approved) {
+        try {
+          await ensureSpotifyToken();
+          await spotify.addToQueue(song.uri);
+          console.log(`[QUEUE] Added to Spotify: ${song.title} by ${song.artist}`);
+
+          // Mark as playing so it stays visible in queue but doesn't get re-added
+          await query(
+            'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE id = $2',
+            ['playing', song.id]
+          );
+        } catch (err) {
+          console.error(`[QUEUE] Failed to add ${song.title}:`, err.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[QUEUE] Process error:', err.message);
+  }
+}
+
+// Process queue every 10 seconds
+setInterval(processApprovedSongs, 10000);
+
+// ====== CHECK FOR ACTION REQUESTS ======
+let lastActionCheck = Date.now();
+
+async function checkActionRequests() {
+  try {
+    const requests = await query(
+      `SELECT * FROM activity_log
+       WHERE event_type IN ('skip_requested', 'play_requested', 'pause_requested', 'promo_requested', 'volume_requested')
+       AND created_at > $1
+       ORDER BY created_at DESC`,
+      [new Date(lastActionCheck)]
+    );
+
+    if (requests && requests.length > 0) {
+      await ensureSpotifyToken();
+
+      for (const req of requests) {
+        try {
+          if (req.event_type === 'skip_requested') {
+            console.log('[ACTION] Skip requested, executing...');
+            await spotify.skipToNext();
+          } else if (req.event_type === 'play_requested') {
+            console.log('[ACTION] Play requested, executing...');
+            await spotify.play();
+          } else if (req.event_type === 'pause_requested') {
+            console.log('[ACTION] Pause requested, executing...');
+            await spotify.pause();
+          } else if (req.event_type === 'promo_requested') {
+            console.log('[ACTION] Promo requested, executing...');
+            // TODO: Add promo message logic if needed
+          } else if (req.event_type === 'volume_requested') {
+            const volume = req.details?.volume || 50;
+            console.log(`[ACTION] Volume change to ${volume}% requested, executing...`);
+            await spotify.setVolume(volume);
+          }
+
+          // Delete processed request so it doesn't execute again
+          await query('DELETE FROM activity_log WHERE id = $1', [req.id]);
+        } catch (err) {
+          console.error(`[ACTION] Failed to execute ${req.event_type}:`, err.message);
+        }
+      }
+
+      lastActionCheck = Date.now();
+    }
+  } catch (err) {
+    console.error('[ACTION] Check error:', err.message);
+  }
+}
+
+setInterval(checkActionRequests, 3000);
+
+// ====== TWITCH BOT ======
+const seenUsers = new Set(); // Session-only tracking
+const lastSeenMap = new Map();
+
 const specialUserMessages = {
-  // Custom messages per user (case-insensitive)
   'chantheman814': 'TheMan has arrived.',
   'coil666': 'HI KEVIN!!',
-
-  // Default messages for users without custom message
   default: [
     'has entered the chat!',
     'just rolled in!',
@@ -257,7 +285,6 @@ const specialUserMessages = {
   ]
 };
 
-// ====== TWITCH BOT ======
 const client = new tmi.Client({
   options: {
     debug: true,
@@ -272,22 +299,15 @@ const client = new tmi.Client({
 });
 
 client.on('connected', (addr, port) => {
-  console.log(`[TWITCH] Connected to chat at ${addr}:${port}`);
-  console.log(`[TWITCH] Joined channel: #${TWITCH_CHANNEL}`);
+  console.log(`[TWITCH] Connected to ${addr}:${port}`);
 });
 
 client.on('disconnected', (reason) => {
   console.log(`[TWITCH] Disconnected: ${reason}`);
-  console.log(`[TWITCH] Will attempt to reconnect...`);
-});
-
-client.on('reconnect', () => {
-  console.log(`[TWITCH] Attempting to reconnect...`);
 });
 
 client.connect().catch(err => {
-  console.error('[TWITCH] Failed to connect:', err);
-  console.log('[TWITCH] Will retry automatically...');
+  console.error('[TWITCH] Connection failed:', err);
 });
 
 function say(msg) {
@@ -305,239 +325,170 @@ client.on('message', async (channel, tags, message, self) => {
   const text = message.trim();
   const uname = tags['display-name'] || tags.username || '';
 
-  // Debug logging
-  console.log(`[MSG] ${uname}: ${text} | self=${self}`);
-
   if (self) return;
 
-  // Track last seen timestamp for all users
+  // Track last seen
   lastSeenMap.set(uname.toLowerCase(), Date.now());
 
-  // Check for special user on first message
+  // Update user activity in DB (async, don't wait)
+  query('SELECT update_user_activity($1)', [uname]).catch(() => {});
+
+  // Check special users
   checkSpecialUser(uname);
 
-  // List of bot usernames to filter out
+  // Chat relay (for overlay)
   const botNames = ['streamelements', 'nightbot', 'soundalerts', 'streamlabs', 'moobot', 'streamstickers', 'fossabot'];
   const lowerUname = uname.toLowerCase();
   const isBot = botNames.includes(lowerUname);
-
-  // Broadcast messages to overlay with filters:
-  // - No commands starting with !
-  // - No bot messages (except our bot when announcing special users)
-  // - Our bot (LowLifesofGB) only when mentioning special users
   let shouldBroadcast = !text.startsWith('!') && !isBot;
 
-  // Special case: allow our bot's messages only when they mention special users
   if (lowerUname === 'lowlifesofgb') {
-    const mentionsSpecialUser = specialUsersList.some(specialUser =>
-      text.toLowerCase().includes(specialUser)
-    );
-    shouldBroadcast = mentionsSpecialUser;
+    shouldBroadcast = specialUsersList.some(u => text.toLowerCase().includes(u));
   }
 
   if (shouldBroadcast) {
     broadcastChatMessage(uname, text, tags.emotes, tags.color);
   }
 
+  // !sr command
   if (text.toLowerCase().startsWith('!sr ')) {
     const q = text.slice(4).trim();
     if (!q) return;
 
-    // Auto-approve for broadcaster and mods
-    if (isPrivileged(tags)) {
-      try {
-        await ensureSpotifyToken();
-        const s = await spotify.searchTracks(q, { limit: 1 });
-        const track = s.body.tracks.items[0];
-        if (!track) {
-          say(`${uname}, couldn't find "${q}" on Spotify.`);
-          return;
-        }
-
-        await spotify.addToQueue(track.uri);
-
-        const approved = {
-          title: track.name,
-          artist: track.artists.map(a => a.name).join(', '),
-          spotifyId: track.id,
-          albumArt: track.album.images[0]?.url || '',
-          requester: uname
-        };
-
-        if (!nowPlaying) nowPlaying = approved;
-        else approvedQueue.push(approved);
-
-        say(`Added to queue: ${approved.title} by ${approved.artist}`);
-        console.log(`[AUTO-APPROVE] ${approved.title} — ${approved.artist} (${uname}) added to queue`);
-      } catch (e) {
-        say(`${uname}, failed to add song: ${e?.body?.error?.message || e.message}`);
-        console.log(`[AUTO-APPROVE] Failed: ${e?.body?.error?.message || e.message}`);
-      }
-    } else {
-      // Regular users need approval - search Spotify first to get track details
-      try {
-        await ensureSpotifyToken();
-        const s = await spotify.searchTracks(q, { limit: 1 });
-        const track = s.body.tracks.items[0];
-        if (!track) {
-          say(`${uname}, couldn't find "${q}" on Spotify.`);
-          return;
-        }
-
-        const item = {
-          id: nextPendingId++,
-          query: q,
-          requester: uname,
-          spotifyId: track.id,
-          title: track.name,
-          artist: track.artists.map(a => a.name).join(', '),
-          albumArt: track.album.images[0]?.url || '',
-          uri: track.uri
-        };
-        pending.push(item);
-        say(`Queued #${item.id}: "${track.name}" by ${item.artist} — requested by ${uname}`);
-        console.log(`[SR] Added to pending: ${item.title} — ${item.artist} (${uname})`);
-      } catch (e) {
-        say(`${uname}, failed to search: ${e?.body?.error?.message || e.message}`);
-        console.log(`[SR] Search failed: ${e?.body?.error?.message || e.message}`);
-      }
-    }
-    return;
-  }
-
-  if (text.toLowerCase().startsWith('!approve ')) {
-    if (!isPrivileged(tags)) return;
-    const n = parseInt(text.split(' ')[1], 10);
-    const idx = pending.findIndex(p => p.id === n);
-    if (idx === -1) {
-      console.log(`[APPROVE] No pending item #${n}`);
-      return;
-    }
-
-    const item = pending.splice(idx, 1)[0];
     try {
       await ensureSpotifyToken();
-      await spotify.addToQueue(item.uri);
+      const s = await spotify.searchTracks(q, { limit: 1 });
+      const track = s.body.tracks.items[0];
+      if (!track) {
+        say(`${uname}, couldn't find "${q}" on Spotify.`);
+        return;
+      }
 
-      const approved = {
-        title: item.title,
-        artist: item.artist,
-        spotifyId: item.spotifyId,
-        albumArt: item.albumArt,
-        requester: item.requester
-      };
-
-      if (!nowPlaying) nowPlaying = approved;
-      else approvedQueue.push(approved);
-
-      console.log(`[APPROVE] #${n}: ${approved.title} — ${approved.artist} (${approved.requester}) added to queue`);
+      // All song requests go to pending for PWA approval
+      const result = await query(
+        `INSERT INTO song_requests (spotify_id, title, artist, album_art, requester, status, uri)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id`,
+        [
+          track.id,
+          track.name,
+          track.artists.map(a => a.name).join(', '),
+          track.album.images[0]?.url || '',
+          uname,
+          'pending',
+          track.uri
+        ]
+      );
+      const id = result[0].id;
+      say(`Song request #${id}: "${track.name}" by ${track.artists[0].name} - requested by ${uname}`);
     } catch (e) {
-      console.log(`[APPROVE] Failed to approve #${n}: ${e?.body?.error?.message || e.message}`);
+      say(`${uname}, failed: ${e?.body?.error?.message || e.message}`);
     }
     return;
   }
 
-  if (text.toLowerCase().startsWith('!deny ')) {
-    if (!isPrivileged(tags)) return;
-    const n = parseInt(text.split(' ')[1], 10);
-    const idx = pending.findIndex(p => p.id === n);
-    if (idx === -1) {
-      console.log(`[DENY] No pending item #${n}`);
-      return;
-    }
-    pending.splice(idx, 1);
-    console.log(`[DENY] Denied #${n}`);
-    return;
-  }
-
-  if (text.toLowerCase().startsWith('!cancelsr')) {
-    // Allow users to cancel their own pending song requests
-    const userPending = pending.filter(p => p.requester.toLowerCase() === uname.toLowerCase());
-    if (userPending.length === 0) {
-      return say(`${uname}, you have no pending song requests.`);
-    }
-
-    // Remove all pending requests from this user
-    const removed = pending.filter(p => p.requester.toLowerCase() === uname.toLowerCase());
-    pending = pending.filter(p => p.requester.toLowerCase() !== uname.toLowerCase());
-
-    const removedIds = removed.map(r => `#${r.id}`).join(', ');
-    say(`${uname}, cancelled your request(s): ${removedIds}`);
-    console.log(`[CANCELSR] ${uname} cancelled: ${removedIds}`);
-    return;
-  }
-
+  // !queue command
   if (text.toLowerCase() === '!queue') {
-    const next = approvedQueue.slice(0, 5).map((t, i) => `${i + 1}. ${t.title} — ${t.artist}`).join(' | ');
-    say(`Now: ${nowPlaying ? `${nowPlaying.title} — ${nowPlaying.artist}` : '—'} | Next: ${next || '—'}`);
+    try {
+      const current = await query('SELECT * FROM current_track WHERE id = 1');
+      const queue = await query(
+        'SELECT * FROM song_requests WHERE status IN ($1, $2) ORDER BY created_at ASC LIMIT 5',
+        ['approved', 'completed']
+      );
+
+      const nowText = current[0]?.title ? `${current[0].title} - ${current[0].artist}` : '—';
+      const queueText = queue.length > 0
+        ? queue.map((t, i) => `${i + 1}. ${t.title} - ${t.artist}`).join(' | ')
+        : '—';
+
+      say(`Now: ${nowText} | Next: ${queueText}`);
+    } catch (e) {
+      console.error('[!queue error]:', e);
+    }
     return;
   }
 
-  if (text.toLowerCase() === '!dcd') {
-    triggerPromo(0); // Trigger Dead Center Darts promo (index 0)
-    console.log(`[DCD] Promo triggered by ${uname}`);
+  // !approve (mods only)
+  if (text.toLowerCase().startsWith('!approve ') && isPrivileged(tags)) {
+    const id = parseInt(text.split(' ')[1], 10);
+    try {
+      const result = await query(
+        'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3 RETURNING *',
+        ['approved', id, 'pending']
+      );
+      if (result && result.length > 0) {
+        say(`Approved #${id}: ${result[0].title}`);
+      }
+    } catch (e) {
+      console.error('[!approve error]:', e);
+    }
     return;
   }
 
-  if (text.toLowerCase() === '!skip') {
-    if (!isPrivileged(tags)) return;
-    if (!nowPlaying) return say('Nothing playing.');
+  // !deny (mods only)
+  if (text.toLowerCase().startsWith('!deny ') && isPrivileged(tags)) {
+    const id = parseInt(text.split(' ')[1], 10);
+    try {
+      const result = await query(
+        'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE id = $2 AND status = $3 RETURNING *',
+        ['denied', id, 'pending']
+      );
+      if (result && result.length > 0) {
+        say(`Denied #${id}`);
+      }
+    } catch (e) {
+      console.error('[!deny error]:', e);
+    }
+    return;
+  }
 
+  // !skip (mods only)
+  if (text.toLowerCase() === '!skip' && isPrivileged(tags)) {
     try {
       await ensureSpotifyToken();
       await spotify.skipToNext();
-      const skipped = nowPlaying;
-      say(`Skipped ${skipped.title}.`);
-      console.log(`[SKIP] Skipped ${skipped.title}`);
-      // Don't modify nowPlaying or approvedQueue - let updateCurrentPlayback handle it
+      say('Song skipped.');
     } catch (e) {
       say(`Failed to skip: ${e?.body?.error?.message || e.message}`);
-      console.error('[SKIP] Error:', e);
     }
     return;
   }
 
+  // !cancel or !cancelsr
+  if (text.toLowerCase().startsWith('!cancel')) {
+    try {
+      const result = await query(
+        'DELETE FROM song_requests WHERE requester = $1 AND status IN ($2, $3) RETURNING id, title',
+        [uname, 'pending', 'approved']
+      );
+      if (result && result.length > 0) {
+        const titles = result.map(r => `"${r.title}"`).join(', ');
+        say(`${uname}, cancelled: ${titles}`);
+      } else {
+        say(`${uname}, you have no pending or approved requests to cancel.`);
+      }
+    } catch (e) {
+      console.error('[!cancel error]:', e);
+    }
+    return;
+  }
+
+  // !lastseen
   if (text.toLowerCase().startsWith('!lastseen ')) {
     const targetUser = text.slice(10).trim().toLowerCase();
     if (!targetUser) return say('Usage: !lastseen <username>');
 
     const lastSeen = lastSeenMap.get(targetUser);
     if (!lastSeen) {
-      return say(`No activity during this live, but StreamElements might have more from other lives.`);
+      return say(`No activity during this stream.`);
     }
 
     const timeAgo = formatTimeAgo(Date.now() - lastSeen);
     say(`${targetUser} was last seen ${timeAgo} ago.`);
     return;
   }
-
-  if (text.toLowerCase().startsWith('!followage')) {
-    if (!DECAPI_TOKEN) {
-      return say('Followage requires authentication. Broadcaster: visit https://decapi.me/auth/twitch?redirect=followage&scopes=moderator:read:followers');
-    }
-
-    const parts = text.split(' ');
-    const targetUser = parts.length > 1 ? parts[1].trim() : uname;
-
-    try {
-      const url = `https://decapi.me/twitch/followage/${TWITCH_CHANNEL}/${encodeURIComponent(targetUser)}?token=${encodeURIComponent(DECAPI_TOKEN)}`;
-      const res = await fetch(url);
-      const data = await res.text();
-
-      if (data.includes('does not follow') || data.includes('not found')) {
-        say(`${targetUser} is not following ${TWITCH_CHANNEL}.`);
-      } else {
-        say(`${targetUser} has been following for ${data}.`);
-      }
-    } catch (e) {
-      say(`Failed to check followage: ${e.message}`);
-    }
-    return;
-  }
-
 });
 
-// ====== HELPER FUNCTIONS ======
 function formatTimeAgo(ms) {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
@@ -550,167 +501,41 @@ function formatTimeAgo(ms) {
   return `${seconds} second${seconds !== 1 ? 's' : ''}`;
 }
 
-// ====== SPECIAL USER DETECTION ======
 function checkSpecialUser(username) {
   const lowerUsername = username.toLowerCase();
-
-  // Track all users
   if (!seenUsers.has(lowerUsername)) {
     seenUsers.add(lowerUsername);
-
-    // Check if this is a special user
     if (specialUsersList.includes(lowerUsername)) {
       let message;
-
-      // Check if user has a custom message
       if (specialUserMessages[lowerUsername]) {
         message = specialUserMessages[lowerUsername];
       } else {
-        // Use random default message
         const messages = specialUserMessages.default;
         message = `${username} ${messages[Math.floor(Math.random() * messages.length)]}`;
       }
-
       say(message);
-      console.log(`[SPECIAL USER] ${username} detected!`);
+      console.log(`[SPECIAL USER] ${username}`);
     }
   }
 }
 
-// Also detect special users when they join (not just on first message)
 client.on('join', (channel, username, self) => {
   if (self) return;
-  console.log(`[JOIN] ${username} joined the channel`);
-
-  // Track last seen timestamp
   const lowerUsername = username.toLowerCase();
   lastSeenMap.set(lowerUsername, Date.now());
-
-  // Announce special users every time they join
   if (specialUsersList.includes(lowerUsername)) {
     let message;
-
-    // Check if user has a custom message
     if (specialUserMessages[lowerUsername]) {
       message = specialUserMessages[lowerUsername];
     } else {
-      // Use random default message
       const messages = specialUserMessages.default;
       message = `${username} ${messages[Math.floor(Math.random() * messages.length)]}`;
     }
-
     say(message);
-    console.log(`[SPECIAL USER] ${username} detected on join!`);
   }
 });
 
-// ====== PROMO ======
-const promoMessages = [
-  'The LowLifes of Granboard • www.facebook.com/groups/thelowlifesofgranboard',
-  'The LowLife Files - for all the tea • www.facebook.com/groups/thelowlifefiles',
-  "TattooedLowLife's Facebook • www.facebook.com/thetattooeedlowlife",
-  'LLoGB Jams Playlist - Add your favorite songs! • https://open.spotify.com/playlist/5STE00xXwZoXYHllJFUZT5',
-  'TattooedLowLife on YouTube • https://youtube.com/@thetattooedlowlife',
-  'Add us on Snapchat • https://www.snapchat.com/add/thelowlifesofgb',
-  'TattooedLowLife on TikTok • https://www.tiktok.com/@thetattooedlowlife',
-  'Join the LLoGB app waitlist! • www.lowlifeofgranboard.com/launch'
-];
-
-let currentPromoMessageIndex = 0;
-
-async function announcePromo() {
-  say(promoMessages[currentPromoMessageIndex]);
-  currentPromoMessageIndex = (currentPromoMessageIndex + 1) % promoMessages.length;
-}
-
-setInterval(announcePromo, Math.max(1, parseInt(PROMO_MINUTES, 10)) * 60 * 1000);
-
-// ====== ANONYMOUS VIEWER CHECKER ======
-let twitchAppAccessToken = null;
-
-async function getTwitchAppToken() {
-  try {
-    const response = await fetch('https://id.twitch.tv/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`
-    });
-
-    const data = await response.json();
-    twitchAppAccessToken = data.access_token;
-    console.log('[TWITCH API] Got app access token');
-  } catch (err) {
-    console.error('[TWITCH API] Failed to get app token:', err.message);
-  }
-}
-
-async function checkAnonymousViewers() {
-  try {
-    // Ensure we have an app access token
-    if (!twitchAppAccessToken) {
-      await getTwitchAppToken();
-    }
-
-    // Get broadcaster user ID first
-    const userResponse = await fetch(`https://api.twitch.tv/helix/users?login=${TWITCH_CHANNEL}`, {
-      headers: {
-        'Client-ID': TWITCH_CLIENT_ID,
-        'Authorization': `Bearer ${twitchAppAccessToken}`
-      }
-    });
-
-    const userData = await userResponse.json();
-    if (!userData.data || userData.data.length === 0) {
-      console.error('[ANONYMOUS CHECK] Could not find broadcaster user');
-      return;
-    }
-
-    const broadcasterId = userData.data[0].id;
-
-    // Get stream info to get viewer count
-    const streamResponse = await fetch(`https://api.twitch.tv/helix/streams?user_id=${broadcasterId}`, {
-      headers: {
-        'Client-ID': TWITCH_CLIENT_ID,
-        'Authorization': `Bearer ${twitchAppAccessToken}`
-      }
-    });
-
-    const streamData = await streamResponse.json();
-
-    // Only check if stream is live
-    if (!streamData.data || streamData.data.length === 0) {
-      console.log('[ANONYMOUS CHECK] Stream is offline, skipping check');
-      return;
-    }
-
-    const viewerCount = streamData.data[0].viewer_count;
-    const chatters = seenUsers.size; // Number of unique users who have chatted
-    const anonymous = viewerCount - chatters;
-
-    console.log(`[ANONYMOUS CHECK] Viewers: ${viewerCount}, Chatters: ${chatters}, Anonymous: ${anonymous}`);
-
-    // Only announce if there are 2+ anonymous viewers
-    if (anonymous >= 2) {
-      say(`${anonymous} anonymous users... don't be shy, login!`);
-      console.log(`[ANONYMOUS CHECK] Announced ${anonymous} anonymous viewers`);
-    }
-  } catch (err) {
-    console.error('[ANONYMOUS CHECK] Error:', err.message);
-
-    // If token expired, refresh it
-    if (err.message.includes('401')) {
-      twitchAppAccessToken = null;
-    }
-  }
-}
-
-// Get initial token
-getTwitchAppToken();
-
-// Check every 15 minutes
-setInterval(checkAnonymousViewers, 15 * 60 * 1000);
-
-// ====== CHAT RELAY FOR OVERLAY ======
+// ====== CHAT SSE (for overlay) ======
 const chatClients = [];
 app.get('/chat-stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -720,31 +545,28 @@ app.get('/chat-stream', (req, res) => {
   res.flushHeaders();
 
   chatClients.push(res);
-  console.log(`[SSE] New client connected. Total clients: ${chatClients.length}`);
-
-  // Send initial connection message
-  res.write(`:connected\n\n`);
+  console.log(`[SSE] Chat client connected. Total: ${chatClients.length}`);
+  res.write(':connected\n\n');
 
   req.on('close', () => {
     const idx = chatClients.indexOf(res);
     if (idx !== -1) chatClients.splice(idx, 1);
-    console.log(`[SSE] Client disconnected. Total clients: ${chatClients.length}`);
+    console.log(`[SSE] Chat client disconnected. Total: ${chatClients.length}`);
   });
 });
 
-function broadcastChatMessage(user, message, emotes, color, platform = 'twitch') {
-  const data = JSON.stringify({ user, message, emotes, color, platform, timestamp: Date.now() });
-  console.log(`[SSE] Broadcasting to ${chatClients.length} clients:`, data);
+function broadcastChatMessage(user, message, emotes, color) {
+  const data = JSON.stringify({ user, message, emotes, color, platform: 'twitch', timestamp: Date.now() });
   chatClients.forEach(client => {
     try {
       client.write(`data: ${data}\n\n`);
     } catch (err) {
-      console.error('[SSE] Failed to write to client:', err.message);
+      console.error('[SSE] Failed to write:', err.message);
     }
   });
 }
 
-// ====== PROMO TRIGGER FOR OVERLAY ======
+// ====== PROMO SSE (for overlay) ======
 const promoClients = [];
 app.get('/promo-events', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -754,263 +576,27 @@ app.get('/promo-events', (req, res) => {
   res.flushHeaders();
 
   promoClients.push(res);
-  console.log(`[PROMO] New client connected. Total clients: ${promoClients.length}`);
-
-  res.write(`:connected\n\n`);
+  console.log(`[SSE] Promo client connected. Total: ${promoClients.length}`);
+  res.write(':connected\n\n');
 
   req.on('close', () => {
     const idx = promoClients.indexOf(res);
     if (idx !== -1) promoClients.splice(idx, 1);
-    console.log(`[PROMO] Client disconnected. Total clients: ${promoClients.length}`);
+    console.log(`[SSE] Promo client disconnected. Total: ${promoClients.length}`);
   });
 });
 
-function triggerPromo(promoIndex = 0) {
-  const data = JSON.stringify({ index: promoIndex, timestamp: Date.now() });
-  console.log(`[PROMO] Triggering promo ${promoIndex} for ${promoClients.length} clients`);
-  promoClients.forEach(client => {
-    try {
-      client.write(`data: ${data}\n\n`);
-    } catch (err) {
-      console.error('[PROMO] Failed to write to client:', err.message);
-    }
-  });
+// Poll for promo triggers from DB
+async function checkPromoTriggers() {
+  // Implementation for promo triggers if needed
 }
-
-// ====== SCOREBOARD STATE ======
-let scoreboard = {
-  player1: {
-    name: 'TATTOO',
-    score: 0
-  },
-  player2: {
-    name: 'OPEN',
-    score: 0
-  }
-};
-
-// ====== ENDPOINTS ======
-app.get('/queue', async (_req, res) => {
-  try {
-    let displayQueue = [...approvedQueue];
-
-    // If no user-requested songs, try to get Spotify's queue
-    if (displayQueue.length === 0) {
-      try {
-        await ensureSpotifyToken();
-
-        // Try to use Spotify's queue API
-        const response = await fetch('https://api.spotify.com/v1/me/player/queue', {
-          headers: {
-            'Authorization': `Bearer ${spotify.getAccessToken()}`
-          }
-        });
-
-        if (response.ok) {
-          const queueData = await response.json();
-
-          // Get the next 3 tracks from Spotify queue
-          if (queueData.queue && queueData.queue.length > 0) {
-            displayQueue = queueData.queue.slice(0, 3).map(track => ({
-              title: track.name,
-              artist: track.artists.map(a => a.name).join(', '),
-              album: track.album.name,
-              albumArt: track.album.images[0]?.url || null,
-              spotifyId: track.id,
-              uri: track.uri,
-              requester: null,
-              playlistName: null
-            }));
-          }
-        }
-      } catch (err) {
-        console.error('[QUEUE] Failed to get Spotify queue:', err.message);
-      }
-    }
-
-    res.json({ now: nowPlaying, queue: displayQueue, pending });
-  } catch (err) {
-    console.error('[QUEUE ERROR]', err);
-    res.json({ now: nowPlaying, queue: approvedQueue, pending });
-  }
-});
-
-app.get('/scoreboard', (_req, res) => {
-  res.json(scoreboard);
-});
-
-app.post('/scoreboard', (req, res) => {
-  scoreboard = { ...scoreboard, ...req.body };
-  res.json({ success: true, scoreboard });
-});
-
-// Approve song from admin panel
-app.post('/approve', async (req, res) => {
-  const { spotifyId } = req.body;
-  const idx = pending.findIndex(p => p.spotifyId === spotifyId);
-
-  if (idx === -1) {
-    return res.status(404).json({ error: 'Song not found in pending queue' });
-  }
-
-  const item = pending.splice(idx, 1)[0];
-
-  try {
-    await ensureSpotifyToken();
-    await spotify.addToQueue(item.uri);
-
-    const approved = {
-      title: item.title,
-      artist: item.artist,
-      spotifyId: item.spotifyId,
-      albumArt: item.albumArt,
-      requester: item.requester
-    };
-
-    if (!nowPlaying) nowPlaying = approved;
-    else approvedQueue.push(approved);
-
-    console.log(`[API APPROVE] ${approved.title} by ${approved.artist} (${approved.requester})`);
-    res.json({ success: true, song: approved });
-  } catch (e) {
-    console.error(`[API APPROVE ERROR]`, e);
-    res.status(500).json({ error: 'Failed to add to Spotify queue' });
-  }
-});
-
-// Deny song from admin panel
-app.post('/deny', (req, res) => {
-  const { spotifyId } = req.body;
-  const idx = pending.findIndex(p => p.spotifyId === spotifyId);
-
-  if (idx === -1) {
-    return res.status(404).json({ error: 'Song not found in pending queue' });
-  }
-
-  const item = pending[idx];
-  pending.splice(idx, 1);
-  console.log(`[API DENY] ${item.title} by ${item.artist}`);
-  res.json({ success: true, song: item });
-});
-
-// Skip current song
-app.post('/skip', async (req, res) => {
-  if (!nowPlaying) {
-    return res.status(400).json({ error: 'Nothing currently playing' });
-  }
-
-  const skipped = nowPlaying;
-
-  try {
-    await ensureSpotifyToken();
-    await spotify.skipToNext();
-    console.log(`[API SKIP] Skipped ${skipped.title}`);
-    // Don't modify nowPlaying or approvedQueue - let updateCurrentPlayback handle it
-    res.json({ success: true, skipped });
-  } catch (e) {
-    console.error(`[API SKIP ERROR]`, e);
-    res.status(500).json({ error: 'Failed to skip song' });
-  }
-});
-
-// Play current song
-app.post('/play', async (req, res) => {
-  try {
-    await ensureSpotifyToken();
-    await spotify.play();
-    console.log(`[API PLAY] Resumed playback`);
-    res.json({ success: true });
-  } catch (e) {
-    console.error(`[API PLAY ERROR]`, e);
-    res.status(500).json({ error: 'Failed to play' });
-  }
-});
-
-// Pause current song
-app.post('/pause', async (req, res) => {
-  try {
-    await ensureSpotifyToken();
-    await spotify.pause();
-    console.log(`[API PAUSE] Paused playback`);
-    res.json({ success: true });
-  } catch (e) {
-    console.error(`[API PAUSE ERROR]`, e);
-    res.status(500).json({ error: 'Failed to pause' });
-  }
-});
-
-// Trigger promo from admin panel
-app.post('/trigger-promo', (req, res) => {
-  const { index } = req.body;
-  triggerPromo(index || 0);
-  console.log(`[API] Promo triggered (index: ${index})`);
-  res.json({ success: true });
-});
-
-// Reset bot queues
-app.post('/reset-bot', (req, res) => {
-  const oldPending = pending.length;
-  const oldApproved = approvedQueue.length;
-
-  // Clear all queues
-  pending = [];
-  approvedQueue = [];
-  nowPlaying = null;
-  nextPendingId = 1;
-
-  console.log(`[API RESET] Cleared ${oldPending} pending and ${oldApproved} approved songs`);
-  res.json({
-    success: true,
-    cleared: {
-      pending: oldPending,
-      approved: oldApproved
-    }
-  });
-});
-
-// Get viewer counts for all platforms
-app.get('/viewer-counts', async (req, res) => {
-  try {
-    const counts = {};
-
-    // Fetch all platform counts in parallel
-    const [twitchCount, facebookCount, tiktokCount] = await Promise.all([
-      TWITCH_CHANNEL ? getViewerCount(TWITCH_CHANNEL) : Promise.resolve(null),
-      getFacebookViewerCount(),
-      getTikTokViewerCount()
-    ]);
-
-    counts.twitch = twitchCount || 0;
-    counts.facebook = facebookCount || 0;
-    counts.tiktok = tiktokCount || 0;
-
-    res.json(counts);
-  } catch (err) {
-    console.error('[VIEWER COUNTS ERROR]', err);
-    res.status(500).json({ error: 'Failed to fetch viewer counts' });
-  }
-});
-
-// Get current mode
-app.get('/mode', (req, res) => {
-  res.json({ mode: currentMode });
-});
-
-// Set mode (from admin panel)
-app.post('/set-mode', (req, res) => {
-  const { mode } = req.body;
-  const validModes = ['tourney', 'lobby', 'cash'];
-
-  if (validModes.includes(mode)) {
-    currentMode = mode;
-    console.log(`[API MODE] Changed to: ${mode}`);
-    res.json({ success: true, mode: currentMode });
-  } else {
-    res.status(400).json({ error: 'Invalid mode. Valid options: tourney, lobby, cash' });
-  }
-});
+setInterval(checkPromoTriggers, 5000);
 
 // ====== START SERVER ======
 app.listen(PORT, () => {
-  console.log(`Overlay API live on port ${PORT}`);
+  console.log(`[BOT] Lightweight bot running on port ${PORT}`);
+  console.log('[BOT] Twitch IRC: Enabled');
+  console.log('[BOT] Spotify monitoring: Every 5s');
+  console.log('[BOT] Queue processor: Every 10s');
+  console.log('[BOT] SSE endpoints: /chat-stream, /promo-events');
 });
