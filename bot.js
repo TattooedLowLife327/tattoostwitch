@@ -124,9 +124,7 @@ async function updateCurrentPlayback() {
           }
         }
 
-        if (!playlistName) {
-          playlistName = track.album.name;
-        }
+        // Don't fall back to album name - leave it null if we can't determine the actual playlist
 
         // Update current_track in database
         await query(
