@@ -780,20 +780,12 @@
           musicNotes.classList.add('paused');
         }
         // Show requester if song was requested, otherwise playlist name, otherwise default
-        let playlistText;
+        // Show requester if song was requested, otherwise show playlist name
+        let playlistText = '';
         if (now.requester) {
-          // If broadcaster requested it, show display name
-          if (now.requester.toLowerCase() === 'thetattooedlowlife') {
-            playlistText = 'TheTattooedLowLife';
-          } else {
-            playlistText = now.requester;
-          }
+          playlistText = `SR: ${now.requester}`;
         } else if (now.playlistName) {
-          // No requester, show playlist name
           playlistText = now.playlistName;
-        } else {
-          // Default
-          playlistText = 'TheTattooedLowLife';
         }
         document.getElementById('track-playlist').textContent = playlistText;
         document.getElementById('play-pause-btn').textContent = now.isPlaying ? '⏸' : '▶';
@@ -801,7 +793,7 @@
       } else {
         document.getElementById('track-title').textContent = 'No track playing';
         document.getElementById('track-artist').textContent = '-';
-        document.getElementById('track-playlist').textContent = 'TheTattooedLowLife';
+        document.getElementById('track-playlist').textContent = '';
         document.getElementById('play-pause-btn').textContent = '▶';
         isPlaying = false; // Sync the isPlaying state
       }
