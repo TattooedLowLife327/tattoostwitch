@@ -1,25 +1,14 @@
 // Shared database connection utility for Netlify Functions
 import { neon } from '@neondatabase/serverless';
 
-// Create a connection pool using Neon's serverless driver
-let pool = null;
-
-export function getDb() {
-  if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is not set');
-    }
-    pool = neon(connectionString);
-  }
-  return pool;
-}
+// Use Neon serverless driver with DATABASE_URL from env
+// Note: Netlify can auto-inject this via Neon integration, or set manually
+const sql = neon(process.env.DATABASE_URL || '');
 
 // Helper function to run a query
-export async function query(sql, params = []) {
-  const db = getDb();
+export async function query(sqlString, params = []) {
   try {
-    return await db(sql, params);
+    return await sql(sqlString, params);
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
