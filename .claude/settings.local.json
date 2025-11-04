@@ -17,7 +17,14 @@
       "Bash(ipconfig:*)",
       "Bash(findstr:*)",
       "Bash(git log:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(node --check:*)",
+      "Bash(pm2 list:*)",
+      "Bash(tasklist:*)",
+      "Bash(pm2 logs:*)",
+      "Bash(pm2 save:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(timeout 3 pm2 logs:*)"
     ],
     "deny": [],
     "ask": []
