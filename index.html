@@ -562,14 +562,14 @@
         console.log('[NOW PLAYING]', now);
         document.getElementById('track-title').textContent = now.title;
         document.getElementById('track-artist').textContent = now.artist || '-';
-        if (now.album_art) {
-          console.log('[ALBUM ART]', now.album_art);
-          document.getElementById('album-art').src = now.album_art;
+        if (now.albumArt) {
+          console.log('[ALBUM ART]', now.albumArt);
+          document.getElementById('album-art').src = now.albumArt;
         } else {
           console.log('[ALBUM ART] Missing from API response');
         }
         // Show requester if song was requested, otherwise playlist name, otherwise default
-        const playlistText = now.requester || now.playlist_name || 'TheTattooedLowLife';
+        const playlistText = now.requester || now.playlistName || 'TheTattooedLowLife';
         document.getElementById('track-playlist').textContent = playlistText;
         document.getElementById('play-pause-btn').textContent = now.is_playing ? '⏸' : '▶';
       } else {
