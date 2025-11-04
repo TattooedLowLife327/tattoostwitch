@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stream-control-v4';
+const CACHE_NAME = 'stream-control-v5';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -30,15 +30,15 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Network-first strategy for API calls
-  if (event.request.url.includes('/api/')) {
+  // Network-first strategy for API calls and index.html
+  if (event.request.url.includes('/api/') || event.request.url.includes('index.html') || event.request.url.endsWith('/')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Cache-first for static assets
+  // Cache-first for static assets only (manifest, icons)
   event.respondWith(
     caches.match(event.request)
       .then(response => response || fetch(event.request))
