@@ -96,7 +96,7 @@
 </div>
 
 <script>
-  const ENDPOINT = 'http://localhost:8787/mode';
+  const ENDPOINT = '/api/mode';
 
   const modes = {
     'tourney': 'TOURNEY<br>PLAY',
@@ -119,7 +119,7 @@
   }
 
   updateMode();
-  setInterval(updateMode, 2000);
+  setInterval(updateMode, 5000); // Optimized polling
 </script>
 </body>
 </html>

@@ -317,32 +317,28 @@
   </div>
 
   <div class="section">
+    <h2>BRB / Screen Control</h2>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+      <button class="btn" style="flex: 1;" onclick="activateBRB(5)">BRB 5min</button>
+      <button class="btn" style="flex: 1;" onclick="activateBRB(10)">BRB 10min</button>
+      <button class="btn" style="flex: 1;" onclick="activateBRB(15)">BRB 15min</button>
+    </div>
+    <button class="btn" style="margin-bottom: 10px; background: #6c757d;" onclick="deactivateScreen()">Dismiss Screen</button>
+    <button class="btn" style="margin-bottom: 10px; background: var(--purple);" onclick="activateTechDifficulties()">Tech Difficulties</button>
+  </div>
+
+  <div class="section">
     <h2>Quick Actions</h2>
     <button class="btn" style="margin-bottom: 10px;" onclick="skipSong()">Skip Current Song</button>
     <button class="btn" style="margin-bottom: 10px;" onclick="triggerPromo()">Trigger DCD Promo</button>
     <button class="btn" style="margin-bottom: 10px; background: #ff6b6b;" onclick="resetBot()">Reset Bot (Clear All Queues)</button>
   </div>
 
-  <div class="section">
-    <h2>Settings</h2>
-    <label style="display: block; color: var(--muted); margin-bottom: 8px; font-size: 14px;">Bot API URL</label>
-    <input type="text" id="api-url-input" placeholder="https://your-tunnel-url.loca.lt" style="margin-bottom: 10px;" />
-    <div style="display: flex; gap: 10px;">
-      <button class="btn" style="flex: 1;" onclick="saveApiUrl()">Save URL</button>
-      <button class="btn" style="flex: 1; background: #6c757d;" onclick="resetToLocalhost()">Reset to Localhost</button>
-    </div>
-    <div id="current-api" style="text-align: center; margin-top: 10px; color: var(--muted); font-size: 12px;">
-      Current: <span id="api-url-display" style="color: var(--purple); font-weight: 600; word-break: break-all;"></span>
-    </div>
-  </div>
-
   <button class="btn logout-btn" onclick="logout()">Logout</button>
 </div>
 
 <script>
-  let API_URL = localStorage.getItem('apiUrl') || 'http://localhost:8787';
-  const CORRECT_PIN = '92522'; // Change this to your desired PIN
-
+  const CORRECT_PIN = '92522';
   let scores = { player1: 0, player2: 0 };
 
   function login() {
@@ -372,7 +368,7 @@
 
   async function updatePendingQueue() {
     try {
-      const res = await fetch(`${API_URL}/queue`);
+      const res = await fetch('/api/queue');
       const data = await res.json();
 
       const pendingEl = document.getElementById('pending-queue');
@@ -400,7 +396,7 @@
 
   async function approveSong(spotifyId) {
     try {
-      await fetch(`${API_URL}/approve`, {
+      await fetch('/api/approve-song', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spotifyId })
@@ -413,7 +409,7 @@
 
   async function denySong(spotifyId) {
     try {
-      await fetch(`${API_URL}/deny`, {
+      await fetch('/api/deny-song', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spotifyId })
@@ -429,7 +425,7 @@
     document.getElementById(player === 'player1' ? 'score1' : 'score2').textContent = scores[player];
 
     try {
-      await fetch(`${API_URL}/scoreboard`, {
+      await fetch('/api/scoreboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scores)
@@ -445,7 +441,7 @@
     document.getElementById('score2').textContent = '0';
 
     try {
-      await fetch(`${API_URL}/scoreboard`, {
+      await fetch('/api/scoreboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scores)
@@ -457,7 +453,7 @@
 
   async function skipSong() {
     try {
-      await fetch(`${API_URL}/skip`, { method: 'POST' });
+      await fetch('/api/skip-song', { method: 'POST' });
       alert('Song skipped');
     } catch (e) {
       alert('Failed to skip song');
@@ -466,7 +462,7 @@
 
   async function triggerPromo() {
     try {
-      await fetch(`${API_URL}/trigger-promo`, {
+      await fetch('/api/trigger-promo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ index: 0 })
@@ -483,7 +479,7 @@
     }
 
     try {
-      const res = await fetch(`${API_URL}/reset-bot`, { method: 'POST' });
+      const res = await fetch('/api/reset-queue', { method: 'POST' });
       const data = await res.json();
       alert(`Bot reset! Cleared ${data.cleared.pending} pending and ${data.cleared.approved} approved songs.`);
       updatePendingQueue();
@@ -494,7 +490,7 @@
 
   async function setMode(mode) {
     try {
-      const res = await fetch(`${API_URL}/set-mode`, {
+      const res = await fetch('/api/mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode })
@@ -508,7 +504,7 @@
 
   async function updateModeDisplay() {
     try {
-      const res = await fetch(`${API_URL}/mode`);
+      const res = await fetch('/api/mode');
       const data = await res.json();
       const modeText = document.getElementById('mode-text');
 
@@ -528,62 +524,66 @@
     const statusEl = document.getElementById('connection-status');
     const statusText = statusEl.querySelector('span:last-child');
 
-    console.log('[DEBUG] Checking connection to:', API_URL);
-
     try {
-      const response = await fetch(`${API_URL}/queue`);
-      console.log('[DEBUG] Connection response:', response.status, response.statusText);
+      const response = await fetch('/api/queue');
       statusText.textContent = 'Connected';
       statusEl.className = 'status connected';
     } catch (e) {
-      console.error('[DEBUG] Connection failed:', e.message, '| URL:', API_URL);
+      console.error('Connection failed:', e.message);
       statusText.textContent = 'Disconnected';
       statusEl.className = 'status disconnected';
     }
   }
 
-  function saveApiUrl() {
-    const input = document.getElementById('api-url-input');
-    const url = input.value.trim();
-
-    if (!url) {
-      alert('Please enter a valid URL');
-      return;
+  async function activateBRB(minutes) {
+    try {
+      await fetch('/api/screen-overlay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'brb',
+          isActive: true,
+          durationMinutes: minutes
+        })
+      });
+      alert(`BRB screen activated for ${minutes} minutes`);
+    } catch (e) {
+      alert('Failed to activate BRB screen');
     }
-
-    // Remove trailing slash if present
-    const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
-
-    localStorage.setItem('apiUrl', cleanUrl);
-    API_URL = cleanUrl;
-
-    document.getElementById('api-url-display').textContent = cleanUrl;
-    alert('API URL saved! Reconnecting...');
-
-    // Reconnect with new URL
-    checkConnection();
-    updatePendingQueue();
   }
 
-  function resetToLocalhost() {
-    localStorage.setItem('apiUrl', 'http://localhost:8787');
-    API_URL = 'http://localhost:8787';
+  async function activateTechDifficulties() {
+    try {
+      await fetch('/api/screen-overlay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'tech_difficulties',
+          isActive: true
+        })
+      });
+      alert('Tech Difficulties screen activated');
+    } catch (e) {
+      alert('Failed to activate Tech Difficulties screen');
+    }
+  }
 
-    document.getElementById('api-url-input').value = '';
-    document.getElementById('api-url-display').textContent = 'http://localhost:8787';
-
-    alert('Reset to localhost! Reconnecting...');
-
-    // Reconnect with localhost
-    checkConnection();
-    updatePendingQueue();
+  async function deactivateScreen() {
+    try {
+      await fetch('/api/screen-overlay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isActive: false
+        })
+      });
+      alert('Screen overlay dismissed');
+    } catch (e) {
+      alert('Failed to dismiss screen');
+    }
   }
 
   function startUpdates() {
-    // Display current API URL
-    document.getElementById('api-url-display').textContent = API_URL;
-    document.getElementById('api-url-input').value = API_URL !== 'http://localhost:8787' ? API_URL : '';
-
     updatePendingQueue();
     checkConnection();
     updateModeDisplay();
