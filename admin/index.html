@@ -302,6 +302,17 @@
   </div>
 
   <div class="section">
+    <h2>Spotify Player</h2>
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <img src="../images/testplay.png" style="width: 64px; height: 64px; cursor: pointer;" onclick="togglePlay()" />
+      <div>
+        <div style="font-weight: 600; margin-bottom: 5px;">Not Playing</div>
+        <div style="color: var(--muted); font-size: 14px;">No track loaded</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Quick Actions</h2>
     <button class="btn" style="margin-bottom: 10px;" onclick="skipSong()">Skip Current Song</button>
     <button class="btn" style="margin-bottom: 10px;" onclick="triggerPromo()">Trigger DCD Promo</button>
@@ -312,8 +323,8 @@
 </div>
 
 <script>
-  const API_URL = localStorage.getItem('apiUrl') || 'http://localhost:8787';
-  const CORRECT_PIN = '1337'; // Change this to your desired PIN
+  const API_URL = localStorage.getItem('apiUrl') || 'https://tattoostwitch.netlify.app';
+  const CORRECT_PIN = '92522';
 
   let scores = { player1: 0, player2: 0 };
 
