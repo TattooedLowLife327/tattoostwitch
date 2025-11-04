@@ -198,11 +198,10 @@ async function processApprovedSongs() {
           await spotify.addToQueue(song.uri);
           console.log(`[QUEUE] Added to Spotify: ${song.title} by ${song.artist}`);
 
-          // Don't mark as playing yet - wait for Spotify to actually play it
-          // Mark as completed so we don't queue it again
+          // Mark as playing so it stays visible in queue but doesn't get re-added
           await query(
             'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE id = $2',
-            ['completed', song.id]
+            ['playing', song.id]
           );
         } catch (err) {
           console.error(`[QUEUE] Failed to add ${song.title}:`, err.message);
