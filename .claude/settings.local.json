@@ -24,7 +24,11 @@
       "Bash(pm2 logs:*)",
       "Bash(pm2 save:*)",
       "Bash(pm2 restart:*)",
-      "Bash(timeout 3 pm2 logs:*)"
+      "Bash(timeout 3 pm2 logs:*)",
+      "Bash(for commit in dd6082e 8738dd5 1c4fb9f 122c6da 37e351c 66a22c0 3742545)",
+      "Bash(do echo \"=== COMMIT $commit ===\")",
+      "Bash(done)",
+      "Bash(git diff-tree:*)"
     ],
     "deny": [],
     "ask": []
