@@ -14,7 +14,14 @@
       "Bash(timeout 3 ping:*)",
       "Bash(nul)",
       "Bash(pm2 start:*)",
-      "Bash(node --check:*)"
+      "Bash(node --check:*)",
+      "Bash(pm2 list:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(pm2 logs:*)",
+      "Bash(pm2 save:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(timeout 3 pm2 logs:*)"
     ],
     "deny": [],
     "ask": []

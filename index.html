@@ -571,7 +571,7 @@
         // Show requester if song was requested, otherwise playlist name, otherwise default
         const playlistText = now.requester || now.playlistName || 'TheTattooedLowLife';
         document.getElementById('track-playlist').textContent = playlistText;
-        document.getElementById('play-pause-btn').textContent = now.is_playing ? '⏸' : '▶';
+        document.getElementById('play-pause-btn').textContent = now.isPlaying ? '⏸' : '▶';
       } else {
         document.getElementById('track-title').textContent = 'No track playing';
         document.getElementById('track-artist').textContent = '-';
