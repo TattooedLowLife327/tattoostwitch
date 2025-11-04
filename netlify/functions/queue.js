@@ -17,11 +17,11 @@ export async function handler(event) {
       'SELECT * FROM current_track WHERE id = 1'
     );
 
-    // Get approved queue (not yet playing)
+    // Get approved and playing queue
     const approvedQueue = await query(
       `SELECT id, spotify_id, title, artist, album_art, requester, uri, created_at
        FROM song_requests
-       WHERE status = 'approved'
+       WHERE status IN ('approved', 'playing')
        ORDER BY created_at ASC
        LIMIT 10`
     );
