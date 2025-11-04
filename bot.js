@@ -224,7 +224,7 @@ async function checkActionRequests() {
   try {
     const requests = await query(
       `SELECT * FROM activity_log
-       WHERE event_type IN ('skip_requested', 'play_requested', 'pause_requested', 'promo_requested')
+       WHERE event_type IN ('skip_requested', 'play_requested', 'pause_requested', 'promo_requested', 'volume_requested')
        AND created_at > $1
        ORDER BY created_at DESC`,
       [new Date(lastActionCheck)]
@@ -247,7 +247,14 @@ async function checkActionRequests() {
           } else if (req.event_type === 'promo_requested') {
             console.log('[ACTION] Promo requested, executing...');
             // TODO: Add promo message logic if needed
+          } else if (req.event_type === 'volume_requested') {
+            const volume = req.details?.volume || 50;
+            console.log(`[ACTION] Volume change to ${volume}% requested, executing...`);
+            await spotify.setVolume(volume);
           }
+
+          // Delete processed request so it doesn't execute again
+          await query('DELETE FROM activity_log WHERE id = $1', [req.id]);
         } catch (err) {
           console.error(`[ACTION] Failed to execute ${req.event_type}:`, err.message);
         }
