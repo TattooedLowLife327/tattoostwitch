@@ -814,8 +814,9 @@
       const settingsRes = await fetch('/api/settings');
       const currentSettings = await settingsRes.json();
 
-      // Toggle visibility
-      const newVisibility = !(currentSettings.modeDisplayVisible !== false); // Default to true if not set
+      // Toggle visibility (settings stores strings, not booleans)
+      const currentlyVisible = currentSettings.modeDisplayVisible !== 'false'; // Default to true if not set
+      const newVisibility = !currentlyVisible;
 
       const res = await fetch('/api/settings', {
         method: 'POST',
