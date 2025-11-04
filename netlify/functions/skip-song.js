@@ -12,13 +12,7 @@ export async function handler(event) {
   }
 
   try {
-    // Create a skip request in the database that bot.js will pick up
-    await query(
-      `INSERT INTO activity_log (event_type, details)
-       VALUES ('skip_requested', '{"timestamp": "' || NOW() || '"}')`
-    );
-
-    // Log activity
+    // Log skip request that bot.js will pick up
     await logActivity('skip_requested', null, { timestamp: new Date().toISOString() });
 
     return successResponse({
