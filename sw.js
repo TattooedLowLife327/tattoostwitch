@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stream-control-v3';
+const CACHE_NAME = 'stream-control-v4';
 const urlsToCache = [
   '/',
   '/index.html',

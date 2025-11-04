@@ -365,42 +365,23 @@ client.on('message', async (channel, tags, message, self) => {
         return;
       }
 
-      if (isPrivileged(tags)) {
-        // Auto-approve for mods
-        await spotify.addToQueue(track.uri);
-        await query(
-          `INSERT INTO song_requests (spotify_id, title, artist, album_art, requester, status, uri)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            track.id,
-            track.name,
-            track.artists.map(a => a.name).join(', '),
-            track.album.images[0]?.url || '',
-            uname,
-            'approved',
-            track.uri
-          ]
-        );
-        say(`Added to queue: ${track.name} by ${track.artists[0].name}`);
-      } else {
-        // Regular users - add to pending
-        const result = await query(
-          `INSERT INTO song_requests (spotify_id, title, artist, album_art, requester, status, uri)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id`,
-          [
-            track.id,
-            track.name,
-            track.artists.map(a => a.name).join(', '),
-            track.album.images[0]?.url || '',
-            uname,
-            'pending',
-            track.uri
-          ]
-        );
-        const id = result[0].id;
-        say(`Queued #${id}: "${track.name}" by ${track.artists[0].name} - requested by ${uname}`);
-      }
+      // All song requests go to pending for PWA approval
+      const result = await query(
+        `INSERT INTO song_requests (spotify_id, title, artist, album_art, requester, status, uri)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id`,
+        [
+          track.id,
+          track.name,
+          track.artists.map(a => a.name).join(', '),
+          track.album.images[0]?.url || '',
+          uname,
+          'pending',
+          track.uri
+        ]
+      );
+      const id = result[0].id;
+      say(`Song request #${id}: "${track.name}" by ${track.artists[0].name} - requested by ${uname}`);
     } catch (e) {
       say(`${uname}, failed: ${e?.body?.error?.message || e.message}`);
     }
