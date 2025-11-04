@@ -14,14 +14,24 @@ export async function handler(event) {
         'SELECT * FROM scoreboard_state WHERE id = 1'
       );
 
+      // Get player names from settings
+      const player1NameSetting = await queryOne(
+        'SELECT value FROM settings WHERE key = $1',
+        ['player1Name']
+      );
+      const player2NameSetting = await queryOne(
+        'SELECT value FROM settings WHERE key = $1',
+        ['player2Name']
+      );
+
       // Transform DB format to expected format
       const scoreboard = {
         player1: {
-          name: data?.player1_name || 'TATTOO',
+          name: player1NameSetting?.value || 'TATTOO',
           score: data?.player1_score || 0
         },
         player2: {
-          name: data?.player2_name || 'OPEN',
+          name: player2NameSetting?.value || 'OPEN',
           score: data?.player2_score || 0
         }
       };
