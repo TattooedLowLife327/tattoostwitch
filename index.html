@@ -622,11 +622,13 @@
         }
         document.getElementById('track-playlist').textContent = playlistText;
         document.getElementById('play-pause-btn').textContent = now.isPlaying ? '⏸' : '▶';
+        isPlaying = now.isPlaying !== false; // Sync the isPlaying state
       } else {
         document.getElementById('track-title').textContent = 'No track playing';
         document.getElementById('track-artist').textContent = '-';
         document.getElementById('track-playlist').textContent = 'TheTattooedLowLife';
         document.getElementById('play-pause-btn').textContent = '▶';
+        isPlaying = false; // Sync the isPlaying state
       }
 
       const pendingEl = document.getElementById('pending-queue');
