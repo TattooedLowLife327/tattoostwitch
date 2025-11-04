@@ -127,11 +127,17 @@
   .queue-item .title {
     font-weight: 600;
     margin-bottom: 5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 
   .queue-item .info {
     color: var(--muted);
     font-size: 14px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 
   .btn-group {
@@ -447,7 +453,21 @@
   </div>
 
   <div class="section">
-    <h2>Scoreboard</h2>
+    <h2 style="display: flex; justify-content: space-between; align-items: center;">
+      Scoreboard
+      <button onclick="toggleScoreboardEdit()" style="background: none; border: none; color: var(--purple); cursor: pointer; font-size: 20px; padding: 5px;">✏️</button>
+    </h2>
+    <div id="scoreboard-edit-section" class="hidden" style="margin-bottom: 15px;">
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 1 Name</label>
+        <input type="text" id="player1-name" placeholder="TATTOO" value="TATTOO" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 2 Name</label>
+        <input type="text" id="player2-name" placeholder="OPEN" value="OPEN" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <button class="btn" onclick="saveScoreboardNames()" style="width: 100%; background: #10b981;">Save Names</button>
+    </div>
     <div class="scoreboard-controls">
       <div class="score-section">
         <label>Player 1 (TATTOO)</label>
@@ -470,7 +490,10 @@
   </div>
 
   <div class="section">
-    <h2>Mode Display</h2>
+    <h2 style="display: flex; justify-content: space-between; align-items: center;">
+      Mode Display
+      <button onclick="toggleModeDisplayVisibility()" id="mode-visibility-btn" style="background: none; border: none; color: var(--purple); cursor: pointer; font-size: 20px; padding: 5px;" title="Toggle Mode Display Visibility">👁️</button>
+    </h2>
     <div style="display: flex; gap: 10px;">
       <button class="btn" style="flex: 1;" onclick="setMode('tourney')">Tourney Play</button>
       <button class="btn" style="flex: 1;" onclick="setMode('lobby')">Open Lobby</button>
@@ -478,6 +501,7 @@
     </div>
     <div id="current-mode" style="text-align: center; margin-top: 10px; color: var(--muted); font-size: 14px;">
       Current: <span id="mode-text" style="color: var(--purple); font-weight: 600;">TOURNEY PLAY</span>
+      <span id="mode-visibility-status" style="display: block; margin-top: 5px; font-size: 12px; color: var(--muted);"></span>
     </div>
   </div>
 
@@ -514,16 +538,6 @@
     <div style="margin-bottom: 20px;">
       <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Promo Interval (minutes)</label>
       <input type="number" id="promo-minutes" min="1" max="60" value="15" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" onchange="updatePromoInterval()" />
-    </div>
-
-    <div style="margin-bottom: 20px;">
-      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 1 Name</label>
-      <input type="text" id="player1-name" placeholder="TATTOO" value="TATTOO" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
-    </div>
-
-    <div style="margin-bottom: 20px;">
-      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 2 Name</label>
-      <input type="text" id="player2-name" placeholder="OPEN" value="OPEN" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
     </div>
 
     <div style="margin-bottom: 20px;">
@@ -591,7 +605,21 @@
           console.log('[ALBUM ART] Missing from API response');
         }
         // Show requester if song was requested, otherwise playlist name, otherwise default
-        const playlistText = now.requester || now.playlistName || 'TheTattooedLowLife';
+        let playlistText;
+        if (now.requester) {
+          // If broadcaster requested it, show display name
+          if (now.requester.toLowerCase() === 'thetattooedlowlife') {
+            playlistText = 'TheTattooedLowLife';
+          } else {
+            playlistText = now.requester;
+          }
+        } else if (now.playlistName) {
+          // No requester, show playlist name
+          playlistText = now.playlistName;
+        } else {
+          // Default
+          playlistText = 'TheTattooedLowLife';
+        }
         document.getElementById('track-playlist').textContent = playlistText;
         document.getElementById('play-pause-btn').textContent = now.isPlaying ? '⏸' : '▶';
       } else {
@@ -778,6 +806,51 @@
     }
   }
 
+  async function toggleModeDisplayVisibility() {
+    try {
+      // Get current settings first
+      const settingsRes = await fetch('/api/settings');
+      const currentSettings = await settingsRes.json();
+
+      // Toggle visibility
+      const newVisibility = !(currentSettings.modeDisplayVisible !== false); // Default to true if not set
+
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'modeDisplayVisible',
+          value: newVisibility.toString()
+        })
+      });
+
+      if (res.ok) {
+        updateModeVisibilityUI(newVisibility);
+        alert(`Mode Display ${newVisibility ? 'shown' : 'hidden'} in OBS`);
+      } else {
+        alert('Failed to toggle visibility');
+      }
+    } catch (e) {
+      console.error('Failed to toggle mode display visibility:', e);
+      alert('Failed to toggle visibility');
+    }
+  }
+
+  function updateModeVisibilityUI(isVisible) {
+    const btn = document.getElementById('mode-visibility-btn');
+    const status = document.getElementById('mode-visibility-status');
+
+    if (isVisible) {
+      btn.textContent = '👁️';
+      status.textContent = 'Visible in OBS';
+      status.style.color = '#4caf50';
+    } else {
+      btn.textContent = '👁️‍🗨️';
+      status.textContent = 'Hidden in OBS';
+      status.style.color = '#ff6b6b';
+    }
+  }
+
   async function checkConnection() {
     const statusEl = document.getElementById('connection-status');
     const statusText = statusEl.querySelector('span:last-child');
@@ -856,6 +929,10 @@
       renderSpecialUsers();
       updateScoreboardLabels();
       updatePWABackground();
+
+      // Load mode display visibility (default to true if not set)
+      const modeDisplayVisible = data.modeDisplayVisible !== 'false'; // String comparison for settings
+      updateModeVisibilityUI(modeDisplayVisible);
     } catch (e) {
       console.error('Failed to load settings:', e);
     }
@@ -937,6 +1014,45 @@
   function updatePWABackground() {
     const bgUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
     document.body.style.background = `url('${bgUrl}') center center / cover no-repeat fixed`;
+  }
+
+  function toggleScoreboardEdit() {
+    const editSection = document.getElementById('scoreboard-edit-section');
+    editSection.classList.toggle('hidden');
+  }
+
+  async function saveScoreboardNames() {
+    try {
+      const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
+      const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
+
+      // Get current settings first
+      const settingsRes = await fetch('/api/settings');
+      const currentSettings = await settingsRes.json();
+
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specialUsers: currentSettings.specialUsers || [],
+          promoMinutes: currentSettings.promoMinutes || 15,
+          player1Name,
+          player2Name,
+          pwaBackgroundUrl: currentSettings.pwaBackgroundUrl || 'images/background.png',
+          obsBackgroundUrl: currentSettings.obsBackgroundUrl || ''
+        })
+      });
+
+      if (res.ok) {
+        updateScoreboardLabels();
+        alert('Player names saved!');
+        toggleScoreboardEdit();
+      } else {
+        alert('Failed to save names');
+      }
+    } catch (e) {
+      alert('Failed to save names');
+    }
   }
 
   function startUpdates() {

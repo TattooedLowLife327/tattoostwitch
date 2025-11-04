@@ -118,8 +118,27 @@
     }
   }
 
+  async function checkVisibility() {
+    try {
+      const response = await fetch('/api/settings', { cache: 'no-store' });
+      const settings = await response.json();
+
+      // Default to visible if not set
+      const isVisible = settings.modeDisplayVisible !== 'false';
+
+      const card = document.querySelector('.card');
+      if (card) {
+        card.style.display = isVisible ? 'block' : 'none';
+      }
+    } catch (error) {
+      console.error('Failed to check visibility:', error);
+    }
+  }
+
   updateMode();
+  checkVisibility();
   setInterval(updateMode, 5000); // Optimized polling
+  setInterval(checkVisibility, 5000); // Check visibility every 5 seconds
 </script>
 </body>
 </html>
