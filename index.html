@@ -302,6 +302,13 @@
     font-size: 14px;
   }
 
+  .track-playlist {
+    color: var(--primary);
+    font-size: 12px;
+    margin-top: 4px;
+    opacity: 0.8;
+  }
+
   .spotify-controls {
     display: flex;
     gap: 10px;
@@ -420,6 +427,7 @@
       <div class="track-info">
         <div class="track-title" id="track-title">No track playing</div>
         <div class="track-artist" id="track-artist">-</div>
+        <div class="track-playlist" id="track-playlist">TheTattooedLowLife</div>
       </div>
     </div>
     <div class="spotify-controls">
@@ -531,15 +539,23 @@
       // Update now playing
       const now = data.now;
       if (now && now.title) {
+        console.log('[NOW PLAYING]', now);
         document.getElementById('track-title').textContent = now.title;
         document.getElementById('track-artist').textContent = now.artist || '-';
         if (now.album_art) {
+          console.log('[ALBUM ART]', now.album_art);
           document.getElementById('album-art').src = now.album_art;
+        } else {
+          console.log('[ALBUM ART] Missing from API response');
         }
+        // Show requester if song was requested, otherwise playlist name, otherwise default
+        const playlistText = now.requester || now.playlist_name || 'TheTattooedLowLife';
+        document.getElementById('track-playlist').textContent = playlistText;
         document.getElementById('play-pause-btn').textContent = now.is_playing ? '⏸' : '▶';
       } else {
         document.getElementById('track-title').textContent = 'No track playing';
         document.getElementById('track-artist').textContent = '-';
+        document.getElementById('track-playlist').textContent = 'TheTattooedLowLife';
         document.getElementById('play-pause-btn').textContent = '▶';
       }
 
