@@ -499,6 +499,26 @@
     <button class="btn" style="margin-bottom: 10px; background: #ff6b6b;" onclick="resetBot()">Reset Bot (Clear All Queues)</button>
   </div>
 
+  <div class="section">
+    <h2>Bot Settings</h2>
+
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Special Users</label>
+      <div id="special-users-list" style="margin-bottom: 10px;"></div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="new-special-user" placeholder="Username" style="flex: 1; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+        <button class="btn" onclick="addSpecialUser()" style="padding: 10px 20px;">Add</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Promo Interval (minutes)</label>
+      <input type="number" id="promo-minutes" min="1" max="60" value="15" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" onchange="updatePromoInterval()" />
+    </div>
+
+    <button class="btn" onclick="saveSettings()" style="width: 100%; background: #10b981;">Save All Settings</button>
+  </div>
+
   <button class="btn logout-btn" onclick="logout()">Logout</button>
 </div>
 
@@ -799,10 +819,81 @@
     }
   }
 
+  let specialUsers = [];
+
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      specialUsers = data.specialUsers || [];
+      document.getElementById('promo-minutes').value = data.promoMinutes || 15;
+      renderSpecialUsers();
+    } catch (e) {
+      console.error('Failed to load settings:', e);
+    }
+  }
+
+  function renderSpecialUsers() {
+    const list = document.getElementById('special-users-list');
+    if (specialUsers.length === 0) {
+      list.innerHTML = '<div style="color: var(--muted); font-size: 14px; padding: 10px; text-align: center;">No special users added</div>';
+      return;
+    }
+    list.innerHTML = specialUsers.map(user => `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; margin-bottom: 8px;">
+        <span style="color: var(--text); font-size: 14px;">${user}</span>
+        <button onclick="removeSpecialUser('${user}')" style="background: #ff6b6b; border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
+      </div>
+    `).join('');
+  }
+
+  function addSpecialUser() {
+    const input = document.getElementById('new-special-user');
+    const username = input.value.trim();
+    if (!username) {
+      alert('Please enter a username');
+      return;
+    }
+    if (specialUsers.includes(username.toLowerCase())) {
+      alert('User already in list');
+      return;
+    }
+    specialUsers.push(username.toLowerCase());
+    input.value = '';
+    renderSpecialUsers();
+  }
+
+  function removeSpecialUser(username) {
+    specialUsers = specialUsers.filter(u => u !== username);
+    renderSpecialUsers();
+  }
+
+  async function saveSettings() {
+    try {
+      const promoMinutes = parseInt(document.getElementById('promo-minutes').value);
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specialUsers,
+          promoMinutes
+        })
+      });
+      if (res.ok) {
+        alert('Settings saved! Restart bot.js for changes to take effect.');
+      } else {
+        alert('Failed to save settings');
+      }
+    } catch (e) {
+      alert('Failed to save settings');
+    }
+  }
+
   function startUpdates() {
     updatePendingQueue();
     checkConnection();
     updateModeDisplay();
+    loadSettings();
     setInterval(updatePendingQueue, 3000);
     setInterval(checkConnection, 10000);
     setInterval(updateModeDisplay, 5000);
