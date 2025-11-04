@@ -263,9 +263,63 @@
   }
 
   .spotify-player {
+    position: relative;
+    background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 290px;
+  }
+
+  .spotify-player::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 12px;
+    padding: 3px;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      rgba(139, 92, 246, 1) 0deg,
+      rgba(168, 85, 247, 1) calc(var(--progress, 0) * 3.6deg),
+      transparent calc(var(--progress, 0) * 3.6deg)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+    filter: blur(6px) brightness(1.5);
+    opacity: 1;
+  }
+
+  .spotify-player::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 12px;
+    padding: 2px;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      #8B5CF6 0deg,
+      #A855F7 calc(var(--progress, 0) * 3.6deg),
+      transparent calc(var(--progress, 0) * 3.6deg)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .player-layout {
+    position: relative;
+    z-index: 3;
     display: flex;
-    gap: 15px;
+    flex-direction: column;
+    gap: 16px;
     align-items: center;
+    justify-content: center;
+    height: 100%;
   }
 
   .album-art-container {
@@ -284,41 +338,136 @@
 
   .album-art {
     position: relative;
-    width: 80px;
-    height: 80px;
+    width: 160px;
+    height: 160px;
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 2px solid rgba(139, 92, 246, 0.4);
-    border-radius: 8px;
-    object-fit: cover;
-    display: block;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: all 0.3s ease;
   }
 
-  .track-info {
-    flex: 1;
+  .album-art:hover {
+    transform: scale(1.05);
+    border-color: rgba(139, 92, 246, 0.6);
+  }
+
+  .album-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  .music-notes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 3;
+  }
+
+  .music-notes.paused .music-note {
+    animation-play-state: paused;
+    opacity: 0;
+  }
+
+  .music-note {
+    position: absolute;
+    color: #FFFFFF;
+    opacity: 0;
+    font-size: 28px;
+    font-weight: 900;
+    animation: float-up 4s ease-in infinite;
+    text-shadow:
+      -1px -1px 0 #000,
+      1px -1px 0 #000,
+      -1px 1px 0 #000,
+      1px 1px 0 #000,
+      0 0 15px #A855F7,
+      0 0 30px #A855F7,
+      0 0 45px #8B5CF6;
+    -webkit-text-stroke: 1px rgba(0, 0, 0, 0.5);
+  }
+
+  .music-note:nth-child(1) {
+    left: 10%;
+    animation-delay: 0s;
+  }
+
+  .music-note:nth-child(2) {
+    left: 50%;
+    animation-delay: 1.5s;
+  }
+
+  .music-note:nth-child(3) {
+    left: 80%;
+    animation-delay: 3s;
+  }
+
+  @keyframes float-up {
+    0% {
+      bottom: -10px;
+      opacity: 0;
+      transform: translateY(0) rotate(0deg);
+    }
+    20% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      bottom: 100%;
+      opacity: 0;
+      transform: translateY(-20px) rotate(15deg);
+    }
+  }
+
+  .player-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    width: 100%;
+    padding: 0 20px;
   }
 
   .track-title {
-    font-weight: 600;
-    font-size: 16px;
-    margin-bottom: 5px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    word-wrap: break-word;
+    line-height: 1.3;
+    width: 100%;
   }
 
   .track-artist {
+    font-size: 18px;
     color: var(--muted);
-    font-size: 14px;
+    word-wrap: break-word;
+    line-height: 1.3;
+    width: 100%;
   }
 
   .track-playlist {
-    color: var(--primary);
-    font-size: 12px;
-    margin-top: 4px;
-    opacity: 0.8;
+    font-size: 16px;
+    color: var(--purple);
+    word-wrap: break-word;
+    line-height: 1.3;
+    width: 100%;
   }
 
   .spotify-controls {
     display: flex;
     gap: 10px;
     align-items: center;
+    justify-content: center;
     margin-top: 15px;
   }
 
@@ -409,7 +558,7 @@
 <div id="login-screen" class="container">
   <div class="login-form">
     <h2>Stream Control Login</h2>
-    <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" />
+    <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" inputmode="numeric" />
     <button class="btn" onclick="login()">Login</button>
     <div id="login-error" class="error hidden"></div>
   </div>
@@ -426,14 +575,28 @@
   <div class="section">
     <h2>Now Playing</h2>
     <div class="spotify-player">
-      <div class="album-art-container">
-        <div class="album-glow"></div>
-        <img id="album-art" class="album-art" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%238B5CF6' opacity='0.2'/%3E%3C/svg%3E" alt="Album Art" />
-      </div>
-      <div class="track-info">
-        <div class="track-title" id="track-title">No track playing</div>
-        <div class="track-artist" id="track-artist">-</div>
-        <div class="track-playlist" id="track-playlist">TheTattooedLowLife</div>
+      <div class="player-layout">
+        <!-- Album Art -->
+        <div class="album-art-container">
+          <div class="album-glow"></div>
+          <div class="album-art" id="album-art">
+            <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+            </svg>
+          </div>
+          <div class="music-notes" id="music-notes">
+            <div class="music-note">♪</div>
+            <div class="music-note">♫</div>
+            <div class="music-note">♪</div>
+          </div>
+        </div>
+
+        <!-- Player Info -->
+        <div class="player-info">
+          <div class="track-title" id="track-title">—</div>
+          <div class="track-artist" id="track-artist">—</div>
+          <div class="track-playlist" id="track-playlist"></div>
+        </div>
       </div>
     </div>
     <div class="spotify-controls">
@@ -598,11 +761,23 @@
         console.log('[NOW PLAYING]', now);
         document.getElementById('track-title').textContent = now.title;
         document.getElementById('track-artist').textContent = now.artist || '-';
+
+        // Update album art
+        const albumArtDiv = document.getElementById('album-art');
         if (now.albumArt) {
           console.log('[ALBUM ART]', now.albumArt);
-          document.getElementById('album-art').src = now.albumArt;
+          albumArtDiv.innerHTML = `<img src="${now.albumArt}" alt="Album Art" />`;
         } else {
           console.log('[ALBUM ART] Missing from API response');
+          albumArtDiv.innerHTML = '<svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>';
+        }
+
+        // Control music notes animation
+        const musicNotes = document.getElementById('music-notes');
+        if (now.isPlaying) {
+          musicNotes.classList.remove('paused');
+        } else {
+          musicNotes.classList.add('paused');
         }
         // Show requester if song was requested, otherwise playlist name, otherwise default
         let playlistText;
