@@ -5,21 +5,23 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import SpotifyWebApi from 'spotify-web-api-node';
 import { neon } from '@neondatabase/serverless';
+import config from './config.js';
 
 // ====== ENV VARIABLES ======
+// Use config.js if env vars not set (for Render free tier)
 const {
-  TWITCH_BOT_USERNAME,
-  TWITCH_CHANNEL,
-  TWITCH_OAUTH_TOKEN,
-  SPOTIFY_CLIENT_ID,
-  SPOTIFY_CLIENT_SECRET,
-  SPOTIFY_REFRESH_TOKEN,
-  DATABASE_URL,
+  TWITCH_BOT_USERNAME = config.TWITCH_BOT_USERNAME,
+  TWITCH_CHANNEL = config.TWITCH_CHANNEL,
+  TWITCH_OAUTH_TOKEN = config.TWITCH_OAUTH_TOKEN,
+  SPOTIFY_CLIENT_ID = config.SPOTIFY_CLIENT_ID,
+  SPOTIFY_CLIENT_SECRET = config.SPOTIFY_CLIENT_SECRET,
+  SPOTIFY_REFRESH_TOKEN = config.SPOTIFY_REFRESH_TOKEN,
+  DATABASE_URL = config.DATABASE_URL,
   NETLIFY_URL,
-  SPECIAL_USERS
+  SPECIAL_USERS = config.SPECIAL_USERS
 } = process.env;
 
-const PORT = process.env.PORT || 8787;
+const PORT = process.env.PORT || config.PORT || 8787;
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 
 console.log('=== LIGHTWEIGHT BOT STARTING ===');
