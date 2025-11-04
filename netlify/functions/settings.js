@@ -50,7 +50,7 @@ export async function handler(event) {
       const body = JSON.parse(event.body);
 
       // Handle bulk settings update from PWA
-      if (body.specialUsers !== undefined || body.promoMinutes !== undefined || body.player1Name !== undefined || body.player2Name !== undefined) {
+      if (body.specialUsers !== undefined || body.promoMinutes !== undefined || body.player1Name !== undefined || body.player2Name !== undefined || body.pwaBackgroundUrl !== undefined || body.obsBackgroundUrl !== undefined) {
         const updates = [];
 
         if (body.specialUsers !== undefined) {
@@ -90,6 +90,26 @@ export async function handler(event) {
              ON CONFLICT (key)
              DO UPDATE SET value = $2, updated_at = NOW()`,
             ['player2Name', body.player2Name]
+          ));
+        }
+
+        if (body.pwaBackgroundUrl !== undefined) {
+          updates.push(query(
+            `INSERT INTO settings (key, value, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (key)
+             DO UPDATE SET value = $2, updated_at = NOW()`,
+            ['pwaBackgroundUrl', body.pwaBackgroundUrl]
+          ));
+        }
+
+        if (body.obsBackgroundUrl !== undefined) {
+          updates.push(query(
+            `INSERT INTO settings (key, value, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (key)
+             DO UPDATE SET value = $2, updated_at = NOW()`,
+            ['obsBackgroundUrl', body.obsBackgroundUrl]
           ));
         }
 

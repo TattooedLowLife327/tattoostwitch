@@ -526,6 +526,18 @@
       <input type="text" id="player2-name" placeholder="OPEN" value="OPEN" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
     </div>
 
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">PWA Background URL</label>
+      <input type="text" id="pwa-background-url" placeholder="images/background.png" value="images/background.png" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">Relative path or full URL</small>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">OBS Overlays Background URL</label>
+      <input type="text" id="obs-background-url" placeholder="Leave empty for transparent" value="" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">Relative path or full URL (leave empty for transparent)</small>
+    </div>
+
     <button class="btn" onclick="saveSettings()" style="width: 100%; background: #10b981;">Save All Settings</button>
   </div>
 
@@ -839,8 +851,11 @@
       document.getElementById('promo-minutes').value = data.promoMinutes || 15;
       document.getElementById('player1-name').value = data.player1Name || 'TATTOO';
       document.getElementById('player2-name').value = data.player2Name || 'OPEN';
+      document.getElementById('pwa-background-url').value = data.pwaBackgroundUrl || 'images/background.png';
+      document.getElementById('obs-background-url').value = data.obsBackgroundUrl || '';
       renderSpecialUsers();
       updateScoreboardLabels();
+      updatePWABackground();
     } catch (e) {
       console.error('Failed to load settings:', e);
     }
@@ -886,6 +901,8 @@
       const promoMinutes = parseInt(document.getElementById('promo-minutes').value);
       const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
       const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
+      const pwaBackgroundUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
+      const obsBackgroundUrl = document.getElementById('obs-background-url').value.trim() || '';
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -893,11 +910,14 @@
           specialUsers,
           promoMinutes,
           player1Name,
-          player2Name
+          player2Name,
+          pwaBackgroundUrl,
+          obsBackgroundUrl
         })
       });
       if (res.ok) {
         updateScoreboardLabels();
+        updatePWABackground();
         alert('Settings saved!');
       } else {
         alert('Failed to save settings');
@@ -912,6 +932,11 @@
     const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
     document.querySelector('.score-section:nth-child(1) label').textContent = `Player 1 (${player1Name})`;
     document.querySelector('.score-section:nth-child(2) label').textContent = `Player 2 (${player2Name})`;
+  }
+
+  function updatePWABackground() {
+    const bgUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
+    document.body.style.background = `url('${bgUrl}') center center / cover no-repeat fixed`;
   }
 
   function startUpdates() {
