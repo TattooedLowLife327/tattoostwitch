@@ -86,20 +86,22 @@ async function updateCurrentPlayback() {
       if (trackId !== previousTrackId) {
         console.log('[SPOTIFY] Track changed:', track.name);
 
-        // Check if this track is from our queue
+        // Check if this track is from our queue (check both approved and playing status)
         const queuedSong = await query(
-          'SELECT * FROM song_requests WHERE spotify_id = $1 AND status = $2 LIMIT 1',
-          [trackId, 'approved']
+          'SELECT * FROM song_requests WHERE spotify_id = $1 AND status IN ($2, $3) LIMIT 1',
+          [trackId, 'approved', 'playing']
         );
 
         let requester = null;
         if (queuedSong && queuedSong[0]) {
           requester = queuedSong[0].requester;
-          // Mark as playing
-          await query(
-            'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE spotify_id = $2',
-            ['playing', trackId]
-          );
+          // Mark as playing if not already
+          if (queuedSong[0].status === 'approved') {
+            await query(
+              'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE spotify_id = $2',
+              ['playing', trackId]
+            );
+          }
         }
 
         // Get context (playlist/album) only when track changes
