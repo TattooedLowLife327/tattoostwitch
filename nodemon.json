@@ -1,0 +1,7 @@
+{
+  "watch": ["bot.js", "netlify/functions/**/*.js"],
+  "ignore": ["node_modules", "*.log", ".git"],
+  "delay": "1000",
+  "verbose": true,
+  "ext": "js,json"
+}

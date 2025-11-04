@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node bot.js",
-    "dev": "node bot.js",
+    "dev": "nodemon bot.js",
     "build": "echo 'Static overlay site - no build step needed'"
   },
   "dependencies": {
@@ -16,5 +16,8 @@
     "node-fetch": "^3.3.2",
     "spotify-web-api-node": "^5.0.2",
     "tmi.js": "^1.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
