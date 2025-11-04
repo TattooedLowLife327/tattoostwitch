@@ -137,6 +137,7 @@ async function updateCurrentPlayback() {
               if (cachedPlaylistName) {
                 playlistName = cachedPlaylistName;
               }
+              // Otherwise leave as null - don't show wrong info
             }
           }
         }
