@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <meta name="theme-color" content="#8B5CF6" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -525,11 +528,15 @@
     const statusEl = document.getElementById('connection-status');
     const statusText = statusEl.querySelector('span:last-child');
 
+    console.log('[DEBUG] Checking connection to:', API_URL);
+
     try {
-      await fetch(`${API_URL}/queue`);
+      const response = await fetch(`${API_URL}/queue`);
+      console.log('[DEBUG] Connection response:', response.status, response.statusText);
       statusText.textContent = 'Connected';
       statusEl.className = 'status connected';
     } catch (e) {
+      console.error('[DEBUG] Connection failed:', e.message, '| URL:', API_URL);
       statusText.textContent = 'Disconnected';
       statusEl.className = 'status disconnected';
     }
