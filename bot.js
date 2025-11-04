@@ -170,18 +170,34 @@ async function updateCurrentPlayback() {
         playlistName = nowPlaying.playlistName;
       }
 
-      // If no requester, get playlist name
+      // If no requester, get context name (playlist, album, etc.)
       if (!requester && data.body.context) {
         const contextUri = data.body.context.uri;
-        if (contextUri && contextUri.startsWith('spotify:playlist:')) {
+        if (contextUri) {
           try {
-            const playlistId = contextUri.split(':')[2];
-            const playlistInfo = await spotify.getPlaylist(playlistId);
-            playlistName = playlistInfo.body.name;
+            if (contextUri.startsWith('spotify:playlist:')) {
+              const playlistId = contextUri.split(':')[2];
+              const playlistInfo = await spotify.getPlaylist(playlistId);
+              playlistName = playlistInfo.body.name;
+            } else if (contextUri.startsWith('spotify:album:')) {
+              const albumId = contextUri.split(':')[2];
+              const albumInfo = await spotify.getAlbum(albumId);
+              playlistName = `${albumInfo.body.name} (Album)`;
+            } else if (contextUri.startsWith('spotify:artist:')) {
+              const artistId = contextUri.split(':')[2];
+              const artistInfo = await spotify.getArtist(artistId);
+              playlistName = `${artistInfo.body.name} Radio`;
+            }
           } catch (err) {
             // Silently fail
+            console.error('[SPOTIFY] Failed to get context name:', err.message);
           }
         }
+      }
+
+      // If still no playlist name and no requester, use album name
+      if (!requester && !playlistName && track.album) {
+        playlistName = track.album.name;
       }
 
       nowPlaying = {
@@ -243,22 +259,35 @@ const specialUserMessages = {
 
 // ====== TWITCH BOT ======
 const client = new tmi.Client({
-  options: { debug: true },
+  options: {
+    debug: true,
+    reconnect: true,
+    maxReconnectAttempts: Infinity,
+    maxReconnectInterval: 30000,
+    reconnectDecay: 1.5,
+    reconnectInterval: 1000
+  },
   identity: { username: TWITCH_BOT_USERNAME, password: TWITCH_OAUTH_TOKEN },
   channels: [TWITCH_CHANNEL]
 });
 
 client.on('connected', (addr, port) => {
-  console.log(`Connected to Twitch chat at ${addr}:${port}`);
-  console.log(`Joined channel: #${TWITCH_CHANNEL}`);
+  console.log(`[TWITCH] Connected to chat at ${addr}:${port}`);
+  console.log(`[TWITCH] Joined channel: #${TWITCH_CHANNEL}`);
 });
 
 client.on('disconnected', (reason) => {
-  console.log(`Disconnected from Twitch: ${reason}`);
+  console.log(`[TWITCH] Disconnected: ${reason}`);
+  console.log(`[TWITCH] Will attempt to reconnect...`);
+});
+
+client.on('reconnect', () => {
+  console.log(`[TWITCH] Attempting to reconnect...`);
 });
 
 client.connect().catch(err => {
-  console.error('Failed to connect to Twitch:', err);
+  console.error('[TWITCH] Failed to connect:', err);
+  console.log('[TWITCH] Will retry automatically...');
 });
 
 function say(msg) {
@@ -287,9 +316,26 @@ client.on('message', async (channel, tags, message, self) => {
   // Check for special user on first message
   checkSpecialUser(uname);
 
-  // Broadcast messages to overlay (filter out commands starting with !)
-  // Include emotes data and user color from tags
-  if (!text.startsWith('!')) {
+  // List of bot usernames to filter out
+  const botNames = ['streamelements', 'nightbot', 'soundalerts', 'streamlabs', 'moobot', 'streamstickers', 'fossabot'];
+  const lowerUname = uname.toLowerCase();
+  const isBot = botNames.includes(lowerUname);
+
+  // Broadcast messages to overlay with filters:
+  // - No commands starting with !
+  // - No bot messages (except our bot when announcing special users)
+  // - Our bot (LowLifesofGB) only when mentioning special users
+  let shouldBroadcast = !text.startsWith('!') && !isBot;
+
+  // Special case: allow our bot's messages only when they mention special users
+  if (lowerUname === 'lowlifesofgb') {
+    const mentionsSpecialUser = specialUsersList.some(specialUser =>
+      text.toLowerCase().includes(specialUser)
+    );
+    shouldBroadcast = mentionsSpecialUser;
+  }
+
+  if (shouldBroadcast) {
     broadcastChatMessage(uname, text, tags.emotes, tags.color);
   }
 
@@ -328,10 +374,33 @@ client.on('message', async (channel, tags, message, self) => {
         console.log(`[AUTO-APPROVE] Failed: ${e?.body?.error?.message || e.message}`);
       }
     } else {
-      // Regular users need approval
-      const item = { id: nextPendingId++, query: q, requester: uname };
-      pending.push(item);
-      say(`Queued #${item.id}: "${q}" — requested by ${uname}`);
+      // Regular users need approval - search Spotify first to get track details
+      try {
+        await ensureSpotifyToken();
+        const s = await spotify.searchTracks(q, { limit: 1 });
+        const track = s.body.tracks.items[0];
+        if (!track) {
+          say(`${uname}, couldn't find "${q}" on Spotify.`);
+          return;
+        }
+
+        const item = {
+          id: nextPendingId++,
+          query: q,
+          requester: uname,
+          spotifyId: track.id,
+          title: track.name,
+          artist: track.artists.map(a => a.name).join(', '),
+          albumArt: track.album.images[0]?.url || '',
+          uri: track.uri
+        };
+        pending.push(item);
+        say(`Queued #${item.id}: "${track.name}" by ${item.artist} — requested by ${uname}`);
+        console.log(`[SR] Added to pending: ${item.title} — ${item.artist} (${uname})`);
+      } catch (e) {
+        say(`${uname}, failed to search: ${e?.body?.error?.message || e.message}`);
+        console.log(`[SR] Search failed: ${e?.body?.error?.message || e.message}`);
+      }
     }
     return;
   }
@@ -348,20 +417,13 @@ client.on('message', async (channel, tags, message, self) => {
     const item = pending.splice(idx, 1)[0];
     try {
       await ensureSpotifyToken();
-      const s = await spotify.searchTracks(item.query, { limit: 1 });
-      const track = s.body.tracks.items[0];
-      if (!track) {
-        console.log(`[APPROVE] No Spotify match for "${item.query}"`);
-        return;
-      }
-
-      await spotify.addToQueue(track.uri);
+      await spotify.addToQueue(item.uri);
 
       const approved = {
-        title: track.name,
-        artist: track.artists.map(a => a.name).join(', '),
-        spotifyId: track.id,
-        albumArt: track.album.images[0]?.url || '',
+        title: item.title,
+        artist: item.artist,
+        spotifyId: item.spotifyId,
+        albumArt: item.albumArt,
         requester: item.requester
       };
 
@@ -420,9 +482,18 @@ client.on('message', async (channel, tags, message, self) => {
   if (text.toLowerCase() === '!skip') {
     if (!isPrivileged(tags)) return;
     if (!nowPlaying) return say('Nothing playing.');
-    const skipped = nowPlaying;
-    nowPlaying = approvedQueue.shift() || null;
-    say(`Skipped ${skipped.title}. Now playing ${nowPlaying ? nowPlaying.title : '—'}.`);
+
+    try {
+      await ensureSpotifyToken();
+      await spotify.skipToNext();
+      const skipped = nowPlaying;
+      say(`Skipped ${skipped.title}.`);
+      console.log(`[SKIP] Skipped ${skipped.title}`);
+      // Don't modify nowPlaying or approvedQueue - let updateCurrentPlayback handle it
+    } catch (e) {
+      say(`Failed to skip: ${e?.body?.error?.message || e.message}`);
+      console.error('[SKIP] Error:', e);
+    }
     return;
   }
 
@@ -534,11 +605,110 @@ client.on('join', (channel, username, self) => {
 });
 
 // ====== PROMO ======
+const promoMessages = [
+  'The LowLifes of Granboard • www.facebook.com/groups/thelowlifesofgranboard',
+  'The LowLife Files - for all the tea • www.facebook.com/groups/thelowlifefiles',
+  "TattooedLowLife's Facebook • www.facebook.com/thetattooeedlowlife",
+  'LLoGB Jams Playlist - Add your favorite songs! • https://open.spotify.com/playlist/5STE00xXwZoXYHllJFUZT5',
+  'TattooedLowLife on YouTube • https://youtube.com/@thetattooedlowlife',
+  'Add us on Snapchat • https://www.snapchat.com/add/thelowlifesofgb',
+  'TattooedLowLife on TikTok • https://www.tiktok.com/@thetattooedlowlife',
+  'Join the LLoGB app waitlist! • www.lowlifeofgranboard.com/launch'
+];
+
+let currentPromoMessageIndex = 0;
+
 async function announcePromo() {
-  say(`LowLife App + socials: lowlifesofgranboard.com • twitch.tv/${TWITCH_CHANNEL}`);
+  say(promoMessages[currentPromoMessageIndex]);
+  currentPromoMessageIndex = (currentPromoMessageIndex + 1) % promoMessages.length;
 }
 
 setInterval(announcePromo, Math.max(1, parseInt(PROMO_MINUTES, 10)) * 60 * 1000);
+
+// ====== ANONYMOUS VIEWER CHECKER ======
+let twitchAppAccessToken = null;
+
+async function getTwitchAppToken() {
+  try {
+    const response = await fetch('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`
+    });
+
+    const data = await response.json();
+    twitchAppAccessToken = data.access_token;
+    console.log('[TWITCH API] Got app access token');
+  } catch (err) {
+    console.error('[TWITCH API] Failed to get app token:', err.message);
+  }
+}
+
+async function checkAnonymousViewers() {
+  try {
+    // Ensure we have an app access token
+    if (!twitchAppAccessToken) {
+      await getTwitchAppToken();
+    }
+
+    // Get broadcaster user ID first
+    const userResponse = await fetch(`https://api.twitch.tv/helix/users?login=${TWITCH_CHANNEL}`, {
+      headers: {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': `Bearer ${twitchAppAccessToken}`
+      }
+    });
+
+    const userData = await userResponse.json();
+    if (!userData.data || userData.data.length === 0) {
+      console.error('[ANONYMOUS CHECK] Could not find broadcaster user');
+      return;
+    }
+
+    const broadcasterId = userData.data[0].id;
+
+    // Get stream info to get viewer count
+    const streamResponse = await fetch(`https://api.twitch.tv/helix/streams?user_id=${broadcasterId}`, {
+      headers: {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': `Bearer ${twitchAppAccessToken}`
+      }
+    });
+
+    const streamData = await streamResponse.json();
+
+    // Only check if stream is live
+    if (!streamData.data || streamData.data.length === 0) {
+      console.log('[ANONYMOUS CHECK] Stream is offline, skipping check');
+      return;
+    }
+
+    const viewerCount = streamData.data[0].viewer_count;
+    const chatters = seenUsers.size; // Number of unique users who have chatted
+    const anonymous = viewerCount - chatters;
+
+    console.log(`[ANONYMOUS CHECK] Viewers: ${viewerCount}, Chatters: ${chatters}, Anonymous: ${anonymous}`);
+
+    // Only announce if there are 2+ anonymous viewers
+    if (anonymous >= 2) {
+      say(`${anonymous} anonymous users... don't be shy, login!`);
+      console.log(`[ANONYMOUS CHECK] Announced ${anonymous} anonymous viewers`);
+    }
+  } catch (err) {
+    console.error('[ANONYMOUS CHECK] Error:', err.message);
+
+    // If token expired, refresh it
+    if (err.message.includes('401')) {
+      twitchAppAccessToken = null;
+    }
+  }
+}
+
+// Get initial token
+getTwitchAppToken();
+
+// Check every 15 minutes
+setInterval(checkAnonymousViewers, 15 * 60 * 1000);
 
 // ====== CHAT RELAY FOR OVERLAY ======
 const chatClients = [];
@@ -624,62 +794,37 @@ app.get('/queue', async (_req, res) => {
   try {
     let displayQueue = [...approvedQueue];
 
-    // If no user-requested songs, get upcoming tracks from Spotify queue
+    // If no user-requested songs, try to get Spotify's queue
     if (displayQueue.length === 0) {
-      await ensureSpotifyToken();
-      const queueData = await spotify.getMyCurrentPlayingTrack();
+      try {
+        await ensureSpotifyToken();
 
-      if (queueData.body && queueData.body.context) {
-        // Get current context (playlist info)
-        const contextUri = queueData.body.context.uri;
-        let playlistName = 'Playlist';
+        // Try to use Spotify's queue API
+        const response = await fetch('https://api.spotify.com/v1/me/player/queue', {
+          headers: {
+            'Authorization': `Bearer ${spotify.getAccessToken()}`
+          }
+        });
 
-        if (contextUri && contextUri.startsWith('spotify:playlist:')) {
-          try {
-            const playlistId = contextUri.split(':')[2];
-            const playlistInfo = await spotify.getPlaylist(playlistId);
-            playlistName = playlistInfo.body.name;
-          } catch (err) {
-            console.error('[QUEUE] Failed to get playlist name:', err.message);
+        if (response.ok) {
+          const queueData = await response.json();
+
+          // Get the next 3 tracks from Spotify queue
+          if (queueData.queue && queueData.queue.length > 0) {
+            displayQueue = queueData.queue.slice(0, 3).map(track => ({
+              title: track.name,
+              artist: track.artists.map(a => a.name).join(', '),
+              album: track.album.name,
+              albumArt: track.album.images[0]?.url || null,
+              spotifyId: track.id,
+              uri: track.uri,
+              requester: null,
+              playlistName: null
+            }));
           }
         }
-
-        // Get upcoming tracks from playlist
-        if (contextUri && contextUri.startsWith('spotify:playlist:')) {
-          try {
-            const playlistId = contextUri.split(':')[2];
-            const playlistTracks = await spotify.getPlaylistTracks(playlistId, { limit: 50 });
-
-            // Find current track position in playlist
-            const currentTrackUri = queueData.body.item?.uri;
-            if (currentTrackUri && playlistTracks.body.items) {
-              const currentIndex = playlistTracks.body.items.findIndex(
-                item => item.track && item.track.uri === currentTrackUri
-              );
-
-              if (currentIndex !== -1 && currentIndex < playlistTracks.body.items.length - 1) {
-                // Get next 3 tracks after current
-                const upcomingTracks = playlistTracks.body.items
-                  .slice(currentIndex + 1, currentIndex + 4)
-                  .filter(item => item.track)
-                  .map(item => item.track);
-
-                displayQueue = upcomingTracks.map(track => ({
-                  title: track.name,
-                  artist: track.artists.map(a => a.name).join(', '),
-                  album: track.album.name,
-                  albumArt: track.album.images[0]?.url || null,
-                  spotifyId: track.id,
-                  uri: track.uri,
-                  requester: null,
-                  playlistName: playlistName
-                }));
-              }
-            }
-          } catch (err) {
-            console.error('[QUEUE] Failed to get playlist tracks:', err.message);
-          }
-        }
+      } catch (err) {
+        console.error('[QUEUE] Failed to get Spotify queue:', err.message);
       }
     }
 
@@ -708,15 +853,25 @@ app.post('/approve', async (req, res) => {
     return res.status(404).json({ error: 'Song not found in pending queue' });
   }
 
-  const item = pending[idx];
-  pending.splice(idx, 1);
+  const item = pending.splice(idx, 1)[0];
 
   try {
     await ensureSpotifyToken();
     await spotify.addToQueue(item.uri);
-    approvedQueue.push(item);
-    console.log(`[API APPROVE] ${item.title} by ${item.artist}`);
-    res.json({ success: true, song: item });
+
+    const approved = {
+      title: item.title,
+      artist: item.artist,
+      spotifyId: item.spotifyId,
+      albumArt: item.albumArt,
+      requester: item.requester
+    };
+
+    if (!nowPlaying) nowPlaying = approved;
+    else approvedQueue.push(approved);
+
+    console.log(`[API APPROVE] ${approved.title} by ${approved.artist} (${approved.requester})`);
+    res.json({ success: true, song: approved });
   } catch (e) {
     console.error(`[API APPROVE ERROR]`, e);
     res.status(500).json({ error: 'Failed to add to Spotify queue' });
@@ -745,13 +900,13 @@ app.post('/skip', async (req, res) => {
   }
 
   const skipped = nowPlaying;
-  nowPlaying = approvedQueue.shift() || null;
 
   try {
     await ensureSpotifyToken();
     await spotify.skipToNext();
     console.log(`[API SKIP] Skipped ${skipped.title}`);
-    res.json({ success: true, skipped, nowPlaying });
+    // Don't modify nowPlaying or approvedQueue - let updateCurrentPlayback handle it
+    res.json({ success: true, skipped });
   } catch (e) {
     console.error(`[API SKIP ERROR]`, e);
     res.status(500).json({ error: 'Failed to skip song' });
