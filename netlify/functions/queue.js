@@ -46,8 +46,25 @@ export async function handler(event) {
       created_at: song.created_at
     });
 
+    // Transform current track to camelCase
+    const transformCurrentTrack = (track) => {
+      if (!track) return null;
+      return {
+        spotifyId: track.spotify_id,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        albumArt: track.album_art,
+        requester: track.requester,
+        playlistName: track.playlist_name,
+        progress: track.progress_ms,
+        duration: track.duration_ms,
+        isPlaying: track.is_playing
+      };
+    };
+
     return successResponse({
-      now: currentTrack[0] || null,
+      now: transformCurrentTrack(currentTrack[0]),
       queue: (approvedQueue || []).map(transformSong),
       pending: (pendingRequests || []).map(transformSong)
     });
