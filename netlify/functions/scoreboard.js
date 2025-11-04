@@ -40,7 +40,7 @@ export async function handler(event) {
              player2_score = COALESCE($2, player2_score),
              updated_at = NOW()
          WHERE id = 1`,
-        [player1?.score, player2?.score]
+        [player1, player2]
       );
 
       // Log activity
