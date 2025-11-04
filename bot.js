@@ -199,10 +199,10 @@ async function processApprovedSongs() {
           console.log(`[QUEUE] Added to Spotify: ${song.title} by ${song.artist}`);
 
           // Don't mark as playing yet - wait for Spotify to actually play it
-          // Just remove from approved so we don't queue it again
+          // Mark as completed so we don't queue it again
           await query(
             'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE id = $2',
-            ['queued', song.id]
+            ['completed', song.id]
           );
         } catch (err) {
           console.error(`[QUEUE] Failed to add ${song.title}:`, err.message);
@@ -377,7 +377,7 @@ client.on('message', async (channel, tags, message, self) => {
             track.artists.map(a => a.name).join(', '),
             track.album.images[0]?.url || '',
             uname,
-            'queued',
+            'approved',
             track.uri
           ]
         );
@@ -413,7 +413,7 @@ client.on('message', async (channel, tags, message, self) => {
       const current = await query('SELECT * FROM current_track WHERE id = 1');
       const queue = await query(
         'SELECT * FROM song_requests WHERE status IN ($1, $2) ORDER BY created_at ASC LIMIT 5',
-        ['approved', 'queued']
+        ['approved', 'completed']
       );
 
       const nowText = current[0]?.title ? `${current[0].title} - ${current[0].artist}` : '—';
