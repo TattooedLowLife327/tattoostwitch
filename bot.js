@@ -217,31 +217,50 @@ async function processApprovedSongs() {
 // Process queue every 10 seconds
 setInterval(processApprovedSongs, 10000);
 
-// ====== CHECK FOR SKIP REQUESTS ======
-let lastSkipCheck = Date.now();
-async function checkSkipRequests() {
+// ====== CHECK FOR ACTION REQUESTS ======
+let lastActionCheck = Date.now();
+
+async function checkActionRequests() {
   try {
-    const skipRequests = await query(
+    const requests = await query(
       `SELECT * FROM activity_log
-       WHERE event_type = 'skip_requested'
+       WHERE event_type IN ('skip_requested', 'play_requested', 'pause_requested', 'promo_requested')
        AND created_at > $1
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [new Date(lastSkipCheck)]
+       ORDER BY created_at DESC`,
+      [new Date(lastActionCheck)]
     );
 
-    if (skipRequests && skipRequests.length > 0) {
-      console.log('[SKIP] Skip requested, executing...');
+    if (requests && requests.length > 0) {
       await ensureSpotifyToken();
-      await spotify.skipToNext();
-      lastSkipCheck = Date.now();
+
+      for (const req of requests) {
+        try {
+          if (req.event_type === 'skip_requested') {
+            console.log('[ACTION] Skip requested, executing...');
+            await spotify.skipToNext();
+          } else if (req.event_type === 'play_requested') {
+            console.log('[ACTION] Play requested, executing...');
+            await spotify.play();
+          } else if (req.event_type === 'pause_requested') {
+            console.log('[ACTION] Pause requested, executing...');
+            await spotify.pause();
+          } else if (req.event_type === 'promo_requested') {
+            console.log('[ACTION] Promo requested, executing...');
+            // TODO: Add promo message logic if needed
+          }
+        } catch (err) {
+          console.error(`[ACTION] Failed to execute ${req.event_type}:`, err.message);
+        }
+      }
+
+      lastActionCheck = Date.now();
     }
   } catch (err) {
-    console.error('[SKIP] Check error:', err.message);
+    console.error('[ACTION] Check error:', err.message);
   }
 }
 
-setInterval(checkSkipRequests, 3000);
+setInterval(checkActionRequests, 3000);
 
 // ====== TWITCH BOT ======
 const seenUsers = new Set(); // Session-only tracking
