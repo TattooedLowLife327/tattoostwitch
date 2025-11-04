@@ -454,21 +454,21 @@ client.on('message', async (channel, tags, message, self) => {
     return;
   }
 
-  // !cancelsr
-  if (text.toLowerCase().startsWith('!cancelsr')) {
+  // !cancel or !cancelsr
+  if (text.toLowerCase().startsWith('!cancel')) {
     try {
       const result = await query(
-        'DELETE FROM song_requests WHERE requester = $1 AND status = $2 RETURNING id',
-        [uname, 'pending']
+        'DELETE FROM song_requests WHERE requester = $1 AND status IN ($2, $3) RETURNING id, title',
+        [uname, 'pending', 'approved']
       );
       if (result && result.length > 0) {
-        const ids = result.map(r => `#${r.id}`).join(', ');
-        say(`${uname}, cancelled: ${ids}`);
+        const titles = result.map(r => `"${r.title}"`).join(', ');
+        say(`${uname}, cancelled: ${titles}`);
       } else {
-        say(`${uname}, you have no pending requests.`);
+        say(`${uname}, you have no pending or approved requests to cancel.`);
       }
     } catch (e) {
-      console.error('[!cancelsr error]:', e);
+      console.error('[!cancel error]:', e);
     }
     return;
   }
