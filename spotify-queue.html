@@ -37,6 +37,7 @@
   .now {
     width: 100%;
     height: 290px;
+    margin-bottom: 24px;
   }
 
   .card {
@@ -171,13 +172,27 @@
     z-index: 3;
   }
 
+  .music-notes.paused .music-note {
+    animation-play-state: paused;
+    opacity: 0;
+  }
+
   .music-note {
     position: absolute;
-    color: #C084FC;
+    color: #FFFFFF;
     opacity: 0;
-    font-size: 24px;
+    font-size: 28px;
+    font-weight: 900;
     animation: float-up 4s ease-in infinite;
-    text-shadow: 0 0 10px #C084FC, 0 0 20px #C084FC;
+    text-shadow:
+      -1px -1px 0 #000,
+      1px -1px 0 #000,
+      -1px 1px 0 #000,
+      1px 1px 0 #000,
+      0 0 15px #A855F7,
+      0 0 30px #A855F7,
+      0 0 45px #8B5CF6;
+    -webkit-text-stroke: 1px rgba(0, 0, 0, 0.5);
   }
 
   .music-note:nth-child(1) {
@@ -202,10 +217,10 @@
       transform: translateY(0) rotate(0deg);
     }
     20% {
-      opacity: 0.6;
+      opacity: 1;
     }
     80% {
-      opacity: 0.6;
+      opacity: 1;
     }
     100% {
       bottom: 100%;
@@ -229,9 +244,7 @@
     font-size: 18px;
     font-weight: 700;
     color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
     line-height: 1.3;
     width: 100%;
   }
@@ -239,9 +252,7 @@
   .track-artist {
     font-size: 18px;
     color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
     line-height: 1.3;
     width: 100%;
   }
@@ -249,9 +260,7 @@
   .track-requester {
     font-size: 16px;
     color: var(--purple);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
     line-height: 1.3;
     width: 100%;
   }
@@ -579,6 +588,16 @@
         // Update play/pause icon
         updatePlayPauseIcon();
 
+        // Update music notes animation based on playing state
+        const musicNotes = document.querySelector('.music-notes');
+        if (musicNotes) {
+          if (isPlaying) {
+            musicNotes.classList.remove('paused');
+          } else {
+            musicNotes.classList.add('paused');
+          }
+        }
+
       } else {
         currentTrackId = null;
         lastProgress = 0;
@@ -593,6 +612,12 @@
         currentDuration = 0;
         isPlaying = false;
         updatePlayPauseIcon();
+
+        // Stop music notes when nothing is playing
+        const musicNotes = document.querySelector('.music-notes');
+        if (musicNotes) {
+          musicNotes.classList.add('paused');
+        }
       }
 
       // Update notification display
