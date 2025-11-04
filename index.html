@@ -320,12 +320,25 @@
     <button class="btn" style="margin-bottom: 10px; background: #ff6b6b;" onclick="resetBot()">Reset Bot (Clear All Queues)</button>
   </div>
 
+  <div class="section">
+    <h2>Settings</h2>
+    <label style="display: block; color: var(--muted); margin-bottom: 8px; font-size: 14px;">Bot API URL</label>
+    <input type="text" id="api-url-input" placeholder="https://your-tunnel-url.loca.lt" style="margin-bottom: 10px;" />
+    <div style="display: flex; gap: 10px;">
+      <button class="btn" style="flex: 1;" onclick="saveApiUrl()">Save URL</button>
+      <button class="btn" style="flex: 1; background: #6c757d;" onclick="resetToLocalhost()">Reset to Localhost</button>
+    </div>
+    <div id="current-api" style="text-align: center; margin-top: 10px; color: var(--muted); font-size: 12px;">
+      Current: <span id="api-url-display" style="color: var(--purple); font-weight: 600; word-break: break-all;"></span>
+    </div>
+  </div>
+
   <button class="btn logout-btn" onclick="logout()">Logout</button>
 </div>
 
 <script>
-  const API_URL = localStorage.getItem('apiUrl') || 'http://localhost:8787';
-  const CORRECT_PIN = '1337'; // Change this to your desired PIN
+  let API_URL = localStorage.getItem('apiUrl') || 'http://localhost:8787';
+  const CORRECT_PIN = '92522'; // Change this to your desired PIN
 
   let scores = { player1: 0, player2: 0 };
 
@@ -522,7 +535,48 @@
     }
   }
 
+  function saveApiUrl() {
+    const input = document.getElementById('api-url-input');
+    const url = input.value.trim();
+
+    if (!url) {
+      alert('Please enter a valid URL');
+      return;
+    }
+
+    // Remove trailing slash if present
+    const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+
+    localStorage.setItem('apiUrl', cleanUrl);
+    API_URL = cleanUrl;
+
+    document.getElementById('api-url-display').textContent = cleanUrl;
+    alert('API URL saved! Reconnecting...');
+
+    // Reconnect with new URL
+    checkConnection();
+    updatePendingQueue();
+  }
+
+  function resetToLocalhost() {
+    localStorage.setItem('apiUrl', 'http://localhost:8787');
+    API_URL = 'http://localhost:8787';
+
+    document.getElementById('api-url-input').value = '';
+    document.getElementById('api-url-display').textContent = 'http://localhost:8787';
+
+    alert('Reset to localhost! Reconnecting...');
+
+    // Reconnect with localhost
+    checkConnection();
+    updatePendingQueue();
+  }
+
   function startUpdates() {
+    // Display current API URL
+    document.getElementById('api-url-display').textContent = API_URL;
+    document.getElementById('api-url-input').value = API_URL !== 'http://localhost:8787' ? API_URL : '';
+
     updatePendingQueue();
     checkConnection();
     updateModeDisplay();
