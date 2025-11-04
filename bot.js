@@ -68,6 +68,8 @@ async function ensureSpotifyToken() {
 
 // ====== SPOTIFY PLAYBACK MONITORING ======
 let previousTrackId = null;
+let cachedContextUri = null;
+let cachedPlaylistName = null;
 
 async function updateCurrentPlayback() {
   try {
@@ -107,22 +109,35 @@ async function updateCurrentPlayback() {
         // Get context (playlist/album) only when track changes
         if (!requester && data.body.context) {
           const contextUri = data.body.context.uri;
-          try {
-            if (contextUri.startsWith('spotify:playlist:')) {
-              const playlistId = contextUri.split(':')[2];
-              const playlistInfo = await spotify.getPlaylist(playlistId);
-              playlistName = playlistInfo.body.name;
-            } else if (contextUri.startsWith('spotify:album:')) {
-              const albumId = contextUri.split(':')[2];
-              const albumInfo = await spotify.getAlbum(albumId);
-              playlistName = `${albumInfo.body.name} (Album)`;
-            } else if (contextUri.startsWith('spotify:artist:')) {
-              const artistId = contextUri.split(':')[2];
-              const artistInfo = await spotify.getArtist(artistId);
-              playlistName = `${artistInfo.body.name} Radio`;
+
+          // Check cache first to avoid rate limiting
+          if (contextUri === cachedContextUri && cachedPlaylistName) {
+            playlistName = cachedPlaylistName;
+          } else {
+            try {
+              if (contextUri.startsWith('spotify:playlist:')) {
+                const playlistId = contextUri.split(':')[2];
+                const playlistInfo = await spotify.getPlaylist(playlistId);
+                playlistName = playlistInfo.body.name;
+              } else if (contextUri.startsWith('spotify:album:')) {
+                const albumId = contextUri.split(':')[2];
+                const albumInfo = await spotify.getAlbum(albumId);
+                playlistName = `${albumInfo.body.name} (Album)`;
+              } else if (contextUri.startsWith('spotify:artist:')) {
+                const artistId = contextUri.split(':')[2];
+                const artistInfo = await spotify.getArtist(artistId);
+                playlistName = `${artistInfo.body.name} Radio`;
+              }
+              // Cache the result
+              cachedContextUri = contextUri;
+              cachedPlaylistName = playlistName;
+            } catch (err) {
+              console.error('[SPOTIFY] Failed to get context. Status:', err.statusCode, 'Message:', err.body?.error?.message || err.message);
+              // Try to use cached value even if it's from a different context (better than nothing)
+              if (cachedPlaylistName) {
+                playlistName = cachedPlaylistName;
+              }
             }
-          } catch (err) {
-            console.error('[SPOTIFY] Failed to get context:', err.message);
           }
         }
 
