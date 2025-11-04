@@ -19,14 +19,7 @@ export async function handler(event) {
       return errorResponse('action must be "play" or "pause"', 400);
     }
 
-    // Create a play/pause request in the database that bot.js will pick up
-    await query(
-      `INSERT INTO activity_log (event_type, details)
-       VALUES ($1, $2)`,
-      [action === 'play' ? 'play_requested' : 'pause_requested', JSON.stringify({ timestamp: new Date().toISOString() })]
-    );
-
-    // Log activity
+    // Log play/pause request that bot.js will pick up
     await logActivity(`${action}_requested`, null, { timestamp: new Date().toISOString() });
 
     return successResponse({
