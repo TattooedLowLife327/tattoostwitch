@@ -456,7 +456,8 @@
 </div>
 
 <script>
-  const ENDPOINT = '/api/queue';
+  const API_BASE = 'https://tattoostwitch327.onrender.com';
+  const ENDPOINT = API_BASE + '/api/queue';
 
   let currentProgress = 0;
   let targetProgress = 0;
@@ -478,7 +479,7 @@
   // Toggle play/pause
   async function togglePlay() {
     try {
-      const endpoint = isPlaying ? '/api/play-pause' : '/api/play-pause';
+      const endpoint = API_BASE + '/api/play-pause';
       await fetch(endpoint, { method: 'POST', body: JSON.stringify({ action: isPlaying ? 'pause' : 'play' }), headers: { 'Content-Type': 'application/json' } });
       refresh();
     } catch (e) {
@@ -489,7 +490,7 @@
   // Skip current song
   async function skipSong() {
     try {
-      await fetch('/api/skip-song', { method: 'POST' });
+      await fetch(API_BASE + '/api/skip-song', { method: 'POST' });
       refresh();
     } catch (e) {
       console.error('Failed to skip song:', e);
