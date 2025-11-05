@@ -570,6 +570,49 @@ client.on('join', (channel, username, self) => {
   }
 });
 
+// ====== API ENDPOINTS ======
+app.get('/api/spotify-queue', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/json');
+
+  try {
+    await ensureSpotifyToken();
+    const queueData = await spotify.getMyCurrentPlaybackState();
+
+    if (!queueData.body || !queueData.body.item) {
+      return res.json([]);
+    }
+
+    // Get Spotify's queue
+    const queueResponse = await fetch('https://api.spotify.com/v1/me/player/queue', {
+      headers: {
+        'Authorization': `Bearer ${spotify.getAccessToken()}`
+      }
+    });
+
+    if (!queueResponse.ok) {
+      return res.json([]);
+    }
+
+    const queue = await queueResponse.json();
+
+    // Return next 3 tracks
+    const tracks = (queue.queue || []).slice(0, 3).map(track => ({
+      spotifyId: track.id,
+      title: track.name,
+      artist: track.artists.map(a => a.name).join(', '),
+      albumArt: track.album.images[0]?.url || null,
+      requester: null,
+      uri: track.uri
+    }));
+
+    res.json(tracks);
+  } catch (error) {
+    console.error('[API] Spotify queue error:', error.message);
+    res.json([]);
+  }
+});
+
 // ====== CHAT SSE (for overlay) ======
 const chatClients = [];
 app.get('/chat-stream', (req, res) => {
