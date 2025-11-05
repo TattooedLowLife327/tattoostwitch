@@ -419,64 +419,80 @@
     height: 16px;
     fill: currentColor;
   }
+
+  /* View switching */
+  .view-content {
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.4s ease;
+  }
+
+  .view-content.fade-out {
+    opacity: 0;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <!-- Now Playing Section -->
+  <!-- Combined Display Card -->
   <div class="card now">
     <div class="card-overlay"></div>
     <div class="card-content">
-      <div class="player-layout">
-        <!-- Album Art -->
-        <div class="album-art-container">
-          <div class="album-glow"></div>
-          <div class="album-art" id="album-art">
-            <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-            </svg>
+      <!-- Now Playing View -->
+      <div id="now-playing-view" class="view-content">
+        <div class="player-layout">
+          <!-- Album Art -->
+          <div class="album-art-container">
+            <div class="album-glow"></div>
+            <div class="album-art" id="album-art">
+              <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+              </svg>
+            </div>
+            <div class="music-notes">
+              <div class="music-note">♪</div>
+              <div class="music-note">♫</div>
+              <div class="music-note">♪</div>
+            </div>
           </div>
-          <div class="music-notes">
-            <div class="music-note">♪</div>
-            <div class="music-note">♫</div>
-            <div class="music-note">♪</div>
-          </div>
-        </div>
 
-        <!-- Player Info -->
-        <div class="player-info">
-          <div class="track-name" id="now-title">—</div>
-          <div class="track-artist" id="now-artist">—</div>
-          <div class="track-requester" id="now-requester"></div>
+          <!-- Player Info -->
+          <div class="player-info">
+            <div class="track-name" id="now-title">—</div>
+            <div class="track-artist" id="now-artist">—</div>
+            <div class="track-requester" id="now-requester"></div>
 
-          <!-- Controls -->
-          <div class="controls">
-            <button class="control-btn play-btn" id="play-btn" onclick="togglePlay()" title="Play/Pause">
-              <svg viewBox="0 0 24 24" id="play-icon">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-              <svg viewBox="0 0 24 24" id="pause-icon" style="display: none;">
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-              </svg>
-            </button>
-            <button class="control-btn" onclick="skipSong()" title="Skip">
-              <svg viewBox="0 0 24 24">
-                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-              </svg>
-            </button>
+            <!-- Controls -->
+            <div class="controls">
+              <button class="control-btn play-btn" id="play-btn" onclick="togglePlay()" title="Play/Pause">
+                <svg viewBox="0 0 24 24" id="play-icon">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" id="pause-icon" style="display: none;">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                </svg>
+              </button>
+              <button class="control-btn" onclick="skipSong()" title="Skip">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Notification Section -->
-  <div class="card">
-    <div class="card-overlay"></div>
-    <div class="card-content">
-      <div class="notification-container">
-        <div class="notification-content" id="notification-display">
-          <!-- Content will be dynamically updated -->
+      <!-- Queue View -->
+      <div id="queue-view" class="view-content" style="display: none;">
+        <div class="notification" id="queue-display">
+          <!-- Queue content will be dynamically updated -->
+        </div>
+      </div>
+
+      <!-- Promo View -->
+      <div id="promo-view" class="view-content" style="display: none;">
+        <div class="notification" id="promo-display">
+          <!-- Promo content will be dynamically updated -->
         </div>
       </div>
     </div>
@@ -687,8 +703,16 @@
         }
       }
 
-      // Update notification display
-      updateNotificationDisplay(data);
+      // Store queue data and check for changes
+      queueData = data;
+
+      // Auto-show queue when new songs are added
+      const currentQueueLength = (data.queue && data.queue.length) || 0;
+      if (currentQueueLength > lastQueueLength && currentView === 'now-playing') {
+        console.log('[QUEUE] New song added, showing queue view');
+        showQueueView();
+      }
+      lastQueueLength = currentQueueLength;
 
     } catch (e){
       document.getElementById('now-title').textContent = 'Queue offline';
@@ -698,28 +722,60 @@
     }
   }
 
-  // Notification system
-  let currentNotification = 'next-song';
+  // View switching system
   let queueData = null;
-  let eventTimeout = null;
-  let reminderInterval = null;
+  let viewTimeout = null;
+  let currentView = 'now-playing';
+  let lastQueueLength = 0;
 
-  function updateNotificationDisplay(data) {
-    queueData = data;
-    if (currentNotification === 'next-song') {
-      showNextSong();
+  function switchToView(viewName, duration = 6000) {
+    // Clear any existing timeout
+    if (viewTimeout) {
+      clearTimeout(viewTimeout);
     }
+
+    const views = {
+      'now-playing': document.getElementById('now-playing-view'),
+      'queue': document.getElementById('queue-view'),
+      'promo': document.getElementById('promo-view')
+    };
+
+    // Fade out current view
+    if (views[currentView]) {
+      views[currentView].classList.add('fade-out');
+    }
+
+    setTimeout(() => {
+      // Hide all views
+      Object.values(views).forEach(view => {
+        if (view) view.style.display = 'none';
+      });
+
+      // Show and fade in target view
+      if (views[viewName]) {
+        views[viewName].style.display = 'block';
+        views[viewName].classList.remove('fade-out');
+        currentView = viewName;
+      }
+
+      // Auto-return to now playing after duration (unless already on now-playing)
+      if (viewName !== 'now-playing' && duration > 0) {
+        viewTimeout = setTimeout(() => {
+          switchToView('now-playing', 0);
+        }, duration);
+      }
+    }, 400);
   }
 
-  function showNextSong() {
-    const display = document.getElementById('notification-display');
+  function showQueueView() {
+    const display = document.getElementById('queue-display');
 
     if (queueData && queueData.queue && queueData.queue.length > 0) {
       // Get next 3 songs (or fewer if less than 3 in queue)
       const nextSongs = queueData.queue.slice(0, 3);
 
       const songList = nextSongs.map((song, index) => {
-        const requesterText = song.requester ? `requested by ${song.requester}` : (song.playlistName || '');
+        const requesterText = song.requester ? `requested by ${song.requester}` : '';
         return `
           <div style="display: flex; gap: 10px; padding: 8px 0; ${index < nextSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
             <div style="color: var(--purple); font-weight: 700; min-width: 20px;">${index + 1}.</div>
@@ -733,20 +789,20 @@
       }).join('');
 
       display.innerHTML = `
-        <div class="notification" style="display: block; padding: 12px 16px;">
+        <div style="display: block; padding: 12px 16px; height: 290px;">
           <div class="notification-type" style="margin-bottom: 10px; text-align: center;">Up Next</div>
           ${songList}
         </div>
       `;
     } else {
       display.innerHTML = `
-        <div class="notification">
+        <div style="height: 290px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
           <div class="notification-icon">
             <svg viewBox="0 0 24 24">
               <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
             </svg>
           </div>
-          <div class="notification-info">
+          <div style="text-align: center;">
             <div class="notification-type">Up Next</div>
             <div class="notification-title">Queue Empty</div>
             <div class="notification-subtitle">Use !sr to request a song</div>
@@ -754,161 +810,47 @@
         </div>
       `;
     }
+
+    switchToView('queue');
   }
 
-  function showReminder() {
-    const display = document.getElementById('notification-display');
-    display.classList.add('slide-out');
+  function showPromoView() {
+    const display = document.getElementById('promo-display');
 
-    setTimeout(() => {
-      display.innerHTML = `
-        <div class="notification">
-          <div class="notification-icon">
-            <svg viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-            </svg>
-          </div>
-          <div class="notification-info">
-            <div class="notification-type">Song Requests</div>
-            <div class="notification-title">Request Your Favorite</div>
-            <div class="notification-subtitle">Use !sr to request your fav song next</div>
+    display.innerHTML = `
+      <div style="height: 290px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 2px 0;">
+        <div class="notification-icon">
+          <div style="background: transparent; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="images/dcdlogo.png" style="width: 180px; height: 180px; object-fit: contain;">
           </div>
         </div>
-      `;
-      display.classList.remove('slide-out');
-      display.classList.add('slide-in');
-
-      setTimeout(() => {
-        display.classList.remove('slide-in');
-      }, 50);
-    }, 400);
-
-    // Revert back to next song after 6 seconds
-    setTimeout(() => {
-      display.classList.add('slide-out');
-      setTimeout(() => {
-        showNextSong();
-        display.classList.remove('slide-out');
-        display.classList.add('slide-in');
-        setTimeout(() => display.classList.remove('slide-in'), 50);
-      }, 400);
-    }, 6000);
-  }
-
-  function showEvent(type, title, subtitle, icon) {
-    // Clear any existing timeout
-    if (eventTimeout) {
-      clearTimeout(eventTimeout);
-    }
-
-    currentNotification = type;
-    const display = document.getElementById('notification-display');
-    display.classList.add('slide-out');
-
-    setTimeout(() => {
-      display.innerHTML = `
-        <div class="notification">
-          <div class="notification-icon">
-            ${icon}
-          </div>
-          <div class="notification-info">
-            <div class="notification-type">${type}</div>
-            <div class="notification-title">${title}</div>
-            <div class="notification-subtitle">${subtitle}</div>
-          </div>
+        <div style="text-align: center;">
+          <div class="notification-type">Discount Code</div>
+          <div class="notification-title">Dead Center Darts</div>
+          <div class="notification-subtitle">LOWLIFES15 for 15% off!</div>
         </div>
-      `;
-      display.classList.remove('slide-out');
-      display.classList.add('slide-in');
+      </div>
+    `;
 
-      setTimeout(() => {
-        display.classList.remove('slide-in');
-      }, 50);
-    }, 400);
-
-    // Revert back to next song after 6 seconds
-    eventTimeout = setTimeout(() => {
-      currentNotification = 'next-song';
-      display.classList.add('slide-out');
-      setTimeout(() => {
-        showNextSong();
-        display.classList.remove('slide-out');
-        display.classList.add('slide-in');
-        setTimeout(() => display.classList.remove('slide-in'), 50);
-      }, 400);
-    }, 6000);
+    switchToView('promo');
   }
 
-  // Promotional messages
-  const promoMessages = [
-    {
-      type: 'Discount Code',
-      title: 'Dead Center Darts',
-      subtitle: 'LOWLIFES15 for 15% off!',
-      icon: '<div style="background: transparent; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"><img src="images/dcdlogo.png" style="width: 180px; height: 180px; object-fit: contain;"></div>'
-    },
-    {
-      type: 'Song Requests',
-      title: 'Request Your Favorite',
-      subtitle: 'Use !sr to request your fav song next',
-      icon: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>'
-    }
-  ];
-
-  let currentPromoIndex = 0;
-
-  function showPromo() {
-    currentNotification = 'promo';
-    const promo = promoMessages[currentPromoIndex];
-    const display = document.getElementById('notification-display');
-    display.classList.add('slide-out');
-
-    setTimeout(() => {
-      display.innerHTML = `
-        <div class="notification">
-          <div class="notification-icon">
-            ${promo.icon}
-          </div>
-          <div class="notification-info">
-            <div class="notification-type">${promo.type}</div>
-            <div class="notification-title">${promo.title}</div>
-            <div class="notification-subtitle">${promo.subtitle}</div>
-          </div>
-        </div>
-      `;
-      display.classList.remove('slide-out');
-      display.classList.add('slide-in');
-
-      setTimeout(() => {
-        display.classList.remove('slide-in');
-      }, 50);
-    }, 400);
-
-    // Move to next promo
-    currentPromoIndex = (currentPromoIndex + 1) % promoMessages.length;
-  }
-
-  // Cycle promos every 90 seconds
-  reminderInterval = setInterval(() => {
-    if (currentNotification === 'next-song' || currentNotification === 'promo') {
-      showPromo();
-    }
-  }, 90000);
-
-  // Listen for promo triggers from chat commands
+  // Listen for promo triggers from !dcd command
   const promoEventSource = new EventSource('https://tattoostwitch327.onrender.com/promo-events');
   promoEventSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      console.log('[PROMO] Received trigger:', data);
-
-      // Force show the specific promo immediately
-      currentPromoIndex = data.index;
-      showPromo();
+      console.log('[PROMO] Received !dcd trigger:', data);
+      showPromoView();
     } catch (e) {
       console.error('[PROMO] Failed to parse event:', e);
     }
   };
+
+  // Manual queue view trigger (can be called via console or other scripts)
+  window.showQueue = showQueueView;
+  window.showPromo = showPromoView;
+  window.showNowPlaying = () => switchToView('now-playing', 0);
 
   // Start smooth animation loop
   animateProgress();
