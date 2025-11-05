@@ -16,19 +16,20 @@ export async function handler(event) {
     const beforeCounts = await query(
       `SELECT status, COUNT(*) as count
        FROM song_requests
-       WHERE status IN ('pending', 'approved')
+       WHERE status IN ('pending', 'approved', 'playing')
        GROUP BY status`
     );
 
-    // Delete all pending and approved songs
+    // Delete all pending, approved, and playing songs
     await query(
       `DELETE FROM song_requests
-       WHERE status IN ('pending', 'approved')`
+       WHERE status IN ('pending', 'approved', 'playing')`
     );
 
     const counts = {
       pending: 0,
-      approved: 0
+      approved: 0,
+      playing: 0
     };
 
     beforeCounts.forEach(row => {
