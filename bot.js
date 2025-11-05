@@ -492,6 +492,13 @@ client.on('message', async (channel, tags, message, self) => {
     return;
   }
 
+  // !dcd (Dead Center Darts promo)
+  if (text.toLowerCase() === '!dcd') {
+    triggerPromo(0);
+    console.log(`[DCD] Promo triggered by ${uname}`);
+    return;
+  }
+
   // !lastseen
   if (text.toLowerCase().startsWith('!lastseen ')) {
     const targetUser = text.slice(10).trim().toLowerCase();
@@ -604,6 +611,19 @@ app.get('/promo-events', (req, res) => {
     console.log(`[SSE] Promo client disconnected. Total: ${promoClients.length}`);
   });
 });
+
+// Trigger a promo message to connected overlay clients
+function triggerPromo(promoIndex = 0) {
+  const data = JSON.stringify({ index: promoIndex, timestamp: Date.now() });
+  console.log(`[PROMO] Triggering promo ${promoIndex} for ${promoClients.length} clients`);
+  promoClients.forEach(client => {
+    try {
+      client.write(`data: ${data}\n\n`);
+    } catch (err) {
+      console.error('[PROMO] Failed to write to client:', err.message);
+    }
+  });
+}
 
 // Poll for promo triggers from DB
 async function checkPromoTriggers() {
