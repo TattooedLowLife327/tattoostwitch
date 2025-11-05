@@ -606,8 +606,23 @@ let pubSubClient = null;
 async function setupChannelPoints() {
   if (TWITCH_CLIENT_ID && TWITCH_CHANNEL_ID && TWITCH_CHANNEL_OAUTH_TOKEN) {
     try {
+      console.log('[PUBSUB] Setting up channel points...');
+      console.log('[PUBSUB] Client ID:', TWITCH_CLIENT_ID ? 'present' : 'missing');
+      console.log('[PUBSUB] Channel ID:', TWITCH_CHANNEL_ID);
+      console.log('[PUBSUB] Token:', TWITCH_CHANNEL_OAUTH_TOKEN ? `present (${TWITCH_CHANNEL_OAUTH_TOKEN.substring(0, 8)}...)` : 'missing');
+
       const cleanToken = TWITCH_CHANNEL_OAUTH_TOKEN.replace('oauth:', '');
       const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, cleanToken);
+
+      // Validate token before creating PubSub client
+      try {
+        const tokenInfo = await authProvider.getAccessTokenForUser(TWITCH_CHANNEL_ID);
+        console.log('[PUBSUB] Token validated successfully');
+      } catch (tokenErr) {
+        console.error('[PUBSUB] Token validation failed:', tokenErr.message);
+        return;
+      }
+
       pubSubClient = new PubSubClient({ authProvider });
 
       const listener = await pubSubClient.onRedemption(TWITCH_CHANNEL_ID, (message) => {
@@ -617,14 +632,18 @@ async function setupChannelPoints() {
         triggerChannelPointsAlert(username, rewardName);
       });
 
-      console.log('[PUBSUB] Channel points listener enabled for channel:', TWITCH_CHANNEL_ID);
-      console.log('[PUBSUB] Listener ID:', listener);
+      console.log('[PUBSUB] Channel points listener registered for channel:', TWITCH_CHANNEL_ID);
+      console.log('[PUBSUB] Listener:', listener ? 'active' : 'inactive');
     } catch (err) {
       console.error('[PUBSUB] Failed to setup channel points:', err);
-      console.error('[PUBSUB] Error details:', err.message, err.stack);
+      console.error('[PUBSUB] Error details:', err.message);
+      if (err.stack) console.error('[PUBSUB] Stack:', err.stack);
     }
   } else {
-    console.log('[PUBSUB] Channel points disabled - missing TWITCH_CLIENT_ID, TWITCH_CHANNEL_ID, or TWITCH_CHANNEL_OAUTH_TOKEN');
+    console.log('[PUBSUB] Channel points disabled - missing required env vars');
+    console.log('[PUBSUB] - TWITCH_CLIENT_ID:', TWITCH_CLIENT_ID ? 'present' : 'MISSING');
+    console.log('[PUBSUB] - TWITCH_CHANNEL_ID:', TWITCH_CHANNEL_ID ? 'present' : 'MISSING');
+    console.log('[PUBSUB] - TWITCH_CHANNEL_OAUTH_TOKEN:', TWITCH_CHANNEL_OAUTH_TOKEN ? 'present' : 'MISSING');
   }
 }
 
