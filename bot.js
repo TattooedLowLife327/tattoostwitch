@@ -5,12 +5,16 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import SpotifyWebApi from 'spotify-web-api-node';
 import { neon } from '@neondatabase/serverless';
+import { StaticAuthProvider } from '@twurple/auth';
+import { PubSubClient } from '@twurple/pubsub';
 
 // ====== ENV VARIABLES ======
 const {
   TWITCH_BOT_USERNAME,
   TWITCH_CHANNEL,
   TWITCH_OAUTH_TOKEN,
+  TWITCH_CLIENT_ID,
+  TWITCH_CHANNEL_ID,
   SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET,
   SPOTIFY_REFRESH_TOKEN,
@@ -595,14 +599,28 @@ client.on('raided', (channel, username, viewers) => {
   triggerRaidAlert(username, viewers);
 });
 
-// ====== CHANNEL POINTS EVENTS ======
-// Note: Channel points require Twitch EventSub/PubSub integration
-// This handler will work if you have the proper OAuth scopes and EventSub setup
-client.on('redeem', (channel, username, rewardType, tags, message) => {
-  const rewardName = tags['msg-param-reward-name'] || rewardType || 'Unknown Reward';
-  console.log(`[CHANNEL POINTS] ${username} redeemed: ${rewardName}`);
-  triggerChannelPointsAlert(username, rewardName);
-});
+// ====== CHANNEL POINTS (PubSub) ======
+let pubSubClient = null;
+
+if (TWITCH_CLIENT_ID && TWITCH_CHANNEL_ID && TWITCH_OAUTH_TOKEN) {
+  try {
+    const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, TWITCH_OAUTH_TOKEN.replace('oauth:', ''));
+    pubSubClient = new PubSubClient({ authProvider });
+
+    pubSubClient.onRedemption(TWITCH_CHANNEL_ID, (message) => {
+      const username = message.userName;
+      const rewardName = message.rewardTitle;
+      console.log(`[CHANNEL POINTS] ${username} redeemed: ${rewardName}`);
+      triggerChannelPointsAlert(username, rewardName);
+    });
+
+    console.log('[PUBSUB] Channel points listener enabled');
+  } catch (err) {
+    console.error('[PUBSUB] Failed to setup channel points:', err.message);
+  }
+} else {
+  console.log('[PUBSUB] Channel points disabled - missing TWITCH_CLIENT_ID or TWITCH_CHANNEL_ID');
+}
 
 // ====== API ENDPOINTS ======
 app.get('/api/spotify-queue', async (req, res) => {
@@ -787,6 +805,7 @@ setInterval(checkPromoTriggers, 5000);
 app.listen(PORT, () => {
   console.log(`[BOT] Lightweight bot running on port ${PORT}`);
   console.log('[BOT] Twitch IRC: Enabled');
+  console.log(`[BOT] Twitch PubSub: ${pubSubClient ? 'Enabled' : 'Disabled'}`);
   console.log('[BOT] Spotify monitoring: Every 5s');
   console.log('[BOT] Queue processor: Every 10s');
   console.log('[BOT] SSE endpoints: /chat-stream, /promo-events, /raid-events, /channel-points-events');
