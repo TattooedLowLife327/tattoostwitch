@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Raid Alert - Skeleton Run</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 1920px;
+    height: 1080px;
+    background: transparent;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .skeleton-runner {
+    position: absolute;
+    bottom: 20%;
+    left: -200px;
+    width: 80px;
+    height: 120px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Simple skeleton sprite using CSS */
+  .skeleton-runner::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg,
+      transparent 0%,
+      transparent 15%,
+      #ffffff 15%,
+      #ffffff 20%,
+      transparent 20%,
+      transparent 30%,
+      #ffffff 30%,
+      #ffffff 45%,
+      transparent 45%,
+      transparent 55%,
+      #ffffff 55%,
+      #ffffff 70%,
+      transparent 70%,
+      transparent 75%,
+      #ffffff 75%,
+      #ffffff 80%,
+      transparent 80%,
+      transparent 85%,
+      #ffffff 85%,
+      #ffffff 90%,
+      transparent 90%
+    );
+    filter: drop-shadow(0 0 10px #8B5CF6) drop-shadow(0 0 5px #fff);
+    animation: skeletonWalk 0.4s steps(2) infinite;
+  }
+
+  @keyframes skeletonWalk {
+    0% {
+      transform: scaleX(1);
+    }
+    50% {
+      transform: scaleX(-1);
+    }
+    100% {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes runAcross {
+    0% {
+      left: -200px;
+      opacity: 0;
+    }
+    5% {
+      opacity: 1;
+    }
+    95% {
+      opacity: 1;
+    }
+    100% {
+      left: 1920px;
+      opacity: 0;
+    }
+  }
+
+  .skeleton-runner.active {
+    animation: runAcross 3s linear forwards;
+  }
+
+  /* Raid message */
+  .raid-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .raid-message.active {
+    animation: fadeInOut 4s ease forwards;
+  }
+
+  @keyframes fadeInOut {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.8);
+    }
+    10% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    90% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+  }
+
+  .raid-title {
+    font-size: 72px;
+    font-weight: 900;
+    color: #8B5CF6;
+    text-shadow:
+      -2px -2px 0 #000,
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      2px 2px 0 #000,
+      0 0 20px #8B5CF6,
+      0 0 40px #8B5CF6;
+    margin-bottom: 20px;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  .raid-subtitle {
+    font-size: 48px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow:
+      -2px -2px 0 #000,
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      2px 2px 0 #000;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+</style>
+</head>
+<body>
+  <!-- Raid message -->
+  <div class="raid-message" id="raid-message">
+    <div class="raid-title">RAID!</div>
+    <div class="raid-subtitle" id="raid-text"></div>
+  </div>
+
+  <!-- Skeleton runners container -->
+  <div id="skeleton-container"></div>
+
+  <script>
+    const RENDER_URL = 'https://tattoostwitch327.onrender.com';
+
+    // Listen for raid events
+    const raidEventSource = new EventSource(RENDER_URL + '/raid-events');
+    raidEventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('[RAID] Received raid event:', data);
+        triggerRaidAlert(data.username, data.viewers);
+      } catch (e) {
+        console.error('[RAID] Failed to parse event:', e);
+      }
+    };
+
+    function triggerRaidAlert(username, viewers) {
+      // Show raid message
+      const message = document.getElementById('raid-message');
+      const text = document.getElementById('raid-text');
+      text.textContent = `${username} is raiding with ${viewers} viewers!`;
+      message.classList.add('active');
+
+      setTimeout(() => {
+        message.classList.remove('active');
+      }, 4000);
+
+      // Spawn skeletons based on viewer count
+      const skeletonCount = Math.min(Math.ceil(viewers / 10), 20); // 1 skeleton per 10 viewers, max 20
+
+      for (let i = 0; i < skeletonCount; i++) {
+        setTimeout(() => {
+          spawnSkeleton();
+        }, i * 200); // Stagger spawns by 200ms
+      }
+    }
+
+    function spawnSkeleton() {
+      const container = document.getElementById('skeleton-container');
+      const skeleton = document.createElement('div');
+      skeleton.className = 'skeleton-runner';
+
+      // Randomize vertical position slightly
+      const randomBottom = 15 + Math.random() * 15; // Between 15% and 30%
+      skeleton.style.bottom = randomBottom + '%';
+
+      container.appendChild(skeleton);
+
+      // Start animation
+      setTimeout(() => {
+        skeleton.classList.add('active');
+      }, 50);
+
+      // Remove after animation completes
+      setTimeout(() => {
+        skeleton.remove();
+      }, 3500);
+    }
+
+    // Test function (can be called from console)
+    window.testRaid = (username = 'TestUser', viewers = 50) => {
+      triggerRaidAlert(username, viewers);
+    };
+
+    console.log('[RAID ALERT] Listening for raids...');
+    console.log('[RAID ALERT] Test with: testRaid("Username", 100)');
+  </script>
+</body>
+</html>
