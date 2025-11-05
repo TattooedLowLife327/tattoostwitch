@@ -39,6 +39,80 @@ if (!TWITCH_CHANNEL || !SPOTIFY_CLIENT_ID || !DATABASE_URL) {
   process.exit(1);
 }
 
+function stripOauthPrefix(token = '') {
+  return token.startsWith('oauth:') ? token.slice(6) : token;
+}
+
+async function validateTwitchToken(rawToken, label, {
+  expectedLogin,
+  expectedClientId,
+  requiredScopes = []
+} = {}) {
+  if (!rawToken) {
+    console.warn(`[ENV CHECK] ${label} is not set.`);
+    return null;
+  }
+
+  const token = stripOauthPrefix(rawToken);
+
+  try {
+    const response = await fetch('https://id.twitch.tv/oauth2/validate', {
+      headers: { Authorization: `OAuth ${token}` }
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok || !payload) {
+      console.error(`[ENV CHECK] ${label} failed validation (HTTP ${response.status}).`);
+      if (payload?.message) {
+        console.error(`[ENV CHECK] ${label} details: ${payload.message}`);
+      }
+      return null;
+    }
+
+    const foundLogin = payload.login || '';
+    const foundClientId = payload.client_id || '';
+    const scopes = payload.scopes || [];
+    console.log(`[ENV CHECK] ${label} → login=${foundLogin}, client_id=${foundClientId}, scopes=${scopes.join(' ') || 'none'}`);
+
+    if (expectedLogin && foundLogin.toLowerCase() !== expectedLogin.toLowerCase()) {
+      console.error(`[ENV CHECK] ${label} login mismatch: token belongs to "${foundLogin}" but TWITCH_BOT/CHANNEL expects "${expectedLogin}".`);
+    }
+
+    if (expectedClientId && foundClientId && foundClientId !== expectedClientId) {
+      console.error(`[ENV CHECK] ${label} client_id mismatch: token was issued under "${foundClientId}" but TWITCH_CLIENT_ID is "${expectedClientId}". Render EventSub will reject this.`);
+    }
+
+    if (requiredScopes.length > 0) {
+      const missingScopes = requiredScopes.filter(scope => !scopes.includes(scope));
+      if (missingScopes.length > 0) {
+        console.error(`[ENV CHECK] ${label} missing required scopes: ${missingScopes.join(', ')}`);
+      }
+    }
+
+    return payload;
+  } catch (error) {
+    console.error(`[ENV CHECK] ${label} validation errored:`, error.message);
+    return null;
+  }
+}
+
+await validateTwitchToken(TWITCH_OAUTH_TOKEN, 'TWITCH_OAUTH_TOKEN (bot)', {
+  expectedLogin: TWITCH_BOT_USERNAME,
+  requiredScopes: ['chat:read', 'chat:edit']
+});
+
+await validateTwitchToken(TWITCH_CHANNEL_OAUTH_TOKEN, 'TWITCH_CHANNEL_OAUTH_TOKEN (channel)', {
+  expectedLogin: TWITCH_CHANNEL,
+  expectedClientId: TWITCH_CLIENT_ID,
+  requiredScopes: ['channel:read:redemptions']
+});
+
 // ====== DATABASE ======
 const db = neon(DATABASE_URL);
 
@@ -609,7 +683,7 @@ async function setupChannelPoints() {
     try {
       console.log('[EVENTSUB] Setting up channel points for channel:', TWITCH_CHANNEL_ID);
 
-      const cleanToken = TWITCH_CHANNEL_OAUTH_TOKEN.replace('oauth:', '');
+      const cleanToken = stripOauthPrefix(TWITCH_CHANNEL_OAUTH_TOKEN);
       const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, cleanToken, ['channel:read:redemptions']);
       const apiClient = new ApiClient({ authProvider });
 
