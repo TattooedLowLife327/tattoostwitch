@@ -6,7 +6,8 @@ import fetch from 'node-fetch';
 import SpotifyWebApi from 'spotify-web-api-node';
 import { neon } from '@neondatabase/serverless';
 import { StaticAuthProvider } from '@twurple/auth';
-import { PubSubClient } from '@twurple/pubsub';
+import { EventSubWsListener } from '@twurple/eventsub-ws';
+import { ApiClient } from '@twurple/api';
 
 // ====== ENV VARIABLES ======
 const {
@@ -600,31 +601,34 @@ client.on('raided', (channel, username, viewers) => {
   triggerRaidAlert(username, viewers);
 });
 
-// ====== CHANNEL POINTS (PubSub) ======
-let pubSubClient = null;
+// ====== CHANNEL POINTS (EventSub) ======
+let eventSubListener = null;
 
 async function setupChannelPoints() {
   if (TWITCH_CLIENT_ID && TWITCH_CHANNEL_ID && TWITCH_CHANNEL_OAUTH_TOKEN) {
     try {
-      console.log('[PUBSUB] Setting up channel points for channel:', TWITCH_CHANNEL_ID);
+      console.log('[EVENTSUB] Setting up channel points for channel:', TWITCH_CHANNEL_ID);
 
       const cleanToken = TWITCH_CHANNEL_OAUTH_TOKEN.replace('oauth:', '');
       const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, cleanToken, ['channel:read:redemptions']);
-      pubSubClient = new PubSubClient({ authProvider });
+      const apiClient = new ApiClient({ authProvider });
 
-      await pubSubClient.onRedemption(TWITCH_CHANNEL_ID, (message) => {
-        const username = message.userName;
-        const rewardName = message.rewardTitle;
+      eventSubListener = new EventSubWsListener({ apiClient });
+      await eventSubListener.start();
+
+      await eventSubListener.onChannelRedemptionAdd(TWITCH_CHANNEL_ID, (event) => {
+        const username = event.userName;
+        const rewardName = event.rewardTitle;
         console.log(`[CHANNEL POINTS] *** ${username} redeemed: ${rewardName} ***`);
         triggerChannelPointsAlert(username, rewardName);
       });
 
-      console.log('[PUBSUB] Channel points listener ACTIVE');
+      console.log('[EVENTSUB] Channel points listener ACTIVE');
     } catch (err) {
-      console.error('[PUBSUB] Setup failed:', err.message);
+      console.error('[EVENTSUB] Setup failed:', err.message);
     }
   } else {
-    console.log('[PUBSUB] Missing env vars - CLIENT_ID:', !!TWITCH_CLIENT_ID, 'CHANNEL_ID:', !!TWITCH_CHANNEL_ID, 'TOKEN:', !!TWITCH_CHANNEL_OAUTH_TOKEN);
+    console.log('[EVENTSUB] Missing env vars - CLIENT_ID:', !!TWITCH_CLIENT_ID, 'CHANNEL_ID:', !!TWITCH_CHANNEL_ID, 'TOKEN:', !!TWITCH_CHANNEL_OAUTH_TOKEN);
   }
 }
 
@@ -813,7 +817,7 @@ setInterval(checkPromoTriggers, 5000);
 app.listen(PORT, () => {
   console.log(`[BOT] Lightweight bot running on port ${PORT}`);
   console.log('[BOT] Twitch IRC: Enabled');
-  console.log(`[BOT] Twitch PubSub: ${pubSubClient ? 'Enabled' : 'Disabled'}`);
+  console.log(`[BOT] Twitch EventSub: ${eventSubListener ? 'Enabled' : 'Disabled'}`);
   console.log('[BOT] Spotify monitoring: Every 5s');
   console.log('[BOT] Queue processor: Every 10s');
   console.log('[BOT] SSE endpoints: /chat-stream, /promo-events, /raid-events, /channel-points-events');
