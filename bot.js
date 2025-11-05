@@ -502,6 +502,7 @@ client.on('message', async (channel, tags, message, self) => {
 
   // !dcd (Dead Center Darts promo)
   if (text.toLowerCase() === '!dcd') {
+    say('Dead Center Darts - Check us out at www.deadcenterdarts.com');
     triggerPromo(0);
     console.log(`[DCD] Promo triggered by ${uname}`);
     return;
