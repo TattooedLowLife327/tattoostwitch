@@ -129,11 +129,12 @@
 </div>
 
 <script>
-  const ENDPOINT = '/api/scoreboard';
+  const API_BASE = 'https://tattoostwitch327.onrender.com';
+  const ENDPOINT = API_BASE + '/api/scoreboard';
 
   async function loadBackgroundFromSettings() {
     try {
-      const response = await fetch('/api/settings', { cache: 'no-store' });
+      const response = await fetch(API_BASE + '/api/settings', { cache: 'no-store' });
       const settings = await response.json();
       const bgUrl = settings.obsBackgroundUrl;
 
