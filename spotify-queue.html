@@ -706,13 +706,17 @@
       // Store queue data and check for changes
       queueData = data;
 
-      // Auto-show queue when new songs are added
+      // Auto-show queue when new songs are added (approved or pending)
       const currentQueueLength = (data.queue && data.queue.length) || 0;
-      if (currentQueueLength > lastQueueLength && currentView === 'now-playing') {
-        console.log('[QUEUE] New song added, showing queue view');
+      const currentPendingLength = (data.pending && data.pending.length) || 0;
+
+      if ((currentQueueLength > lastQueueLength || currentPendingLength > lastPendingLength) && currentView === 'now-playing') {
+        console.log('[QUEUE] New song request detected, showing queue view');
         showQueueView();
       }
+
       lastQueueLength = currentQueueLength;
+      lastPendingLength = currentPendingLength;
 
     } catch (e){
       document.getElementById('now-title').textContent = 'Queue offline';
@@ -727,6 +731,7 @@
   let viewTimeout = null;
   let currentView = 'now-playing';
   let lastQueueLength = 0;
+  let lastPendingLength = 0;
 
   function switchToView(viewName, duration = 6000) {
     // Clear any existing timeout
@@ -770,17 +775,22 @@
   function showQueueView() {
     const display = document.getElementById('queue-display');
 
-    if (queueData && queueData.queue && queueData.queue.length > 0) {
-      // Get next 3 songs (or fewer if less than 3 in queue)
-      const nextSongs = queueData.queue.slice(0, 3);
+    // Combine approved queue and pending requests
+    const approvedSongs = (queueData && queueData.queue) || [];
+    const pendingSongs = (queueData && queueData.pending) || [];
+    const allSongs = [...approvedSongs, ...pendingSongs].slice(0, 3);
 
-      const songList = nextSongs.map((song, index) => {
+    if (allSongs.length > 0) {
+      const songList = allSongs.map((song, index) => {
+        const isPending = pendingSongs.includes(song);
         const requesterText = song.requester ? `requested by ${song.requester}` : '';
+        const statusBadge = isPending ? '<span style="color: #FFA500; font-size: 10px; font-weight: 700;">(PENDING)</span> ' : '';
+
         return `
-          <div style="display: flex; gap: 10px; padding: 8px 0; ${index < nextSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
+          <div style="display: flex; gap: 10px; padding: 8px 0; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
             <div style="color: var(--purple); font-weight: 700; min-width: 20px;">${index + 1}.</div>
             <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${song.title}</div>
+              <div style="font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${statusBadge}${song.title}</div>
               <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">${song.artist}</div>
               ${requesterText ? `<div style="font-size: 11px; color: var(--purple); margin-top: 2px;">${requesterText}</div>` : ''}
             </div>
