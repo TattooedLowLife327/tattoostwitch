@@ -18,13 +18,26 @@ export async function handler(event) {
     );
 
     // Get approved and playing queue
-    const approvedQueue = await query(
+    let approvedQueue = await query(
       `SELECT id, spotify_id, title, artist, album_art, requester, uri, created_at
        FROM song_requests
        WHERE status IN ('approved', 'playing')
        ORDER BY created_at ASC
        LIMIT 10`
     );
+
+    // If no song requests, fetch from Spotify's actual queue
+    if (!approvedQueue || approvedQueue.length === 0) {
+      try {
+        const spotifyResponse = await fetch('https://tattoostwitch327.onrender.com/api/spotify-queue');
+        if (spotifyResponse.ok) {
+          const spotifyQueue = await spotifyResponse.json();
+          approvedQueue = spotifyQueue.slice(0, 3); // Next 3 songs
+        }
+      } catch (err) {
+        console.error('Failed to fetch Spotify queue:', err);
+      }
+    }
 
     // Get pending requests
     const pendingRequests = await query(
