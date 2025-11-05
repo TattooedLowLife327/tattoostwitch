@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Channel Points Alert</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 1920px;
+    height: 1080px;
+    background: transparent;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .coin-alert {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .coin-container {
+    width: 496px;
+    height: 496px;
+    position: relative;
+    perspective: 1000px;
+  }
+
+  /* Spring up and spin animation */
+  @keyframes coinEntrance {
+    0% {
+      transform: translate(-50%, 100vh) scale(0.5) rotateY(0deg);
+      opacity: 0;
+    }
+    30% {
+      opacity: 1;
+    }
+    50% {
+      transform: translate(-50%, -60%) scale(1.1) rotateY(540deg);
+    }
+    70% {
+      transform: translate(-50%, -48%) scale(0.95) rotateY(900deg);
+    }
+    85% {
+      transform: translate(-50%, -52%) scale(1.02) rotateY(1080deg);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1) rotateY(1080deg);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeOut {
+    0% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.8);
+    }
+  }
+
+  .coin-alert.active {
+    animation: coinEntrance 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 1;
+  }
+
+  .coin-alert.exit {
+    animation: fadeOut 0.5s ease-out forwards;
+  }
+
+  /* Redemption text */
+  .redemption-text {
+    position: absolute;
+    bottom: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    animation: textFadeIn 0.5s ease-out 1s forwards;
+  }
+
+  @keyframes textFadeIn {
+    0% {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  .redemption-user {
+    font-size: 48px;
+    font-weight: 900;
+    color: #8A38F5;
+    text-shadow:
+      -2px -2px 0 #000,
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      2px 2px 0 #000,
+      0 0 20px #8A38F5,
+      0 0 40px #8A38F5;
+    margin-bottom: 10px;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  .redemption-reward {
+    font-size: 36px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow:
+      -2px -2px 0 #000,
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      2px 2px 0 #000;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+</style>
+</head>
+<body>
+  <div class="coin-alert" id="coin-alert">
+    <div class="coin-container">
+      <!-- Purple Coin SVG -->
+      <svg width="496" height="496" viewBox="0 0 496 496" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="outerGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="20" result="blur"/>
+            <feFlood flood-color="#8A38F5" flood-opacity="0.6"/>
+            <feComposite in2="blur" operator="in"/>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+
+          <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="12"/>
+            <feOffset dx="-48" dy="66" result="offsetblur"/>
+            <feFlood flood-color="#ffffff" flood-opacity="0.25"/>
+            <feComposite in2="offsetblur" operator="in"/>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- Outer Circle with Glow -->
+        <circle cx="248" cy="248" r="248" fill="#8A38F5" filter="url(#innerShadow)"/>
+        <circle cx="248" cy="248" r="242" stroke="#2C0F52" stroke-width="12" fill="none"/>
+
+        <!-- Inner Circle with Shadow -->
+        <ellipse cx="254.5" cy="257" rx="199.5" ry="200" fill="#8A38F5" filter="url(#innerShadow)"/>
+        <ellipse cx="254.5" cy="257" rx="193.5" ry="194" stroke="#2C0F52" stroke-width="12" fill="none"/>
+
+        <!-- Center Detail (L symbol area) -->
+        <g filter="url(#innerShadow)">
+          <path d="M 160,168 Q 180,140 220,140 Q 280,140 320,180 Q 340,200 340,240 Q 340,280 320,320 Q 280,360 220,360 Q 180,360 160,332 L 160,168 Z"
+                fill="#9A70D1"
+                stroke="#2C0F52"
+                stroke-width="10"/>
+        </g>
+
+        <!-- L Letter Holes -->
+        <ellipse cx="200" cy="220" rx="30" ry="40" fill="#2C0F52" stroke="white" stroke-width="0.5"/>
+        <ellipse cx="200" cy="300" rx="30" ry="40" fill="#2C0F52" stroke="white" stroke-width="0.5"/>
+        <path d="M 230,260 L 290,260 L 290,300 L 230,340 Z" fill="#2C0F52" stroke="white" stroke-width="0.5"/>
+
+        <!-- Shine Effects -->
+        <ellipse cx="325" cy="100" rx="12" ry="32" fill="#D9D9D9" opacity="0.6" transform="rotate(-54 325 100)"/>
+        <ellipse cx="360" cy="80" rx="24" ry="64" fill="#D9D9D9" opacity="0.4" transform="rotate(-54 360 80)"/>
+      </svg>
+    </div>
+
+    <div class="redemption-text">
+      <div class="redemption-user" id="redemption-user"></div>
+      <div class="redemption-reward" id="redemption-reward"></div>
+    </div>
+  </div>
+
+  <script>
+    const RENDER_URL = 'https://tattoostwitch327.onrender.com';
+
+    // Listen for channel points events
+    const cpEventSource = new EventSource(RENDER_URL + '/channel-points-events');
+    cpEventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('[CP] Received channel points event:', data);
+        triggerChannelPointsAlert(data.username, data.reward);
+      } catch (e) {
+        console.error('[CP] Failed to parse event:', e);
+      }
+    };
+
+    function triggerChannelPointsAlert(username, rewardName) {
+      const alert = document.getElementById('coin-alert');
+      const userEl = document.getElementById('redemption-user');
+      const rewardEl = document.getElementById('redemption-reward');
+
+      userEl.textContent = username;
+      rewardEl.textContent = rewardName;
+
+      alert.classList.remove('exit');
+      alert.classList.add('active');
+
+      // Remove after 4 seconds
+      setTimeout(() => {
+        alert.classList.remove('active');
+        alert.classList.add('exit');
+
+        setTimeout(() => {
+          alert.classList.remove('exit');
+        }, 500);
+      }, 4000);
+    }
+
+    // Test function (can be called from console)
+    window.testChannelPoints = (username = 'TestUser', reward = 'Hydrate Reminder') => {
+      triggerChannelPointsAlert(username, reward);
+    };
+
+    console.log('[CHANNEL POINTS] Listening for redemptions...');
+    console.log('[CHANNEL POINTS] Test with: testChannelPoints("Username", "Reward Name")');
+  </script>
+</body>
+</html>

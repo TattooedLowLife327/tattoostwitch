@@ -595,6 +595,15 @@ client.on('raided', (channel, username, viewers) => {
   triggerRaidAlert(username, viewers);
 });
 
+// ====== CHANNEL POINTS EVENTS ======
+// Note: Channel points require Twitch EventSub/PubSub integration
+// This handler will work if you have the proper OAuth scopes and EventSub setup
+client.on('redeem', (channel, username, rewardType, tags, message) => {
+  const rewardName = tags['msg-param-reward-name'] || rewardType || 'Unknown Reward';
+  console.log(`[CHANNEL POINTS] ${username} redeemed: ${rewardName}`);
+  triggerChannelPointsAlert(username, rewardName);
+});
+
 // ====== API ENDPOINTS ======
 app.get('/api/spotify-queue', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -735,6 +744,39 @@ function triggerRaidAlert(username, viewers) {
   });
 }
 
+// ====== CHANNEL POINTS SSE (for overlay) ======
+const channelPointsClients = [];
+app.get('/channel-points-events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders();
+
+  channelPointsClients.push(res);
+  console.log(`[SSE] Channel Points client connected. Total: ${channelPointsClients.length}`);
+  res.write(':connected\n\n');
+
+  req.on('close', () => {
+    const idx = channelPointsClients.indexOf(res);
+    if (idx !== -1) channelPointsClients.splice(idx, 1);
+    console.log(`[SSE] Channel Points client disconnected. Total: ${channelPointsClients.length}`);
+  });
+});
+
+// Trigger channel points alert to connected overlay clients
+function triggerChannelPointsAlert(username, reward) {
+  const data = JSON.stringify({ username, reward, timestamp: Date.now() });
+  console.log(`[CHANNEL POINTS] ${username} redeemed "${reward}"! Notifying ${channelPointsClients.length} clients`);
+  channelPointsClients.forEach(client => {
+    try {
+      client.write(`data: ${data}\n\n`);
+    } catch (err) {
+      console.error('[CHANNEL POINTS] Failed to write to client:', err.message);
+    }
+  });
+}
+
 // Poll for promo triggers from DB
 async function checkPromoTriggers() {
   // Implementation for promo triggers if needed
@@ -747,5 +789,5 @@ app.listen(PORT, () => {
   console.log('[BOT] Twitch IRC: Enabled');
   console.log('[BOT] Spotify monitoring: Every 5s');
   console.log('[BOT] Queue processor: Every 10s');
-  console.log('[BOT] SSE endpoints: /chat-stream, /promo-events, /raid-events');
+  console.log('[BOT] SSE endpoints: /chat-stream, /promo-events, /raid-events, /channel-points-events');
 });
