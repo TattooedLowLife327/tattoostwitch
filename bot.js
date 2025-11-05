@@ -62,7 +62,8 @@ async function ensureSpotifyToken() {
     const data = await spotify.refreshAccessToken();
     spotify.setAccessToken(data.body['access_token']);
   } catch (err) {
-    console.error('Spotify token refresh failed:', err?.body?.error || err?.message);
+    const errorMsg = err?.body?.error?.message || err?.message || JSON.stringify(err?.body?.error || 'Unknown error');
+    console.error('Spotify token refresh failed:', errorMsg);
   }
 }
 
@@ -132,7 +133,9 @@ async function updateCurrentPlayback() {
               cachedContextUri = contextUri;
               cachedPlaylistName = playlistName;
             } catch (err) {
-              console.error('[SPOTIFY] Failed to get context. Status:', err.statusCode, 'Message:', err.body?.error?.message || err.message);
+              const errorMsg = err.body?.error?.message || err.message || 'Unknown error';
+              const errorDetails = err.statusCode === 429 ? 'Rate limited - using cache' : errorMsg;
+              console.error('[SPOTIFY] Failed to get context. Status:', err.statusCode, 'Message:', errorDetails);
               // Try to use cached value even if it's from a different context (better than nothing)
               if (cachedPlaylistName) {
                 playlistName = cachedPlaylistName;
