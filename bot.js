@@ -588,6 +588,13 @@ client.on('join', (channel, username, self) => {
   }
 });
 
+// ====== RAID EVENTS ======
+client.on('raided', (channel, username, viewers) => {
+  console.log(`[RAID] ${username} raided with ${viewers} viewers!`);
+  say(`Thank you ${username} for the raid with ${viewers} viewers! Welcome to the skeleton crew!`);
+  triggerRaidAlert(username, viewers);
+});
+
 // ====== API ENDPOINTS ======
 app.get('/api/spotify-queue', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -695,6 +702,39 @@ function triggerPromo(promoIndex = 0) {
   });
 }
 
+// ====== RAID SSE (for overlay) ======
+const raidClients = [];
+app.get('/raid-events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders();
+
+  raidClients.push(res);
+  console.log(`[SSE] Raid client connected. Total: ${raidClients.length}`);
+  res.write(':connected\n\n');
+
+  req.on('close', () => {
+    const idx = raidClients.indexOf(res);
+    if (idx !== -1) raidClients.splice(idx, 1);
+    console.log(`[SSE] Raid client disconnected. Total: ${raidClients.length}`);
+  });
+});
+
+// Trigger raid alert to connected overlay clients
+function triggerRaidAlert(username, viewers) {
+  const data = JSON.stringify({ username, viewers, timestamp: Date.now() });
+  console.log(`[RAID] ${username} raided with ${viewers} viewers! Notifying ${raidClients.length} clients`);
+  raidClients.forEach(client => {
+    try {
+      client.write(`data: ${data}\n\n`);
+    } catch (err) {
+      console.error('[RAID] Failed to write to client:', err.message);
+    }
+  });
+}
+
 // Poll for promo triggers from DB
 async function checkPromoTriggers() {
   // Implementation for promo triggers if needed
@@ -707,5 +747,5 @@ app.listen(PORT, () => {
   console.log('[BOT] Twitch IRC: Enabled');
   console.log('[BOT] Spotify monitoring: Every 5s');
   console.log('[BOT] Queue processor: Every 10s');
-  console.log('[BOT] SSE endpoints: /chat-stream, /promo-events');
+  console.log('[BOT] SSE endpoints: /chat-stream, /promo-events, /raid-events');
 });
