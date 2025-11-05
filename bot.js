@@ -89,6 +89,14 @@ async function updateCurrentPlayback() {
       if (trackId !== previousTrackId) {
         console.log('[SPOTIFY] Track changed:', track.name);
 
+        // Mark previous track as completed (if it was from our queue)
+        if (previousTrackId) {
+          await query(
+            'UPDATE song_requests SET status = $1, updated_at = NOW() WHERE spotify_id = $2 AND status = $3',
+            ['completed', previousTrackId, 'playing']
+          );
+        }
+
         // Check if this track is from our queue (check both approved and playing status)
         const queuedSong = await query(
           'SELECT * FROM song_requests WHERE spotify_id = $1 AND status IN ($2, $3) LIMIT 1',
