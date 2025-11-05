@@ -473,6 +473,24 @@ client.on('message', async (channel, tags, message, self) => {
   if (text.toLowerCase() === '!skip' && isPrivileged(tags)) {
     try {
       await ensureSpotifyToken();
+
+      // Check if there's an approved song request waiting
+      const nextSong = await query(
+        'SELECT * FROM song_requests WHERE status = $1 ORDER BY created_at ASC LIMIT 1',
+        ['approved']
+      );
+
+      // If there's an approved song, add it to Spotify queue first
+      if (nextSong && nextSong.length > 0) {
+        try {
+          await spotify.addToQueue(nextSong[0].uri);
+          console.log(`[SKIP] Added next SR to queue: ${nextSong[0].title}`);
+        } catch (err) {
+          console.error('[SKIP] Failed to add to queue:', err.message);
+        }
+      }
+
+      // Then skip
       await spotify.skipToNext();
       say('Song skipped.');
     } catch (e) {
