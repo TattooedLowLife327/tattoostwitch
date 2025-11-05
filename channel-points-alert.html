@@ -29,8 +29,8 @@
   }
 
   .coin-container {
-    width: 496px;
-    height: 496px;
+    width: 320px;
+    height: 320px;
     position: relative;
     perspective: 1000px;
   }
@@ -82,7 +82,7 @@
   /* Redemption text */
   .redemption-text {
     position: absolute;
-    bottom: -80px;
+    bottom: -50px;
     left: 50%;
     transform: translateX(-50%);
     text-align: center;
@@ -102,7 +102,7 @@
   }
 
   .redemption-user {
-    font-size: 48px;
+    font-size: 36px;
     font-weight: 900;
     color: #8A38F5;
     text-shadow:
@@ -117,7 +117,7 @@
   }
 
   .redemption-reward {
-    font-size: 36px;
+    font-size: 26px;
     font-weight: 700;
     color: #ffffff;
     text-shadow:
@@ -133,7 +133,7 @@
   <div class="coin-alert" id="coin-alert">
     <div class="coin-container">
       <!-- Purple Coin SVG -->
-      <svg width="496" height="496" viewBox="0 0 496 496" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 496 496" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
         <defs>
           <filter id="outerGlow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="20" result="blur"/>
