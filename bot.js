@@ -603,25 +603,32 @@ client.on('raided', (channel, username, viewers) => {
 // ====== CHANNEL POINTS (PubSub) ======
 let pubSubClient = null;
 
-if (TWITCH_CLIENT_ID && TWITCH_CHANNEL_ID && TWITCH_CHANNEL_OAUTH_TOKEN) {
-  try {
-    const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, TWITCH_CHANNEL_OAUTH_TOKEN.replace('oauth:', ''));
-    pubSubClient = new PubSubClient({ authProvider });
+async function setupChannelPoints() {
+  if (TWITCH_CLIENT_ID && TWITCH_CHANNEL_ID && TWITCH_CHANNEL_OAUTH_TOKEN) {
+    try {
+      const cleanToken = TWITCH_CHANNEL_OAUTH_TOKEN.replace('oauth:', '');
+      const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, cleanToken);
+      pubSubClient = new PubSubClient({ authProvider });
 
-    pubSubClient.onRedemption(TWITCH_CHANNEL_ID, (message) => {
-      const username = message.userName;
-      const rewardName = message.rewardTitle;
-      console.log(`[CHANNEL POINTS] ${username} redeemed: ${rewardName}`);
-      triggerChannelPointsAlert(username, rewardName);
-    });
+      const listener = await pubSubClient.onRedemption(TWITCH_CHANNEL_ID, (message) => {
+        const username = message.userName;
+        const rewardName = message.rewardTitle;
+        console.log(`[CHANNEL POINTS] ${username} redeemed: ${rewardName}`);
+        triggerChannelPointsAlert(username, rewardName);
+      });
 
-    console.log('[PUBSUB] Channel points listener enabled');
-  } catch (err) {
-    console.error('[PUBSUB] Failed to setup channel points:', err.message);
+      console.log('[PUBSUB] Channel points listener enabled for channel:', TWITCH_CHANNEL_ID);
+      console.log('[PUBSUB] Listener ID:', listener);
+    } catch (err) {
+      console.error('[PUBSUB] Failed to setup channel points:', err);
+      console.error('[PUBSUB] Error details:', err.message, err.stack);
+    }
+  } else {
+    console.log('[PUBSUB] Channel points disabled - missing TWITCH_CLIENT_ID, TWITCH_CHANNEL_ID, or TWITCH_CHANNEL_OAUTH_TOKEN');
   }
-} else {
-  console.log('[PUBSUB] Channel points disabled - missing TWITCH_CLIENT_ID, TWITCH_CHANNEL_ID, or TWITCH_CHANNEL_OAUTH_TOKEN');
 }
+
+setupChannelPoints();
 
 // ====== API ENDPOINTS ======
 app.get('/api/spotify-queue', async (req, res) => {
