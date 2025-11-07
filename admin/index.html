@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#8B5CF6" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
-<title>Tattoo's Stream Control</title>
+<title>Tattoo's Twitch</title>
 <style>
   :root {
     --purple: #8B5CF6;
@@ -35,10 +35,19 @@
   }
 
   h1 {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
     margin-bottom: 30px;
     color: var(--purple);
     font-size: 28px;
+  }
+
+  h1 img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
   }
 
   .login-form {
@@ -50,9 +59,18 @@
   }
 
   .login-form h2 {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
     margin-bottom: 20px;
     color: var(--purple);
+  }
+
+  .login-form h2 img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
   }
 
   input {
@@ -258,7 +276,7 @@
 
 <div id="login-screen" class="container">
   <div class="login-form">
-    <h2>Stream Control Login</h2>
+    <h2><img src="../images/t.png" alt="Twitch Logo">Tattoo's Twitch Login</h2>
     <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" />
     <button class="btn" onclick="login()">Login</button>
     <div id="login-error" class="error hidden"></div>
@@ -266,7 +284,7 @@
 </div>
 
 <div id="admin-screen" class="container hidden">
-  <h1>Stream Control</h1>
+  <h1><img src="../images/t.png" alt="Twitch Logo">Tattoo's Twitch</h1>
 
   <div id="connection-status" class="status disconnected">
     <span class="status-dot"></span>
@@ -325,7 +343,7 @@
 
 <script>
   const API_URL = localStorage.getItem('apiUrl') || 'https://tattoostwitch.netlify.app';
-  const CORRECT_PIN = '92522';
+  const ALLOWED_PINS = ['92522', '8317', '5196'];
 
   let scores = { player1: 0, player2: 0 };
 
@@ -333,8 +351,9 @@
     const pin = document.getElementById('pin-input').value;
     const errorEl = document.getElementById('login-error');
 
-    if (pin === CORRECT_PIN) {
+    if (ALLOWED_PINS.includes(pin)) {
       localStorage.setItem('authenticated', 'true');
+      localStorage.setItem('userPin', pin);
       showAdmin();
     } else {
       errorEl.textContent = 'Incorrect PIN';
@@ -482,10 +501,11 @@
     }
 
     try {
+      const userPin = localStorage.getItem('userPin') || '92522';
       const res = await fetch(`${API_URL}/restart-bot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: CORRECT_PIN })
+        body: JSON.stringify({ pin: userPin })
       });
 
       const data = await res.json();
