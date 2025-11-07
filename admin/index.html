@@ -317,6 +317,7 @@
     <button class="btn" style="margin-bottom: 10px;" onclick="skipSong()">Skip Current Song</button>
     <button class="btn" style="margin-bottom: 10px;" onclick="triggerPromo()">Trigger DCD Promo</button>
     <button class="btn" style="margin-bottom: 10px; background: #ff6b6b;" onclick="resetBot()">Reset Bot (Clear All Queues)</button>
+    <button class="btn" style="margin-bottom: 10px; background: #facc15; color: #111;" onclick="restartBot()">Restart Bot Service</button>
   </div>
 
   <button class="btn logout-btn" onclick="logout()">Logout</button>
@@ -472,6 +473,29 @@
       updatePendingQueue();
     } catch (e) {
       alert('Failed to reset bot');
+    }
+  }
+
+  async function restartBot() {
+    if (!confirm('Restart the bot service? This will disconnect overlays for ~10 seconds.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/restart-bot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: CORRECT_PIN })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to restart bot');
+      }
+
+      alert(data.message || 'Restart scheduled. Give it a few seconds.');
+    } catch (e) {
+      alert(e.message || 'Failed to restart bot');
     }
   }
 

@@ -22,10 +22,12 @@ const {
   SPOTIFY_REFRESH_TOKEN,
   DATABASE_URL,
   NETLIFY_URL,
-  SPECIAL_USERS
+  SPECIAL_USERS,
+  ADMIN_PIN
 } = process.env;
 
 const PORT = process.env.PORT || 8787;
+const ADMIN_PIN_VALUE = ADMIN_PIN || '92522';
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 
 console.log('=== LIGHTWEIGHT BOT STARTING ===');
@@ -749,6 +751,25 @@ app.get('/api/spotify-queue', async (req, res) => {
     console.error('[API] Spotify queue error:', error.message);
     res.json([]);
   }
+});
+
+app.post('/restart-bot', (req, res) => {
+  const providedPin = (req.body?.pin || '').trim();
+
+  if (!providedPin) {
+    return res.status(400).json({ error: 'Missing PIN' });
+  }
+
+  if (providedPin !== ADMIN_PIN_VALUE) {
+    return res.status(401).json({ error: 'Invalid PIN' });
+  }
+
+  console.log('[ADMIN] Restart requested via /restart-bot endpoint. Exiting in 2s.');
+  res.json({ message: 'Bot restart scheduled. Service will be back online in ~10 seconds.' });
+
+  setTimeout(() => {
+    process.exit(0);
+  }, 2000);
 });
 
 // ====== CHAT SSE (for overlay) ======
