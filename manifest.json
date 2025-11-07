@@ -1,6 +1,6 @@
 {
-  "name": "Tattoo's Stream Control",
-  "short_name": "Stream Control",
+  "name": "Tattoo's Twitch",
+  "short_name": "Tattoo's Twitch",
   "description": "Control your Twitch stream overlays and bot",
   "start_url": "/",
   "display": "standalone",
