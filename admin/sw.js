@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stream-control-v1';
+const CACHE_NAME = 'tattoos-twitch-v2';
 const urlsToCache = [
   '/',
   '/index.html',
