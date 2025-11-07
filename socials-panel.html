@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socials Panel</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      font-family: 'Arial', sans-serif;
+      overflow: hidden;
+    }
+
+    .socials-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      height: 80px;
+    }
+
+    .social-item {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      opacity: 0;
+      transform: translateX(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .social-item.active {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .social-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      position: relative;
+      z-index: 2;
+    }
+
+    .social-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .social-handle {
+      background: linear-gradient(135deg, rgba(30, 30, 30, 0.95), rgba(50, 50, 50, 0.95));
+      color: #fff;
+      padding: 12px 20px 12px 40px;
+      border-radius: 35px;
+      font-size: 20px;
+      font-weight: bold;
+      margin-left: -30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+      transform: translateX(-100px);
+      opacity: 0;
+      transition: transform 0.6s ease 0.3s, opacity 0.6s ease 0.3s;
+    }
+
+    .social-item.active .social-handle {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    /* Platform-specific colors */
+    .twitch .social-icon { background: linear-gradient(135deg, #9146FF, #6441A5); }
+    .tiktok .social-icon { background: linear-gradient(135deg, #000000, #EE1D52); }
+    .spotify .social-icon { background: linear-gradient(135deg, #1DB954, #1ED760); }
+    .snapchat .social-icon { background: linear-gradient(135deg, #FFFC00, #FFC900); }
+    .facebook .social-icon { background: linear-gradient(135deg, #1877F2, #0D5DBE); }
+    .youtube .social-icon { background: linear-gradient(135deg, #FF0000, #CC0000); }
+    .discord .social-icon { background: linear-gradient(135deg, #5865F2, #4752C4); }
+    .instagram .social-icon { background: linear-gradient(135deg, #E4405F, #833AB4); }
+  </style>
+</head>
+<body>
+  <div class="socials-container" id="socialsContainer"></div>
+
+  <script>
+    const socials = [
+      { platform: 'twitch', icon: 'images/t.png', handle: 'TheTattooedLowLife' },
+      { platform: 'tiktok', icon: 'images/tt.png', handle: 'TattooedLowLife / LLoGB' },
+      { platform: 'spotify', icon: 'images/spot.png', handle: 'LowLifesofGB' },
+      { platform: 'snapchat', icon: 'images/snap.png', handle: 'TheLowLifesofGB' },
+      { platform: 'facebook', icon: 'images/fb.png', handle: 'The LowLifes of Granboard' },
+      { platform: 'youtube', icon: 'images/yt.png', handle: 'TheTattooedLowLife' },
+      { platform: 'discord', icon: 'images/d.png', handle: 'The LowLifes of Granboard' },
+      { platform: 'instagram', icon: 'images/insta.png', handle: 'TheTattooedLowLife' }
+    ];
+
+    const container = document.getElementById('socialsContainer');
+    let currentIndex = 0;
+
+    // Create all social items
+    socials.forEach((social, index) => {
+      const item = document.createElement('div');
+      item.className = `social-item ${social.platform}`;
+      item.innerHTML = `
+        <div class="social-icon">
+          <img src="${social.icon}" alt="${social.platform}">
+        </div>
+        <div class="social-handle">${social.handle}</div>
+      `;
+      container.appendChild(item);
+    });
+
+    const items = document.querySelectorAll('.social-item');
+
+    function showNext() {
+      // Remove active class from all
+      items.forEach(item => item.classList.remove('active'));
+
+      // Add active class to current
+      items[currentIndex].classList.add('active');
+
+      // Move to next
+      currentIndex = (currentIndex + 1) % socials.length;
+    }
+
+    // Show first item immediately
+    showNext();
+
+    // Cycle every 7 seconds
+    setInterval(showNext, 7000);
+  </script>
+</body>
+</html>
