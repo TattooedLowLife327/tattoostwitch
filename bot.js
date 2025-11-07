@@ -27,7 +27,7 @@ const {
 } = process.env;
 
 const PORT = process.env.PORT || 8787;
-const ADMIN_PIN_VALUE = ADMIN_PIN || '92522';
+const ALLOWED_PINS = ['92522', '8317', '5196'];
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 
 console.log('=== LIGHTWEIGHT BOT STARTING ===');
@@ -760,7 +760,7 @@ app.post('/restart-bot', (req, res) => {
     return res.status(400).json({ error: 'Missing PIN' });
   }
 
-  if (providedPin !== ADMIN_PIN_VALUE) {
+  if (!ALLOWED_PINS.includes(providedPin)) {
     return res.status(401).json({ error: 'Invalid PIN' });
   }
 
