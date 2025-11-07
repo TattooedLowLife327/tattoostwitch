@@ -77,11 +77,23 @@ NETLIFY_URL=https://your-site.netlify.app
 TWITCH_BOT_USERNAME=your_bot_username
 TWITCH_CHANNEL=your_channel_name
 TWITCH_OAUTH_TOKEN=oauth:your_oauth_token
+TWITCH_CHANNEL_ID=your_channel_numeric_id
+TWITCH_CHANNEL_OAUTH_TOKEN=oauth:main_account_token_with_channel_read_redemptions
 SPOTIFY_REFRESH_TOKEN=your_spotify_refresh_token
 DECAPI_TOKEN=your_decapi_token (optional)
 PROMO_MINUTES=15
 SPECIAL_USERS=user1,user2,user3
 ```
+
+### Generate the correct Twitch credentials
+
+1. **Bot OAuth (TWITCH_OAUTH_TOKEN)** – Log into Twitch as your bot account (`TWITCH_BOT_USERNAME`) and generate a chat token with the `chat:read chat:edit` scopes. Since twitchapps.com/tmi was retired, either:
+   - Use the first-party OAuth authorize URL for your Twitch application (e.g. `https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost&scope=chat:read+chat:edit`) while logged into the bot account, then copy the `access_token` from the redirect, or
+   - Use a trusted replacement such as https://twitchtokengenerator.com/ (swiftspiffy) to mint a token for the bot account.
+2. **Channel ID (TWITCH_CHANNEL_ID)** – While logged into your main channel account, grab the numeric ID via https://www.streamweasels.com/tools/convert-twitch-username-to-user-id/ or `helix/users?login=yourchannel`.
+3. **Channel OAuth (TWITCH_CHANNEL_OAUTH_TOKEN)** – Generate an OAuth token for your main account (`TWITCH_CHANNEL`) using the same Twitch application that owns `TWITCH_CLIENT_ID`. The authorization URL should request at least the `channel:read:redemptions` scope (e.g. `https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost&scope=channel:read:redemptions`). Use the `access_token` returned in the redirect and store it with the `oauth:` prefix.
+
+EventSub will only come online when `TWITCH_CLIENT_ID`, `TWITCH_CHANNEL_ID`, and `TWITCH_CHANNEL_OAUTH_TOKEN` are all set and the token actually belongs to the channel owner. If any of the three are missing or mismatched, channel point alerts will never fire.
 
 ## Step 4: Update OBS Browser Sources
 

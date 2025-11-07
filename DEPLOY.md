@@ -79,9 +79,13 @@ In your existing Render web service, add these NEW variables:
 ```
 DATABASE_URL=your_neon_connection_string
 NETLIFY_URL=https://your-site-name.netlify.app
+TWITCH_CHANNEL_ID=your_channel_numeric_id
+TWITCH_CHANNEL_OAUTH_TOKEN=oauth:main_account_token_with_channel_read_redemptions
 ```
 
 Keep all your existing variables (TWITCH_*, SPOTIFY_*, etc.)
+
+> 🔐 Make sure the bot token (`TWITCH_OAUTH_TOKEN`) comes from the bot login (mint it via your Twitch app authorize URL or https://twitchtokengenerator.com/ with the `chat:read chat:edit` scopes), while the channel OAuth token (`TWITCH_CHANNEL_OAUTH_TOKEN`) is generated under your main account with the same Twitch app/client ID and includes the `channel:read:redemptions` scope. If those accounts or scopes are mixed up, EventSub will refuse the connection and redemptions never reach the overlays.
 
 ### B. Redeploy
 Render will auto-deploy when it sees the new env vars. If not, click "Manual Deploy" > "Deploy latest commit"
