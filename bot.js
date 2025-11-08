@@ -622,6 +622,33 @@ client.on('message', async (channel, tags, message, self) => {
     say(`${targetUser} was last seen ${timeAgo} ago.`);
     return;
   }
+
+  // !lurkers - show anonymous viewer count
+  if (text.toLowerCase() === '!lurkers') {
+    try {
+      const streamRes = await fetch(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_CHANNEL}`, {
+        headers: {
+          'Client-ID': TWITCH_CLIENT_ID,
+          'Authorization': `Bearer ${stripOauthPrefix(TWITCH_CHANNEL_OAUTH_TOKEN)}`
+        }
+      });
+      const streamData = await streamRes.json();
+
+      if (!streamData.data || streamData.data.length === 0) {
+        return say('Stream is not currently live.');
+      }
+
+      const totalViewers = streamData.data[0].viewer_count || 0;
+      const chattersCount = lastSeenMap.size; // Active chatters this session
+      const anonymous = Math.max(0, totalViewers - chattersCount);
+
+      say(`We have ${anonymous} anonymous viewers! Don't be shy, log in - Tattoo loves giving out subs to the fan club so they can hate and watch ads!`);
+    } catch (e) {
+      console.error('[!lurkers error]:', e);
+      say('Failed to get lurker count.');
+    }
+    return;
+  }
 });
 
 function formatTimeAgo(ms) {
