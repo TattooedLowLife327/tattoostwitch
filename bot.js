@@ -799,6 +799,38 @@ app.post('/restart-bot', (req, res) => {
   }, 2000);
 });
 
+// ====== SPECIAL USERS MANAGEMENT ======
+app.get('/special-users', (req, res) => {
+  res.json({ users: specialUsersList });
+});
+
+app.post('/special-users', (req, res) => {
+  const { username, action } = req.body || {};
+
+  if (!username || !action) {
+    return res.status(400).json({ error: 'Missing username or action' });
+  }
+
+  const user = username.toLowerCase().trim();
+
+  if (action === 'add') {
+    if (!specialUsersList.includes(user)) {
+      specialUsersList.push(user);
+      console.log(`[ADMIN] Added special user: ${user}`);
+    }
+    res.json({ success: true, users: specialUsersList });
+  } else if (action === 'remove') {
+    const index = specialUsersList.indexOf(user);
+    if (index > -1) {
+      specialUsersList.splice(index, 1);
+      console.log(`[ADMIN] Removed special user: ${user}`);
+    }
+    res.json({ success: true, users: specialUsersList });
+  } else {
+    res.status(400).json({ error: 'Invalid action' });
+  }
+});
+
 // ====== CHAT SSE (for overlay) ======
 const chatClients = [];
 app.get('/chat-stream', (req, res) => {
