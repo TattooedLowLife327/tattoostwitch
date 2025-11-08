@@ -316,26 +316,41 @@
   </div>
 
   <div class="section">
-    <h2>Scoreboard</h2>
-    <div class="scoreboard-controls">
-      <div class="score-section">
-        <label>Player 1 (TATTOO)</label>
-        <div class="score-controls">
-          <button class="score-btn" onclick="updateScore('player1', -1)">-</button>
-          <div class="score-display" id="score1">0</div>
-          <button class="score-btn" onclick="updateScore('player1', 1)">+</button>
+    <h2 id="scoreboard-title">Scoreboard</h2>
+
+    <!-- Scoreboard Mode (default) -->
+    <div id="scoreboard-mode">
+      <div class="scoreboard-controls">
+        <div class="score-section">
+          <label>Player 1 (TATTOO)</label>
+          <div class="score-controls">
+            <button class="score-btn" onclick="updateScore('player1', -1)">-</button>
+            <div class="score-display" id="score1">0</div>
+            <button class="score-btn" onclick="updateScore('player1', 1)">+</button>
+          </div>
+        </div>
+        <div class="score-section">
+          <label>Player 2 (OPEN)</label>
+          <div class="score-controls">
+            <button class="score-btn" onclick="updateScore('player2', -1)">-</button>
+            <div class="score-display" id="score2">0</div>
+            <button class="score-btn" onclick="updateScore('player2', 1)">+</button>
+          </div>
         </div>
       </div>
-      <div class="score-section">
-        <label>Player 2 (OPEN)</label>
-        <div class="score-controls">
-          <button class="score-btn" onclick="updateScore('player2', -1)">-</button>
-          <div class="score-display" id="score2">0</div>
-          <button class="score-btn" onclick="updateScore('player2', 1)">+</button>
-        </div>
-      </div>
+      <button class="btn" style="margin-top: 15px;" onclick="resetScores()">Reset Scores</button>
     </div>
-    <button class="btn" style="margin-top: 15px;" onclick="resetScores()">Reset Scores</button>
+
+    <!-- BRB Countdown Timer Mode (shown when BRB is active) -->
+    <div id="brb-timer-mode" class="hidden" style="text-align: center;">
+      <div style="font-size: 72px; font-weight: 900; color: var(--purple); margin: 20px 0;">
+        <span id="countdown-timer">--:--</span>
+      </div>
+      <div style="color: var(--muted); font-size: 18px; margin-bottom: 20px;">
+        <span id="brb-type-text">BRB</span> - Time Remaining
+      </div>
+      <button class="btn" style="background: #6c757d;" onclick="endBRB()">End BRB Early</button>
+    </div>
   </div>
 
   <div class="section">
@@ -673,14 +688,63 @@
     }
   }
 
+  async function checkBRBStatus() {
+    try {
+      const res = await fetch(`${API_URL}/api/screen-overlay`);
+      const data = await res.json();
+
+      const scoreboardMode = document.getElementById('scoreboard-mode');
+      const brbTimerMode = document.getElementById('brb-timer-mode');
+      const title = document.getElementById('scoreboard-title');
+
+      if (data.isActive && data.type === 'brb' && data.timeRemaining > 0) {
+        // Show BRB timer
+        scoreboardMode.classList.add('hidden');
+        brbTimerMode.classList.remove('hidden');
+        title.textContent = 'BRB Timer';
+
+        // Update countdown
+        const minutes = Math.floor(data.timeRemaining / 60000);
+        const seconds = Math.floor((data.timeRemaining % 60000) / 1000);
+        document.getElementById('countdown-timer').textContent =
+          `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        document.getElementById('brb-type-text').textContent =
+          data.type === 'brb' ? 'BRB' : data.type === 'tech_difficulties' ? 'TECH DIFFICULTIES' : 'STARTING SOON';
+      } else {
+        // Show scoreboard
+        scoreboardMode.classList.remove('hidden');
+        brbTimerMode.classList.add('hidden');
+        title.textContent = 'Scoreboard';
+      }
+    } catch (e) {
+      console.error('Failed to check BRB status:', e);
+    }
+  }
+
+  async function endBRB() {
+    try {
+      await fetch(`${API_URL}/api/screen-overlay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: false })
+      });
+      checkBRBStatus();
+    } catch (e) {
+      alert('Failed to end BRB');
+    }
+  }
+
   function startUpdates() {
     updatePendingQueue();
     checkConnection();
     loadSpecialUsers();
     updateFollowerCount();
+    checkBRBStatus();
     setInterval(updatePendingQueue, 3000);
     setInterval(checkConnection, 10000);
     setInterval(updateFollowerCount, 30000); // Update every 30 seconds
+    setInterval(checkBRBStatus, 1000); // Update BRB timer every second
   }
 
   // Check if already authenticated
