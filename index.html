@@ -774,6 +774,7 @@
 </div>
 
 <script>
+  const API_URL = 'https://tattoostwitch327.onrender.com';
   const CORRECT_PIN = '92522';
   let scores = { player1: 0, player2: 0 };
 
@@ -804,7 +805,7 @@
 
   async function updatePendingQueue() {
     try {
-      const res = await fetch('/api/queue');
+      const res = await fetch(`${API_URL}/api/queue`);
       const data = await res.json();
 
       // Update now playing
@@ -876,7 +877,7 @@
   let isPlaying = false;
   async function togglePlayPause() {
     try {
-      await fetch('/api/play-pause', {
+      await fetch(`${API_URL}/api/play-pause`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: isPlaying ? 'pause' : 'play' })
@@ -891,7 +892,7 @@
   async function updateVolume(volume) {
     document.getElementById('volume-label').textContent = `${volume}%`;
     try {
-      await fetch('/api/set-volume', {
+      await fetch(`${API_URL}/api/set-volume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ volume: parseInt(volume) })
@@ -903,7 +904,7 @@
 
   async function approveSong(spotifyId) {
     try {
-      await fetch('/api/approve-song', {
+      await fetch(`${API_URL}/api/approve-song', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spotifyId })
@@ -916,7 +917,7 @@
 
   async function denySong(spotifyId) {
     try {
-      await fetch('/api/deny-song', {
+      await fetch(`${API_URL}/api/deny-song', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spotifyId })
@@ -932,7 +933,7 @@
     document.getElementById(player === 'player1' ? 'score1' : 'score2').textContent = scores[player];
 
     try {
-      await fetch('/api/scoreboard', {
+      await fetch(`${API_URL}/api/scoreboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scores)
@@ -948,7 +949,7 @@
     document.getElementById('score2').textContent = '0';
 
     try {
-      await fetch('/api/scoreboard', {
+      await fetch(`${API_URL}/api/scoreboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scores)
@@ -962,7 +963,7 @@
 
   async function updateFollowerCount() {
     try {
-      const res = await fetch('/followers');
+      const res = await fetch(`${API_URL}/followers`);
       const data = await res.json();
       const count = data.total || 0;
 
@@ -993,7 +994,7 @@
 
   async function skipSong() {
     try {
-      await fetch('/api/skip-song', { method: 'POST' });
+      await fetch(`${API_URL}/api/skip-song', { method: 'POST' });
       alert('Song skipped');
     } catch (e) {
       alert('Failed to skip song');
@@ -1002,7 +1003,7 @@
 
   async function triggerPromo() {
     try {
-      await fetch('/api/trigger-promo', {
+      await fetch(`${API_URL}/api/trigger-promo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ index: 0 })
@@ -1019,7 +1020,7 @@
     }
 
     try {
-      const res = await fetch('/api/reset-queue', { method: 'POST' });
+      const res = await fetch(`${API_URL}/api/reset-queue', { method: 'POST' });
       const data = await res.json();
       alert(`Bot reset! Cleared ${data.cleared.pending} pending and ${data.cleared.approved} approved songs.`);
       updatePendingQueue();
@@ -1030,7 +1031,7 @@
 
   async function setMode(mode) {
     try {
-      const res = await fetch('/api/mode', {
+      const res = await fetch(`${API_URL}/api/mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode })
@@ -1044,7 +1045,7 @@
 
   async function updateModeDisplay() {
     try {
-      const res = await fetch('/api/mode');
+      const res = await fetch(`${API_URL}/api/mode');
       const data = await res.json();
       const modeText = document.getElementById('mode-text');
 
@@ -1063,14 +1064,14 @@
   async function toggleModeDisplayVisibility() {
     try {
       // Get current settings first
-      const settingsRes = await fetch('/api/settings');
+      const settingsRes = await fetch(`${API_URL}/api/settings`);
       const currentSettings = await settingsRes.json();
 
       // Toggle visibility (settings stores strings, not booleans)
       const currentlyVisible = currentSettings.modeDisplayVisible !== 'false'; // Default to true if not set
       const newVisibility = !currentlyVisible;
 
-      const res = await fetch('/api/settings', {
+      const res = await fetch(`${API_URL}/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1111,7 +1112,7 @@
     const statusText = statusEl.querySelector('span:last-child');
 
     try {
-      const response = await fetch('/api/queue');
+      const response = await fetch(`${API_URL}/api/queue`);
       statusText.textContent = 'Connected';
       statusEl.className = 'status connected';
     } catch (e) {
@@ -1123,7 +1124,7 @@
 
   async function checkModeVisibilityUpdate() {
     try {
-      const response = await fetch('/api/settings', { cache: 'no-store' });
+      const response = await fetch(`${API_URL}/api/settings`, { cache: 'no-store' });
       const settings = await response.json();
       const modeDisplayVisible = settings.modeDisplayVisible !== 'false';
       updateModeVisibilityUI(modeDisplayVisible);
@@ -1134,7 +1135,7 @@
 
   async function activateBRB(minutes) {
     try {
-      await fetch('/api/screen-overlay', {
+      await fetch(`${API_URL}/api/screen-overlay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1151,7 +1152,7 @@
 
   async function activateTechDifficulties() {
     try {
-      await fetch('/api/screen-overlay', {
+      await fetch(`${API_URL}/api/screen-overlay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1167,7 +1168,7 @@
 
   async function deactivateScreen() {
     try {
-      await fetch('/api/screen-overlay', {
+      await fetch(`${API_URL}/api/screen-overlay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1184,7 +1185,7 @@
 
   async function loadSettings() {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch(`${API_URL}/api/settings');
       const data = await res.json();
       specialUsers = data.specialUsers || [];
       document.getElementById('promo-minutes').value = data.promoMinutes || 15;
@@ -1246,7 +1247,7 @@
       const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
       const pwaBackgroundUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
       const obsBackgroundUrl = document.getElementById('obs-background-url').value.trim() || '';
-      const res = await fetch('/api/settings', {
+      const res = await fetch(`${API_URL}/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1293,10 +1294,10 @@
       const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
 
       // Get current settings first
-      const settingsRes = await fetch('/api/settings');
+      const settingsRes = await fetch(`${API_URL}/api/settings`);
       const currentSettings = await settingsRes.json();
 
-      const res = await fetch('/api/settings', {
+      const res = await fetch(`${API_URL}/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

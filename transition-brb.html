@@ -41,7 +41,27 @@
   }
 
   .overlay.tech_difficulties {
-    background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+    background: transparent;
+  }
+
+  .tech-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70%;
+    height: auto;
+    max-height: 90vh;
+    object-fit: contain;
+    display: none;
+  }
+
+  .overlay.tech_difficulties .tech-video {
+    display: block;
+  }
+
+  .overlay.tech_difficulties .content {
+    display: none;
   }
 
   .overlay.starting_soon {
@@ -93,6 +113,9 @@
 </head>
 <body>
 <div class="overlay" id="overlay">
+  <video class="tech-video" id="tech-video" autoplay loop muted playsinline>
+    <source src="images/techdiffs.mp4" type="video/mp4">
+  </video>
   <div class="content">
     <div class="main-text" id="main-text">BRB</div>
     <div class="sub-text" id="sub-text">Be Right Back</div>
@@ -102,7 +125,8 @@
 </div>
 
 <script>
-  const ENDPOINT = '/api/screen-overlay';
+  const API_URL = 'https://tattoostwitch327.onrender.com';
+  const ENDPOINT = `${API_URL}/api/screen-overlay`;
   const overlay = document.getElementById('overlay');
   const mainText = document.getElementById('main-text');
   const subText = document.getElementById('sub-text');
@@ -195,6 +219,13 @@
       countdown.textContent = '';
     }
 
+    // Play tech video if tech_difficulties
+    const techVideo = document.getElementById('tech-video');
+    if (data.overlay_type === 'tech_difficulties' && techVideo) {
+      techVideo.currentTime = 0;
+      techVideo.play().catch(err => console.log('Video autoplay prevented:', err));
+    }
+
     // Show overlay
     overlay.classList.add('active');
   }
@@ -204,6 +235,12 @@
     startTime = null;
     durationMinutes = null;
     countdown.textContent = '';
+
+    // Pause tech video
+    const techVideo = document.getElementById('tech-video');
+    if (techVideo) {
+      techVideo.pause();
+    }
   }
 
   async function checkOverlayStatus() {
