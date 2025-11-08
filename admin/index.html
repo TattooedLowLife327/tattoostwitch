@@ -292,6 +292,25 @@
   </div>
 
   <div class="section">
+    <h2>Follower Goal</h2>
+    <div style="text-align: center;">
+      <div style="font-size: 48px; font-weight: 900; color: var(--purple); margin-bottom: 10px;">
+        <span id="follower-count">---</span> / <span id="follower-goal">500</span>
+      </div>
+      <div style="width: 100%; height: 30px; background: rgba(255,255,255,0.1); border-radius: 15px; overflow: hidden; margin-bottom: 10px;">
+        <div id="follower-progress" style="height: 100%; background: linear-gradient(90deg, var(--purple), #a78bfa); width: 0%; transition: width 0.5s;"></div>
+      </div>
+      <div style="color: var(--muted); font-size: 14px;">
+        <span id="followers-to-go">---</span> followers to go!
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <input type="number" id="goal-input" placeholder="New goal" style="flex: 1; margin: 0;" />
+        <button class="btn-small" onclick="updateGoal()" style="background: var(--purple);">Set Goal</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Pending Song Requests</h2>
     <div id="pending-queue"></div>
   </div>
@@ -621,12 +640,47 @@
     }
   }
 
+  let followerGoal = parseInt(localStorage.getItem('followerGoal')) || 500;
+
+  async function updateFollowerCount() {
+    try {
+      const res = await fetch(`${API_URL}/followers`);
+      const data = await res.json();
+      const count = data.total || 0;
+
+      document.getElementById('follower-count').textContent = count;
+      document.getElementById('follower-goal').textContent = followerGoal;
+
+      const toGo = Math.max(0, followerGoal - count);
+      document.getElementById('followers-to-go').textContent = toGo;
+
+      const percentage = Math.min(100, (count / followerGoal) * 100);
+      document.getElementById('follower-progress').style.width = `${percentage}%`;
+    } catch (e) {
+      console.error('Failed to update follower count:', e);
+    }
+  }
+
+  function updateGoal() {
+    const input = document.getElementById('goal-input');
+    const newGoal = parseInt(input.value);
+
+    if (newGoal && newGoal > 0) {
+      followerGoal = newGoal;
+      localStorage.setItem('followerGoal', newGoal);
+      input.value = '';
+      updateFollowerCount();
+    }
+  }
+
   function startUpdates() {
     updatePendingQueue();
     checkConnection();
     loadSpecialUsers();
+    updateFollowerCount();
     setInterval(updatePendingQueue, 3000);
     setInterval(checkConnection, 10000);
+    setInterval(updateFollowerCount, 30000); // Update every 30 seconds
   }
 
   // Check if already authenticated
