@@ -788,8 +788,9 @@ async function getAppAccessToken() {
     // Get bot user ID
     await getBotUserId();
 
-    // Refresh before expiry
-    setTimeout(getAppAccessToken, (data.expires_in - 300) * 1000);
+    // Refresh before expiry (cap at 1 hour to avoid setTimeout overflow)
+    const refreshDelay = Math.min((data.expires_in - 300) * 1000, 3600000);
+    setTimeout(getAppAccessToken, refreshDelay);
     return appAccessToken;
   } catch (err) {
     console.error('[AUTH] Failed to get app access token:', err.message);
