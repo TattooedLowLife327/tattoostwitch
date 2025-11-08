@@ -849,6 +849,57 @@ app.get('/followers', async (req, res) => {
   }
 });
 
+// ====== BRB / SCREEN OVERLAY STATE ======
+let screenOverlayState = {
+  type: null, // 'brb', 'tech_difficulties', 'starting_soon'
+  isActive: false,
+  endTime: null,
+  durationMinutes: 0
+};
+
+app.get('/api/screen-overlay', (req, res) => {
+  const now = Date.now();
+  if (screenOverlayState.isActive && screenOverlayState.endTime && now >= screenOverlayState.endTime) {
+    // Timer expired
+    screenOverlayState.isActive = false;
+    screenOverlayState.type = null;
+    screenOverlayState.endTime = null;
+  }
+
+  res.json({
+    ...screenOverlayState,
+    timeRemaining: screenOverlayState.endTime ? Math.max(0, screenOverlayState.endTime - now) : 0
+  });
+});
+
+app.post('/api/screen-overlay', (req, res) => {
+  const { type, isActive, durationMinutes } = req.body || {};
+
+  if (!type && !isActive) {
+    // Deactivate
+    screenOverlayState = {
+      type: null,
+      isActive: false,
+      endTime: null,
+      durationMinutes: 0
+    };
+    console.log('[SCREEN] Overlay deactivated');
+    return res.json({ success: true, state: screenOverlayState });
+  }
+
+  if (type && isActive && durationMinutes) {
+    screenOverlayState = {
+      type,
+      isActive: true,
+      endTime: Date.now() + (durationMinutes * 60 * 1000),
+      durationMinutes
+    };
+    console.log(`[SCREEN] ${type} overlay activated for ${durationMinutes} minutes`);
+  }
+
+  res.json({ success: true, state: screenOverlayState });
+});
+
 // ====== CHAT SSE (for overlay) ======
 const chatClients = [];
 app.get('/chat-stream', (req, res) => {
