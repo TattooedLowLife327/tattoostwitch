@@ -331,6 +331,30 @@
   </div>
 
   <div class="section">
+    <h2>Available Commands</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+      <div><strong>!sr [song]</strong> - Request a song</div>
+      <div><strong>!queue</strong> - View current queue</div>
+      <div><strong>!cancel</strong> - Cancel your request</div>
+      <div><strong>!lastseen [user]</strong> - Check last activity</div>
+      <div><strong>!lurkers</strong> - Show anonymous viewers</div>
+      <div><strong>!dcd</strong> - Dead Center Darts promo</div>
+      <div style="color: var(--purple);"><strong>!approve [id]</strong> - Mod only</div>
+      <div style="color: var(--purple);"><strong>!deny [id]</strong> - Mod only</div>
+      <div style="color: var(--purple);"><strong>!skip</strong> - Mod only</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Special Users</h2>
+    <div id="special-users-list" style="margin-bottom: 10px; color: var(--muted); font-size: 14px;"></div>
+    <div style="display: flex; gap: 10px;">
+      <input type="text" id="new-special-user" placeholder="Add username..." style="flex: 1; margin: 0;" />
+      <button class="btn-small" onclick="addSpecialUser()" style="background: var(--purple);">Add</button>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Quick Actions</h2>
     <button class="btn" style="margin-bottom: 10px;" onclick="skipSong()">Skip Current Song</button>
     <button class="btn" style="margin-bottom: 10px;" onclick="triggerPromo()">Trigger DCD Promo</button>
@@ -533,9 +557,74 @@
     }
   }
 
+  async function loadSpecialUsers() {
+    const listEl = document.getElementById('special-users-list');
+    try {
+      const res = await fetch(`${API_URL}/special-users`);
+      const data = await res.json();
+      const users = data.users || [];
+
+      if (users.length === 0) {
+        listEl.innerHTML = '<em>No special users configured</em>';
+      } else {
+        listEl.innerHTML = users.map(u => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 0;">
+            <span>${u}</span>
+            <button onclick="removeSpecialUser('${u}')" style="background: #ff6b6b; border: none; padding: 5px 10px; border-radius: 4px; color: white; cursor: pointer; font-size: 12px;">Remove</button>
+          </div>
+        `).join('');
+      }
+    } catch (e) {
+      listEl.innerHTML = '<em style="color: #ff6b6b;">Failed to load special users</em>';
+    }
+  }
+
+  async function addSpecialUser() {
+    const input = document.getElementById('new-special-user');
+    const username = input.value.trim().toLowerCase();
+
+    if (!username) return;
+
+    try {
+      const res = await fetch(`${API_URL}/special-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, action: 'add' })
+      });
+
+      if (res.ok) {
+        input.value = '';
+        loadSpecialUsers();
+      } else {
+        alert('Failed to add special user');
+      }
+    } catch (e) {
+      alert('Error adding special user');
+    }
+  }
+
+  async function removeSpecialUser(username) {
+    try {
+      const res = await fetch(`${API_URL}/special-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, action: 'remove' })
+      });
+
+      if (res.ok) {
+        loadSpecialUsers();
+      } else {
+        alert('Failed to remove special user');
+      }
+    } catch (e) {
+      alert('Error removing special user');
+    }
+  }
+
   function startUpdates() {
     updatePendingQueue();
     checkConnection();
+    loadSpecialUsers();
     setInterval(updatePendingQueue, 3000);
     setInterval(checkConnection, 10000);
   }
