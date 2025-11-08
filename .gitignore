@@ -20,5 +20,8 @@ build/
 # Figma prototypes and design code
 examplecodefromfigma/
 
+# Admin folder (backup - not in use)
+admin/
+
 #Ignore insiders AI rules
 .github\instructions\codacy.instructions.md
