@@ -831,6 +831,24 @@ app.post('/special-users', (req, res) => {
   }
 });
 
+// ====== FOLLOWER COUNT ======
+app.get('/followers', async (req, res) => {
+  try {
+    const response = await fetch(`https://api.twitch.tv/helix/channels/followers?broadcaster_id=${TWITCH_CHANNEL_ID}`, {
+      headers: {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': `Bearer ${stripOauthPrefix(TWITCH_CHANNEL_OAUTH_TOKEN)}`
+      }
+    });
+
+    const data = await response.json();
+    res.json({ total: data.total || 0 });
+  } catch (e) {
+    console.error('[FOLLOWERS] Error fetching follower count:', e);
+    res.status(500).json({ error: 'Failed to fetch followers', total: 0 });
+  }
+});
+
 // ====== CHAT SSE (for overlay) ======
 const chatClients = [];
 app.get('/chat-stream', (req, res) => {
