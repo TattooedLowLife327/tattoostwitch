@@ -15,29 +15,36 @@
       background: transparent;
       font-family: 'Arial', sans-serif;
       overflow: hidden;
-      width: 800px;
-      height: 150px;
+      width: 1600px;
+      height: 600px;
     }
 
     .socials-container {
       position: absolute;
-      top: 15px;
+      top: 200px;
       left: 15px;
       display: flex;
       align-items: center;
-      width: 770px;
-      height: 120px;
+      width: 1570px;
+      height: 220px;
     }
 
     .social-item {
       position: absolute;
       display: flex;
       align-items: center;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .social-item.active,
+    .social-item.exiting {
+      opacity: 1;
     }
 
     .social-icon {
-      width: 100px;
-      height: 100px;
+      width: 200px;
+      height: 200px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -45,13 +52,19 @@
       z-index: 2;
       flex-shrink: 0;
       opacity: 0;
-      transform: scale(0.5);
-      transition: opacity 0.4s ease, transform 0.4s ease;
+      transform: translateX(-400px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
     }
 
     .social-item.active .social-icon {
       opacity: 1;
-      transform: scale(1);
+      transform: translateX(0);
+    }
+
+    .social-item.exiting .social-icon {
+      opacity: 0;
+      transform: translateX(-400px);
+      transition: opacity 0.6s ease 0.4s, transform 0.6s ease 0.4s;
     }
 
     .social-icon img {
@@ -65,11 +78,11 @@
       color: #fff;
       border: 3px solid #fff;
       border-left: none;
-      padding: 18px 30px 18px 60px;
+      padding: 25px 40px 25px 110px;
       border-radius: 20px;
-      font-size: 28px;
+      font-size: 56px;
       font-weight: bold;
-      margin-left: -40px;
+      margin-left: -80px;
       white-space: nowrap;
       clip-path: inset(0 100% 0 0);
       transition: clip-path 0.6s ease 0.4s;
@@ -78,6 +91,11 @@
     .social-item.active .social-handle {
       clip-path: inset(0 0 0 0);
     }
+
+    .social-item.exiting .social-handle {
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 0.4s ease;
+    }
   </style>
 </head>
 <body>
@@ -85,14 +103,14 @@
 
   <script>
     const socials = [
-      { platform: 'twitch', icon: 'images/t.png', handle: 'TheTattooedLowLife' },
-      { platform: 'tiktok', icon: 'images/tt.png', handle: 'TattooedLowLife LLoGB' },
-      { platform: 'spotify', icon: 'images/spot.png', handle: 'LowLifesofGB' },
-      { platform: 'snapchat', icon: 'images/snap.png', handle: 'TheLowLifesofGB' },
-      { platform: 'facebook', icon: 'images/fb.png', handle: 'The LowLifes of Granboard' },
-      { platform: 'youtube', icon: 'images/yt.png', handle: 'TheTattooedLowLife' },
-      { platform: 'discord', icon: 'images/d.png', handle: 'The LowLifes of Granboard' },
-      { platform: 'instagram', icon: 'images/insta.png', handle: 'TheTattooedLowLife' }
+      { platform: 'twitch', icon: 'images/twitchblackicon.png', handle: 'TheTattooedLowLife' },
+      { platform: 'tiktok', icon: 'images/tiktokblackicon.png', handle: 'TattooedLowLife LLoGB' },
+      { platform: 'spotify', icon: 'images/spotifyblackicon.png', handle: 'LowLifesofGB' },
+      { platform: 'snapchat', icon: 'images/snapchatblackicon.png', handle: 'TheLowLifesofGB' },
+      { platform: 'facebook', icon: 'images/facebookblackicon.png', handle: 'The LowLifes of Granboard' },
+      { platform: 'youtube', icon: 'images/youtubeblackicon.png', handle: 'TheTattooedLowLife' },
+      { platform: 'discord', icon: 'images/discordblackicon.png', handle: 'The LowLifes of Granboard' },
+      { platform: 'instagram', icon: 'images/instagramblackicon.png', handle: 'TheTattooedLowLife' }
     ];
 
     const container = document.getElementById('socialsContainer');
@@ -112,20 +130,34 @@
     });
 
     const items = document.querySelectorAll('.social-item');
+    let isAnimating = false;
 
     function showNext() {
-      // Remove active class from all
-      items.forEach(item => item.classList.remove('active'));
+      if (isAnimating) return;
+      isAnimating = true;
 
-      // Add active class to current
-      items[currentIndex].classList.add('active');
+      const prevIndex = (currentIndex - 1 + socials.length) % socials.length;
 
-      // Move to next
-      currentIndex = (currentIndex + 1) % socials.length;
+      // Exit current item
+      if (currentIndex > 0 || items[prevIndex].classList.contains('active')) {
+        items[prevIndex].classList.add('exiting');
+        items[prevIndex].classList.remove('active');
+      }
+
+      // Enter new item after a short delay
+      setTimeout(() => {
+        items[prevIndex].classList.remove('exiting');
+        items[currentIndex].classList.add('active');
+
+        // Move to next
+        currentIndex = (currentIndex + 1) % socials.length;
+        isAnimating = false;
+      }, 700);
     }
 
     // Show first item immediately
-    showNext();
+    items[0].classList.add('active');
+    currentIndex = 1;
 
     // Cycle every 7 seconds
     setInterval(showNext, 7000);

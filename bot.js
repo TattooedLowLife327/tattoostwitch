@@ -15,6 +15,7 @@ const {
   TWITCH_CHANNEL,
   TWITCH_OAUTH_TOKEN,
   TWITCH_CLIENT_ID,
+  TWITCH_CLIENT_SECRET,
   TWITCH_CHANNEL_ID,
   TWITCH_CHANNEL_OAUTH_TOKEN, // Channel owner's token for PubSub
   SPOTIFY_CLIENT_ID,
@@ -33,10 +34,11 @@ const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').
 console.log('=== LIGHTWEIGHT BOT STARTING ===');
 console.log('TWITCH_CHANNEL:', TWITCH_CHANNEL);
 console.log('DATABASE_URL:', DATABASE_URL ? 'Set' : 'Missing');
+console.log('TWITCH_CLIENT_SECRET:', TWITCH_CLIENT_SECRET ? 'Set' : 'Missing');
 console.log('NETLIFY_URL:', NETLIFY_URL || 'Not set (will use relative paths)');
 console.log('================================');
 
-if (!TWITCH_CHANNEL || !SPOTIFY_CLIENT_ID || !DATABASE_URL) {
+if (!TWITCH_CHANNEL || !SPOTIFY_CLIENT_ID || !DATABASE_URL || !TWITCH_CLIENT_SECRET) {
   console.error('Missing required environment variables');
   process.exit(1);
 }
@@ -419,9 +421,35 @@ client.connect().catch(err => {
   console.error('[TWITCH] Connection failed:', err);
 });
 
-function say(msg) {
-  if (!TWITCH_CHANNEL) return;
-  client.say(`#${TWITCH_CHANNEL}`, msg).catch(() => {});
+async function say(msg) {
+  if (!TWITCH_CHANNEL_ID || !botUserId || !TWITCH_OAUTH_TOKEN) {
+    console.warn('[SAY] Missing channel ID, bot user ID, or bot OAuth token');
+    return;
+  }
+
+  try {
+    const botToken = stripOauthPrefix(TWITCH_OAUTH_TOKEN);
+    const response = await fetch('https://api.twitch.tv/helix/chat/messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${botToken}`,
+        'Client-Id': TWITCH_CLIENT_ID,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        broadcaster_id: TWITCH_CHANNEL_ID,
+        sender_id: botUserId,
+        message: msg
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('[SAY] API error:', response.status, error);
+    }
+  } catch (err) {
+    console.error('[SAY] Failed to send message:', err.message);
+  }
 }
 
 function isPrivileged(tags) {
@@ -429,12 +457,16 @@ function isPrivileged(tags) {
   return !!(badges.broadcaster || badges.moderator);
 }
 
-// ====== CHAT COMMANDS ======
-client.on('message', async (channel, tags, message, self) => {
-  const text = message.trim();
-  const uname = tags['display-name'] || tags.username || '';
+// ====== CHAT MESSAGE HANDLER (EventSub) ======
+async function handleChatMessage(event) {
+  const text = event.messageText.trim();
+  const uname = event.chatterUserName;
+  const userId = event.chatterUserId;
+  const badges = event.badges || {};
+  const color = event.color;
 
-  if (self) return;
+  // Skip bot's own messages
+  if (userId === TWITCH_CHANNEL_ID) return;
 
   // Track last seen
   lastSeenMap.set(uname.toLowerCase(), Date.now());
@@ -456,8 +488,11 @@ client.on('message', async (channel, tags, message, self) => {
   }
 
   if (shouldBroadcast) {
-    broadcastChatMessage(uname, text, tags.emotes, tags.color);
+    broadcastChatMessage(uname, text, event.emotes, color);
   }
+
+  // Check if user is privileged
+  const isPrivileged = !!(badges.broadcaster || badges.moderator);
 
   // !sr command
   if (text.toLowerCase().startsWith('!sr ')) {
@@ -473,7 +508,6 @@ client.on('message', async (channel, tags, message, self) => {
         return;
       }
 
-      // All song requests go to pending for PWA approval
       const result = await query(
         `INSERT INTO song_requests (spotify_id, title, artist, album_art, requester, status, uri)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -518,7 +552,7 @@ client.on('message', async (channel, tags, message, self) => {
   }
 
   // !approve (mods only)
-  if (text.toLowerCase().startsWith('!approve ') && isPrivileged(tags)) {
+  if (text.toLowerCase().startsWith('!approve ') && isPrivileged) {
     const id = parseInt(text.split(' ')[1], 10);
     try {
       const result = await query(
@@ -535,7 +569,7 @@ client.on('message', async (channel, tags, message, self) => {
   }
 
   // !deny (mods only)
-  if (text.toLowerCase().startsWith('!deny ') && isPrivileged(tags)) {
+  if (text.toLowerCase().startsWith('!deny ') && isPrivileged) {
     const id = parseInt(text.split(' ')[1], 10);
     try {
       const result = await query(
@@ -552,17 +586,15 @@ client.on('message', async (channel, tags, message, self) => {
   }
 
   // !skip (mods only)
-  if (text.toLowerCase() === '!skip' && isPrivileged(tags)) {
+  if (text.toLowerCase() === '!skip' && isPrivileged) {
     try {
       await ensureSpotifyToken();
 
-      // Check if there's an approved song request waiting
       const nextSong = await query(
         'SELECT * FROM song_requests WHERE status = $1 ORDER BY created_at ASC LIMIT 1',
         ['approved']
       );
 
-      // If there's an approved song, add it to Spotify queue first
       if (nextSong && nextSong.length > 0) {
         try {
           await spotify.addToQueue(nextSong[0].uri);
@@ -572,7 +604,6 @@ client.on('message', async (channel, tags, message, self) => {
         }
       }
 
-      // Then skip
       await spotify.skipToNext();
       say('Song skipped.');
     } catch (e) {
@@ -639,7 +670,7 @@ client.on('message', async (channel, tags, message, self) => {
       }
 
       const totalViewers = streamData.data[0].viewer_count || 0;
-      const chattersCount = lastSeenMap.size; // Active chatters this session
+      const chattersCount = lastSeenMap.size;
       const anonymous = Math.max(0, totalViewers - chattersCount);
 
       say(`We have ${anonymous} anonymous viewers! Don't be shy, log in - Tattoo loves giving out subs to the fan club so they can hate and watch ads!`);
@@ -649,6 +680,23 @@ client.on('message', async (channel, tags, message, self) => {
     }
     return;
   }
+}
+
+// ====== IRC CHAT COMMANDS (for reading messages) ======
+client.on('message', async (channel, tags, message, self) => {
+  if (self) return;
+
+  // Convert IRC message to EventSub-like format and pass to handler
+  const event = {
+    messageText: message.trim(),
+    chatterUserName: tags['display-name'] || tags.username || '',
+    chatterUserId: tags['user-id'] || '',
+    badges: tags.badges || {},
+    color: tags.color || '#FFFFFF',
+    emotes: tags.emotes
+  };
+
+  handleChatMessage(event);
 });
 
 function formatTimeAgo(ms) {
@@ -704,21 +752,72 @@ client.on('raided', (channel, username, viewers) => {
   triggerRaidAlert(username, viewers);
 });
 
-// ====== CHANNEL POINTS (EventSub) ======
-let eventSubListener = null;
+// ====== APP ACCESS TOKEN & BOT USER ID ======
+let appAccessToken = null;
+let botUserId = null;
 
-async function setupChannelPoints() {
+async function getBotUserId() {
+  try {
+    const response = await fetch(`https://api.twitch.tv/helix/users?login=${TWITCH_BOT_USERNAME}`, {
+      headers: {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': `Bearer ${appAccessToken}`
+      }
+    });
+    const data = await response.json();
+    if (data.data && data.data[0]) {
+      botUserId = data.data[0].id;
+      console.log(`[AUTH] Bot user ID: ${botUserId} (${TWITCH_BOT_USERNAME})`);
+    }
+  } catch (err) {
+    console.error('[AUTH] Failed to get bot user ID:', err.message);
+  }
+}
+
+async function getAppAccessToken() {
+  try {
+    const response = await fetch('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials&scope=channel:bot user:write:chat user:bot`
+    });
+    const data = await response.json();
+    appAccessToken = data.access_token;
+    console.log('[AUTH] App access token obtained');
+
+    // Get bot user ID
+    await getBotUserId();
+
+    // Refresh before expiry
+    setTimeout(getAppAccessToken, (data.expires_in - 300) * 1000);
+    return appAccessToken;
+  } catch (err) {
+    console.error('[AUTH] Failed to get app access token:', err.message);
+    return null;
+  }
+}
+
+// ====== CHANNEL POINTS & CHAT (EventSub) ======
+let eventSubListener = null;
+let apiClient = null;
+
+async function setupEventSub() {
   if (TWITCH_CLIENT_ID && TWITCH_CHANNEL_ID && TWITCH_CHANNEL_OAUTH_TOKEN) {
     try {
-      console.log('[EVENTSUB] Setting up channel points for channel:', TWITCH_CHANNEL_ID);
+      console.log('[EVENTSUB] Setting up EventSub for channel:', TWITCH_CHANNEL_ID);
 
+      // Get app access token for sending messages
+      await getAppAccessToken();
+
+      // Use CHANNEL owner's user token for EventSub
       const cleanToken = stripOauthPrefix(TWITCH_CHANNEL_OAUTH_TOKEN);
-      const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, cleanToken, ['channel:read:redemptions']);
-      const apiClient = new ApiClient({ authProvider });
+      const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, cleanToken);
+      apiClient = new ApiClient({ authProvider });
 
       eventSubListener = new EventSubWsListener({ apiClient });
       await eventSubListener.start();
 
+      // Channel Points
       await eventSubListener.onChannelRedemptionAdd(TWITCH_CHANNEL_ID, (event) => {
         const username = event.userName;
         const rewardName = event.rewardTitle;
@@ -726,16 +825,19 @@ async function setupChannelPoints() {
         triggerChannelPointsAlert(username, rewardName);
       });
 
-      console.log('[EVENTSUB] Channel points listener ACTIVE');
+      // NOTE: Using IRC for chat instead of EventSub - avoids needing user:read:chat scope
+      // Still get Chat Bot badge because we send via API with app access token
+
+      console.log('[EVENTSUB] EventSub listener ACTIVE (channel points)');
     } catch (err) {
       console.error('[EVENTSUB] Setup failed:', err.message);
     }
   } else {
-    console.log('[EVENTSUB] Missing env vars - CLIENT_ID:', !!TWITCH_CLIENT_ID, 'CHANNEL_ID:', !!TWITCH_CHANNEL_ID, 'TOKEN:', !!TWITCH_CHANNEL_OAUTH_TOKEN);
+    console.log('[EVENTSUB] Missing env vars - CLIENT_ID:', !!TWITCH_CLIENT_ID, 'CHANNEL_ID:', !!TWITCH_CHANNEL_ID, 'CHANNEL_OAUTH_TOKEN:', !!TWITCH_CHANNEL_OAUTH_TOKEN);
   }
 }
 
-setupChannelPoints();
+setupEventSub();
 
 // ====== API ENDPOINTS ======
 app.get('/api/spotify-queue', async (req, res) => {
