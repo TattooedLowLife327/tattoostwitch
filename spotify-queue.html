@@ -433,11 +433,10 @@
 </head>
 <body>
 <div class="wrap">
-  <!-- Combined Display Card -->
+  <!-- Now Playing Card -->
   <div class="card now">
     <div class="card-overlay"></div>
     <div class="card-content">
-      <!-- Now Playing View -->
       <div id="now-playing-view" class="view-content">
         <div class="player-layout">
           <!-- Album Art -->
@@ -480,19 +479,22 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Queue View -->
-      <div id="queue-view" class="view-content" style="display: none;">
-        <div class="notification" id="queue-display">
-          <!-- Queue content will be dynamically updated -->
-        </div>
+  <!-- Queue/Promo Card -->
+  <div class="card" style="min-height: 100px;">
+    <!-- Queue View -->
+    <div id="queue-view" class="view-content">
+      <div class="notification" id="queue-display">
+        <!-- Queue content will be dynamically updated -->
       </div>
+    </div>
 
-      <!-- Promo View -->
-      <div id="promo-view" class="view-content" style="display: none;">
-        <div class="notification" id="promo-display">
-          <!-- Promo content will be dynamically updated -->
-        </div>
+    <!-- Promo View -->
+    <div id="promo-view" class="view-content" style="display: none;">
+      <div class="notification" id="promo-display">
+        <!-- Promo content will be dynamically updated -->
       </div>
     </div>
   </div>
@@ -738,37 +740,34 @@
       clearTimeout(viewTimeout);
     }
 
-    const views = {
-      'now-playing': document.getElementById('now-playing-view'),
-      'queue': document.getElementById('queue-view'),
-      'promo': document.getElementById('promo-view')
-    };
+    const queueView = document.getElementById('queue-view');
+    const promoView = document.getElementById('promo-view');
 
-    // Fade out current view
-    if (views[currentView]) {
-      views[currentView].classList.add('fade-out');
+    // Only switch between queue and promo (not now-playing)
+    if (viewName === 'promo') {
+      queueView.classList.add('fade-out');
+      setTimeout(() => {
+        queueView.style.display = 'none';
+        promoView.style.display = 'block';
+        promoView.classList.remove('fade-out');
+        currentView = 'promo';
+
+        // Auto-return to queue after duration
+        if (duration > 0) {
+          viewTimeout = setTimeout(() => {
+            switchToView('queue', 0);
+          }, duration);
+        }
+      }, 400);
+    } else if (viewName === 'queue') {
+      promoView.classList.add('fade-out');
+      setTimeout(() => {
+        promoView.style.display = 'none';
+        queueView.style.display = 'block';
+        queueView.classList.remove('fade-out');
+        currentView = 'queue';
+      }, 400);
     }
-
-    setTimeout(() => {
-      // Hide all views
-      Object.values(views).forEach(view => {
-        if (view) view.style.display = 'none';
-      });
-
-      // Show and fade in target view
-      if (views[viewName]) {
-        views[viewName].style.display = 'block';
-        views[viewName].classList.remove('fade-out');
-        currentView = viewName;
-      }
-
-      // Auto-return to now playing after duration (unless already on now-playing)
-      if (viewName !== 'now-playing' && duration > 0) {
-        viewTimeout = setTimeout(() => {
-          switchToView('now-playing', 0);
-        }, duration);
-      }
-    }, 400);
   }
 
   function showQueueView() {
