@@ -138,7 +138,7 @@ app.use(express.json());
 const spotify = new SpotifyWebApi({
   clientId: SPOTIFY_CLIENT_ID,
   clientSecret: SPOTIFY_CLIENT_SECRET,
-  redirectUri: 'http://localhost:8787/spotify-callback'
+  redirectUri: 'https://tattoostwitch327.onrender.com/spotify-callback'
 });
 if (SPOTIFY_REFRESH_TOKEN) spotify.setRefreshToken(SPOTIFY_REFRESH_TOKEN);
 
