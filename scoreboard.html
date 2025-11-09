@@ -34,6 +34,7 @@
     border: 2px solid rgba(139, 92, 246, 0.5);
     border-radius: 12px;
     overflow: hidden;
+    position: relative;
     transform: scale(1.5);
     transform-origin: top left;
     box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
@@ -49,10 +50,10 @@
 
   .card-content {
     position: relative;
-    padding: 12px 16px;
+    padding: 12px 16px 36px;
     z-index: 2;
-    min-height: 125px;
-    max-height: 125px;
+    min-height: 140px;
+    max-height: none;
     display: flex;
     align-items: center;
   }
@@ -104,6 +105,42 @@
     font-weight: 900;
     line-height: 1;
   }
+
+  .brb-banner {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(139, 92, 246, 0.92);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    letter-spacing: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+    opacity: 0;
+    transform: translateY(100%);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .brb-banner.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .brb-banner .label {
+    color: #fff;
+  }
+
+  .brb-banner .time {
+    color: #fcd34d;
+    font-variant-numeric: tabular-nums;
+    min-width: 60px;
+    text-align: left;
+  }
 </style>
 </head>
 <body>
@@ -126,11 +163,21 @@
       </div>
     </div>
   </div>
+  <div class="brb-banner" id="brb-banner">
+    <span class="label">BRB</span>
+    <span class="time" id="brb-timer-value">00:00</span>
+  </div>
 </div>
 
 <script>
   const API_BASE = 'https://tattoostwitch.netlify.app';
   const ENDPOINT = API_BASE + '/api/scoreboard';
+  const BOT_API_BASE = window.location.origin.includes('localhost')
+    ? 'http://localhost:8787'
+    : 'https://tattoostwitch327.onrender.com';
+  const SCREEN_ENDPOINT = BOT_API_BASE + '/api/screen-overlay';
+  const brbBanner = document.getElementById('brb-banner');
+  const brbTimerValue = document.getElementById('brb-timer-value');
 
   async function loadBackgroundFromSettings() {
     try {
@@ -166,9 +213,69 @@
     }
   }
 
+  function formatTime(ms) {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  function updateBrbBanner(remainingMs) {
+    if (remainingMs > 0) {
+      brbTimerValue.textContent = formatTime(remainingMs);
+      brbBanner.classList.add('visible');
+    } else {
+      brbBanner.classList.remove('visible');
+    }
+  }
+
+  async function syncBrbTimer() {
+    try {
+      const response = await fetch(SCREEN_ENDPOINT, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      const type = data.type || data.overlay_type;
+      const isActive = (typeof data.isActive === 'boolean' ? data.isActive : data.is_active);
+      const durationMinutes = data.durationMinutes ?? data.duration_minutes;
+      const rawTimeRemaining = data.timeRemaining ?? data.time_remaining;
+      const timeRemaining = (rawTimeRemaining === undefined || rawTimeRemaining === null)
+        ? NaN
+        : Number(rawTimeRemaining);
+      const rawEndTime = data.endTime ?? data.end_time;
+      let remainingMs = 0;
+
+      if (isActive && type === 'brb') {
+        if (!Number.isNaN(timeRemaining)) {
+          remainingMs = timeRemaining;
+        } else if (typeof rawEndTime === 'number') {
+          remainingMs = Math.max(0, rawEndTime - Date.now());
+        } else if (typeof rawEndTime === 'string') {
+          const parsedEnd = parseInt(rawEndTime, 10);
+          if (!Number.isNaN(parsedEnd)) {
+            remainingMs = Math.max(0, parsedEnd - Date.now());
+          }
+        } else if (data.start_time && durationMinutes) {
+          const startedAt = new Date(data.start_time).getTime();
+          remainingMs = Math.max(0, (durationMinutes * 60000) - (Date.now() - startedAt));
+        } else if (durationMinutes) {
+          remainingMs = durationMinutes * 60000;
+        }
+      }
+
+      updateBrbBanner(remainingMs);
+    } catch (error) {
+      console.error('Failed to sync BRB timer:', error);
+      updateBrbBanner(0);
+    }
+  }
+
   loadBackgroundFromSettings();
   updateScoreboard();
+  syncBrbTimer();
   setInterval(updateScoreboard, 1000); // Fast updates for instant feedback
+  setInterval(syncBrbTimer, 1000);
 </script>
 </body>
 </html>
