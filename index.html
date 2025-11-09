@@ -892,7 +892,7 @@
   async function updateVolume(volume) {
     document.getElementById('volume-label').textContent = `${volume}%`;
     try {
-      await fetch(`${API_URL}/api/set-volume', {
+      await fetch(`${API_URL}/api/set-volume`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ volume: parseInt(volume) })
