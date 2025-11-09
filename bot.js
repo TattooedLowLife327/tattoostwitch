@@ -409,6 +409,10 @@ const client = new tmi.Client({
   channels: [TWITCH_CHANNEL]
 });
 
+const tmiChannelName = TWITCH_CHANNEL
+  ? (TWITCH_CHANNEL.startsWith('#') ? TWITCH_CHANNEL : `#${TWITCH_CHANNEL}`)
+  : null;
+
 client.on('connected', (addr, port) => {
   console.log(`[TWITCH] Connected to ${addr}:${port}`);
 });
@@ -421,9 +425,9 @@ client.connect().catch(err => {
   console.error('[TWITCH] Connection failed:', err);
 });
 
-async function say(msg) {
+async function sendChatMessageViaHelix(message) {
   if (!TWITCH_CHANNEL_ID || !botUserId || !TWITCH_OAUTH_TOKEN) {
-    console.warn('[SAY] Missing channel ID, bot user ID, or bot OAuth token');
+    console.warn('[SAY] Missing channel ID, bot user ID, or OAuth token for Helix fallback');
     return;
   }
 
@@ -439,17 +443,32 @@ async function say(msg) {
       body: JSON.stringify({
         broadcaster_id: TWITCH_CHANNEL_ID,
         sender_id: botUserId,
-        message: msg
+        message
       })
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('[SAY] API error:', response.status, error);
+      console.error('[SAY] Helix API error:', response.status, error);
     }
   } catch (err) {
-    console.error('[SAY] Failed to send message:', err.message);
+    console.error('[SAY] Helix fallback failed:', err.message);
   }
+}
+
+async function say(msg) {
+  if (!msg) return;
+
+  if (tmiChannelName) {
+    try {
+      await client.say(tmiChannelName, msg);
+      return;
+    } catch (err) {
+      console.error('[SAY] IRC send failed:', err.message);
+    }
+  }
+
+  await sendChatMessageViaHelix(msg);
 }
 
 function isPrivileged(tags) {
@@ -969,8 +988,11 @@ app.post('/special-users', (req, res) => {
   }
 });
 
-// ====== FOLLOWER COUNT ======
-app.get('/followers', async (req, res) => {
+async function fetchFollowerCountWithChannelToken() {
+  if (!TWITCH_CHANNEL_ID || !TWITCH_CHANNEL_OAUTH_TOKEN || !TWITCH_CLIENT_ID) {
+    return null;
+  }
+
   try {
     const response = await fetch(`https://api.twitch.tv/helix/channels/followers?broadcaster_id=${TWITCH_CHANNEL_ID}`, {
       headers: {
@@ -979,8 +1001,74 @@ app.get('/followers', async (req, res) => {
       }
     });
 
+    if (!response.ok) {
+      const body = await response.text();
+      console.error('[FOLLOWERS] Channel token request failed:', response.status, body);
+      return null;
+    }
+
     const data = await response.json();
-    res.json({ total: data.total || 0 });
+    if (typeof data.total === 'number') {
+      return data.total;
+    }
+    return null;
+  } catch (error) {
+    console.error('[FOLLOWERS] Channel token fetch errored:', error.message);
+    return null;
+  }
+}
+
+async function fetchFollowerCountWithAppToken() {
+  if (!TWITCH_CHANNEL_ID || !TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
+    return null;
+  }
+
+  try {
+    const token = appAccessToken || await getAppAccessToken();
+    if (!token) {
+      console.error('[FOLLOWERS] No app access token available for fallback');
+      return null;
+    }
+
+    const response = await fetch(`https://api.twitch.tv/helix/users/follows?to_id=${TWITCH_CHANNEL_ID}`, {
+      headers: {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error('[FOLLOWERS] App token request failed:', response.status, body);
+      return null;
+    }
+
+    const data = await response.json();
+    if (typeof data.total === 'number') {
+      return data.total;
+    }
+    return null;
+  } catch (error) {
+    console.error('[FOLLOWERS] App token fetch errored:', error.message);
+    return null;
+  }
+}
+
+// ====== FOLLOWER COUNT ======
+app.get('/followers', async (req, res) => {
+  try {
+    let total = await fetchFollowerCountWithChannelToken();
+
+    if (typeof total !== 'number') {
+      total = await fetchFollowerCountWithAppToken();
+    }
+
+    if (typeof total === 'number') {
+      return res.json({ total });
+    }
+
+    console.error('[FOLLOWERS] Unable to fetch follower count from any source');
+    return res.status(502).json({ error: 'Failed to fetch followers', total: 0 });
   } catch (e) {
     console.error('[FOLLOWERS] Error fetching follower count:', e);
     res.status(500).json({ error: 'Failed to fetch followers', total: 0 });
