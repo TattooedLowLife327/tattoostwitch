@@ -385,13 +385,14 @@
 <div id="purple-flash" class="purple-flash"></div>
 
 <script>
+  const API_BASE = 'https://tattoostwitch.netlify.app';
   const GOAL = 500;
-  const ACTUAL_FOLLOWERS = 498; // The real follower count
   let followers = 0;
   let goalReached = false;
   let sparklesInitialized = false;
   let initialAnimationDone = false;
   let currentImageIndex = 0;
+  let previousFollowerCount = 0;
 
   const filledClipContainer = document.getElementById('filled-clip-container');
   const followerCount = document.getElementById('follower-count');
@@ -437,11 +438,23 @@
     }
   }
 
-  function animateInitialFill() {
-    const duration = 4000; // 4 seconds - much slower
+  async function fetchFollowerCount() {
+    try {
+      const response = await fetch(`${API_BASE}/api/follower-count`, { cache: 'no-store' });
+      const data = await response.json();
+      return data.followerCount || 0;
+    } catch (error) {
+      console.error('Failed to fetch follower count:', error);
+      return followers; // Return current count if fetch fails
+    }
+  }
+
+  async function animateInitialFill() {
+    const actualFollowers = await fetchFollowerCount();
+    const duration = 4000; // 4 seconds
     const startTime = Date.now();
     const startCount = 0;
-    const endCount = ACTUAL_FOLLOWERS;
+    const endCount = actualFollowers;
 
     // Fade in sparkles
     sparklesContainer.style.opacity = '1';
@@ -462,6 +475,7 @@
         followers = endCount;
         updateProgress();
         initialAnimationDone = true;
+        previousFollowerCount = followers;
       }
     }
 
@@ -577,18 +591,23 @@
   // Initial render - animate from 0 to actual count
   animateInitialFill();
 
-  // Simulate follower gain (only after initial animation)
-  const followerInterval = setInterval(() => {
-    if (initialAnimationDone && followers < GOAL) {
-      followers++;
-      updateProgress();
-
-      // Stop incrementing when goal is reached
-      if (followers >= GOAL) {
-        clearInterval(followerInterval);
+  // Poll for real follower updates every 5 seconds
+  setInterval(async () => {
+    if (initialAnimationDone && !goalReached) {
+      const newCount = await fetchFollowerCount();
+      if (newCount > followers) {
+        // Increment one at a time for smooth animation
+        const incrementInterval = setInterval(() => {
+          if (followers < newCount) {
+            followers++;
+            updateProgress();
+          } else {
+            clearInterval(incrementInterval);
+          }
+        }, 200);
       }
     }
-  }, 3000);
+  }, 5000);
 </script>
 
 </body>
