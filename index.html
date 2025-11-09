@@ -1341,6 +1341,13 @@
     showAdmin();
   }
 
+  // Add Enter key listener for PIN input
+  document.getElementById('pin-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      login();
+    }
+  });
+
   // Register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
