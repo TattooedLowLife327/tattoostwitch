@@ -137,7 +137,8 @@ app.use(express.json());
 // ====== SPOTIFY ======
 const spotify = new SpotifyWebApi({
   clientId: SPOTIFY_CLIENT_ID,
-  clientSecret: SPOTIFY_CLIENT_SECRET
+  clientSecret: SPOTIFY_CLIENT_SECRET,
+  redirectUri: 'http://localhost:8787/spotify-callback'
 });
 if (SPOTIFY_REFRESH_TOKEN) spotify.setRefreshToken(SPOTIFY_REFRESH_TOKEN);
 
@@ -146,8 +147,7 @@ async function ensureSpotifyToken() {
     const data = await spotify.refreshAccessToken();
     spotify.setAccessToken(data.body['access_token']);
   } catch (err) {
-    const errorMsg = err?.body?.error?.message || err?.message || JSON.stringify(err?.body?.error || 'Unknown error');
-    console.error('Spotify token refresh failed:', errorMsg);
+    console.error('Spotify token refresh failed:', err?.body?.error || err?.message || err);
   }
 }
 
@@ -839,6 +839,41 @@ async function setupEventSub() {
 }
 
 setupEventSub();
+
+// ====== SPOTIFY AUTH ENDPOINTS ======
+app.get('/spotify-auth', (req, res) => {
+  const scopes = ['user-read-playback-state', 'user-modify-playback-state', 'user-read-currently-playing'];
+  const authorizeURL = spotify.createAuthorizeURL(scopes);
+  res.redirect(authorizeURL);
+});
+
+app.get('/spotify-callback', async (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.send('<h1>Error: No authorization code received</h1>');
+  }
+
+  try {
+    const data = await spotify.authorizationCodeGrant(code);
+    const accessToken = data.body['access_token'];
+    const refreshToken = data.body['refresh_token'];
+
+    res.send(`
+      <html>
+        <head><title>Spotify Authorization Success</title></head>
+        <body style="font-family: monospace; padding: 40px; background: #111; color: #fff;">
+          <h1 style="color: #1DB954;">Spotify Authorization Successful!</h1>
+          <h2>Refresh Token (add this to your .env file):</h2>
+          <pre style="background: #222; padding: 20px; border-radius: 8px; overflow-wrap: break-word;">SPOTIFY_REFRESH_TOKEN=${refreshToken}</pre>
+          <p>Copy the line above and paste it into your .env file, then restart the bot.</p>
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    res.send(`<h1>Error</h1><pre>${JSON.stringify(err, null, 2)}</pre>`);
+  }
+});
 
 // ====== API ENDPOINTS ======
 app.get('/api/spotify-queue', async (req, res) => {
