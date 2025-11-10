@@ -694,10 +694,19 @@
       Mode Display
       <button onclick="toggleModeDisplayVisibility()" id="mode-visibility-btn" style="background: none; border: none; color: var(--purple); cursor: pointer; font-size: 20px; padding: 5px;" title="Toggle Mode Display Visibility">👁️</button>
     </h2>
-    <div style="display: flex; gap: 10px;">
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
       <button class="btn" style="flex: 1;" onclick="setMode('tourney')">Tourney Play</button>
       <button class="btn" style="flex: 1;" onclick="setMode('lobby')">Open Lobby</button>
       <button class="btn" style="flex: 1;" onclick="setMode('cash')">Cash Sets</button>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn" style="flex: 1;" onclick="setMode('league')">League Play</button>
+      <button class="btn" style="flex: 1;" onclick="setMode('dubs')">Dubs</button>
+    </div>
+    <div style="margin-top: 12px;">
+      <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Dubs Partner Name</label>
+      <input type="text" id="dubs-partner" placeholder="Partner Name" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      <small style="color: var(--muted); font-size: 12px;">Used when Dubs mode is active.</small>
     </div>
     <div id="current-mode" style="text-align: center; margin-top: 10px; color: var(--muted); font-size: 14px;">
       Current: <span id="mode-text" style="color: var(--purple); font-weight: 600;">TOURNEY PLAY</span>
@@ -784,6 +793,7 @@
   const functionApi = (path = '') => `${FUNCTION_API_URL}${path}`;
   const CORRECT_PIN = '92522';
   let scores = { player1: 0, player2: 0 };
+  let dubsPartnerName = '';
   let scoreboardSyncInterval = null;
   let scoreboardSyncPromise = null;
 
@@ -1150,10 +1160,17 @@
       const modeNames = {
         'tourney': 'TOURNEY PLAY',
         'lobby': 'OPEN LOBBY',
-        'cash': 'CASH SETS'
+        'cash': 'CASH SETS',
+        'league': 'LEAGUE PLAY'
       };
 
-      modeText.textContent = modeNames[data.mode] || 'TOURNEY PLAY';
+      if (data.mode === 'dubs') {
+        modeText.textContent = dubsPartnerName
+          ? `DUBS: ${dubsPartnerName}`
+          : 'DUBS MODE';
+      } else {
+        modeText.textContent = modeNames[data.mode] || 'TOURNEY PLAY';
+      }
     } catch (e) {
       console.error('Failed to update mode display:', e);
     }
@@ -1291,6 +1308,8 @@
       document.getElementById('player2-name').value = data.player2Name || 'OPEN';
       document.getElementById('pwa-background-url').value = data.pwaBackgroundUrl || 'images/background.png';
       document.getElementById('obs-background-url').value = data.obsBackgroundUrl || '';
+      document.getElementById('dubs-partner').value = data.dubsPartner || '';
+      dubsPartnerName = data.dubsPartner || '';
       renderSpecialUsers();
       updateScoreboardLabels();
       updatePWABackground();
@@ -1345,6 +1364,7 @@
       const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
       const pwaBackgroundUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
       const obsBackgroundUrl = document.getElementById('obs-background-url').value.trim() || '';
+      const dubsPartner = document.getElementById('dubs-partner').value.trim();
       const res = await fetch(functionApi('/api/settings'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1354,12 +1374,14 @@
           player1Name,
           player2Name,
           pwaBackgroundUrl,
-          obsBackgroundUrl
+          obsBackgroundUrl,
+          dubsPartner
         })
       });
       if (res.ok) {
         updateScoreboardLabels();
         updatePWABackground();
+        dubsPartnerName = dubsPartner;
         alert('Settings saved!');
       } else {
         alert('Failed to save settings');
@@ -1404,7 +1426,8 @@
           player1Name,
           player2Name,
           pwaBackgroundUrl: currentSettings.pwaBackgroundUrl || 'images/background.png',
-          obsBackgroundUrl: currentSettings.obsBackgroundUrl || ''
+          obsBackgroundUrl: currentSettings.obsBackgroundUrl || '',
+          dubsPartner: currentSettings.dubsPartner || ''
         })
       });
 

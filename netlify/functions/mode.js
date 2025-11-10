@@ -21,7 +21,7 @@ export async function handler(event) {
       const { mode } = body;
 
       // Validate mode
-      const validModes = ['tourney', 'lobby', 'cash'];
+      const validModes = ['tourney', 'lobby', 'cash', 'league', 'dubs'];
       if (!validModes.includes(mode)) {
         return errorResponse('Invalid mode. Valid options: tourney, lobby, cash', 400);
       }

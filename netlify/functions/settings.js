@@ -50,7 +50,15 @@ export async function handler(event) {
       const body = JSON.parse(event.body);
 
       // Handle bulk settings update from PWA
-      if (body.specialUsers !== undefined || body.promoMinutes !== undefined || body.player1Name !== undefined || body.player2Name !== undefined || body.pwaBackgroundUrl !== undefined || body.obsBackgroundUrl !== undefined) {
+      if (
+        body.specialUsers !== undefined ||
+        body.promoMinutes !== undefined ||
+        body.player1Name !== undefined ||
+        body.player2Name !== undefined ||
+        body.pwaBackgroundUrl !== undefined ||
+        body.obsBackgroundUrl !== undefined ||
+        body.dubsPartner !== undefined
+      ) {
         const updates = [];
 
         if (body.specialUsers !== undefined) {
@@ -110,6 +118,16 @@ export async function handler(event) {
              ON CONFLICT (key)
              DO UPDATE SET value = $2, updated_at = NOW()`,
             ['obsBackgroundUrl', body.obsBackgroundUrl]
+          ));
+        }
+
+        if (body.dubsPartner !== undefined) {
+          updates.push(query(
+            `INSERT INTO settings (key, value, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (key)
+             DO UPDATE SET value = $2, updated_at = NOW()`,
+            ['dubsPartner', body.dubsPartner]
           ));
         }
 

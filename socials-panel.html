@@ -78,14 +78,27 @@
       color: #fff;
       border: 3px solid #fff;
       border-left: none;
-      padding: 25px 40px 25px 110px;
+      padding: 25px 30px 25px 110px;
       border-radius: 20px;
-      font-size: 56px;
-      font-weight: bold;
       margin-left: -80px;
-      white-space: nowrap;
       clip-path: inset(0 100% 0 0);
       transition: clip-path 0.6s ease 0.4s;
+      width: 900px;
+      height: 130px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .social-handle span {
+      display: block;
+      width: 100%;
+      color: inherit;
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0.5px;
+      white-space: normal;
+      line-height: 1.1;
     }
 
     .social-item.active .social-handle {
@@ -117,17 +130,31 @@
     const container = document.getElementById('socialsContainer');
     let currentIndex = 0;
 
+    function fitHandleText(handleEl) {
+      if (!handleEl) return;
+      const textEl = handleEl.querySelector('span');
+      if (!textEl) return;
+      let fontSize = 54;
+      const minSize = 28;
+      textEl.style.fontSize = fontSize + 'px';
+      while ((textEl.scrollWidth > handleEl.clientWidth - 20 || textEl.scrollHeight > handleEl.clientHeight * 0.95) && fontSize > minSize) {
+        fontSize -= 2;
+        textEl.style.fontSize = fontSize + 'px';
+      }
+    }
+
     // Create all social items
-    socials.forEach((social, index) => {
+    socials.forEach((social) => {
       const item = document.createElement('div');
       item.className = `social-item ${social.platform}`;
       item.innerHTML = `
         <div class="social-icon">
           <img src="${social.icon}" alt="${social.platform}">
         </div>
-        <div class="social-handle">${social.handle}</div>
+        <div class="social-handle"><span>${social.handle}</span></div>
       `;
       container.appendChild(item);
+      fitHandleText(item.querySelector('.social-handle'));
     });
 
     const items = document.querySelectorAll('.social-item');

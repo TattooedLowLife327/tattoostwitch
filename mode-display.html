@@ -111,11 +111,13 @@
   const API_BASE = `${SITE_ORIGIN}/api`;
   const MODE_ENDPOINT = `${API_BASE}/mode`;
   const SETTINGS_ENDPOINT = `${API_BASE}/settings`;
+  let dubsPartner = '';
 
   const modes = {
     'tourney': 'TOURNEY<br>PLAY',
     'lobby': 'OPEN<br>LOBBY',
-    'cash': 'CASH<br>SETS'
+    'cash': 'CASH<br>SETS',
+    'league': 'LEAGUE<br>PLAY'
   };
 
   async function updateMode() {
@@ -125,7 +127,13 @@
 
       const modeDisplay = document.getElementById('mode-display');
       const currentMode = data.mode || 'tourney';
-      modeDisplay.innerHTML = modes[currentMode] || modes.tourney;
+
+      if (currentMode === 'dubs') {
+        const partner = (dubsPartner || 'Partner').toUpperCase();
+        modeDisplay.innerHTML = `DUBS<br>${partner}`;
+      } else {
+        modeDisplay.innerHTML = modes[currentMode] || modes.tourney;
+      }
 
     } catch (error) {
       console.error('Failed to update mode:', error);
@@ -139,6 +147,7 @@
 
       // Default to visible if not set
       const isVisible = settings.modeDisplayVisible !== 'false';
+      dubsPartner = settings.dubsPartner || '';
 
       const card = document.querySelector('.card');
       if (card) {
