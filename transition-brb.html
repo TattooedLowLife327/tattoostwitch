@@ -125,8 +125,18 @@
 </div>
 
 <script>
-  const API_URL = 'https://tattoostwitch327.onrender.com';
-  const ENDPOINT = `${API_URL}/api/screen-overlay`;
+  function getBotOrigin() {
+    if (window.OVERLAY_BOT_BASE) {
+      return window.OVERLAY_BOT_BASE.replace(/\/$/, '');
+    }
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8787';
+    }
+    return 'https://tattoostwitch327.onrender.com';
+  }
+
+  const ENDPOINT = `${getBotOrigin()}/api/screen-overlay`;
   const overlay = document.getElementById('overlay');
   const mainText = document.getElementById('main-text');
   const subText = document.getElementById('sub-text');

@@ -1,12 +1,28 @@
 // Shared database connection utility for Netlify Functions
 import { neon } from '@neondatabase/serverless';
 
-// Use Neon serverless driver with NETLIFY_DATABASE_URL from Neon integration
-const sql = neon(process.env.NETLIFY_DATABASE_URL || '');
+let cachedSql = null;
+
+function getConnection() {
+  if (cachedSql) return cachedSql;
+
+  const connectionString =
+    process.env.NETLIFY_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    '';
+
+  if (!connectionString) {
+    throw new Error('Missing database connection string. Set NETLIFY_DATABASE_URL or DATABASE_URL.');
+  }
+
+  cachedSql = neon(connectionString);
+  return cachedSql;
+}
 
 // Helper function to run a query
 export async function query(sqlString, params = []) {
   try {
+    const sql = getConnection();
     return await sql(sqlString, params);
   } catch (error) {
     console.error('Database query error:', error);

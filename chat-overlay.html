@@ -170,6 +170,17 @@
 </div>
 
 <script>
+  function getBotOrigin() {
+    if (window.OVERLAY_BOT_BASE) {
+      return window.OVERLAY_BOT_BASE.replace(/\/$/, '');
+    }
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8787';
+    }
+    return 'https://tattoostwitch327.onrender.com';
+  }
+
   const MAX_MSG = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max')) || 30;
   const log = document.getElementById('log');
 
@@ -267,7 +278,7 @@
   }
 
   // Connect to bot's chat stream
-  const eventSource = new EventSource('http://localhost:8787/chat-stream');
+  const eventSource = new EventSource(`${getBotOrigin()}/chat-stream`);
 
   eventSource.onmessage = (event) => {
     try {

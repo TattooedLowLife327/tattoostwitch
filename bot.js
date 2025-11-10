@@ -355,10 +355,27 @@ async function checkActionRequests() {
             console.log('[ACTION] Pause requested, executing...');
             await spotify.pause();
           } else if (req.event_type === 'promo_requested') {
-            console.log('[ACTION] Promo requested, executing...');
-            // TODO: Add promo message logic if needed
+            let details = req.details;
+            if (typeof details === 'string') {
+              try {
+                details = JSON.parse(details);
+              } catch {
+                details = {};
+              }
+            }
+            const promoIndex = Number.isInteger(details?.index) ? details.index : 0;
+            console.log(`[ACTION] Promo requested (index ${promoIndex}), executing...`);
+            triggerPromo(promoIndex);
           } else if (req.event_type === 'volume_requested') {
-            const volume = req.details?.volume || 50;
+            let details = req.details;
+            if (typeof details === 'string') {
+              try {
+                details = JSON.parse(details);
+              } catch {
+                details = {};
+              }
+            }
+            const volume = Number.isFinite(details?.volume) ? details.volume : 50;
             console.log(`[ACTION] Volume change to ${volume}% requested, executing...`);
             await spotify.setVolume(volume);
           }
@@ -485,7 +502,12 @@ async function handleChatMessage(event) {
   const color = event.color;
 
   // Skip bot's own messages
-  if (userId === TWITCH_CHANNEL_ID) return;
+  if (
+    (botUserId && userId === botUserId) ||
+    (!botUserId && uname.toLowerCase() === (TWITCH_BOT_USERNAME || '').toLowerCase())
+  ) {
+    return;
+  }
 
   // Track last seen
   lastSeenMap.set(uname.toLowerCase(), Date.now());
@@ -1189,6 +1211,13 @@ function triggerPromo(promoIndex = 0) {
     }
   });
 }
+
+// API endpoint so admin tools can trigger promos directly
+app.post('/api/trigger-promo', (req, res) => {
+  const promoIndex = Number.isInteger(req.body?.index) ? req.body.index : 0;
+  triggerPromo(promoIndex);
+  res.json({ success: true, index: promoIndex });
+});
 
 // ====== RAID SSE (for overlay) ======
 const raidClients = [];

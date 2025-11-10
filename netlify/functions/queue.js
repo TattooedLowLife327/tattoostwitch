@@ -1,6 +1,8 @@
 // GET /api/queue - Get current playing track and queue
 import { query, successResponse, errorResponse, handleOptions, corsHeaders } from './utils/db.js';
 
+const BOT_API_BASE = (process.env.BOT_API_BASE || 'https://tattoostwitch327.onrender.com').replace(/\/$/, '');
+
 export async function handler(event) {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -29,7 +31,7 @@ export async function handler(event) {
     // If no song requests, fetch from Spotify's actual queue
     if (!approvedQueue || approvedQueue.length === 0) {
       try {
-        const spotifyResponse = await fetch('https://tattoostwitch327.onrender.com/api/spotify-queue');
+        const spotifyResponse = await fetch(`${BOT_API_BASE}/api/spotify-queue`);
         if (spotifyResponse.ok) {
           const spotifyQueue = await spotifyResponse.json();
           approvedQueue = spotifyQueue.slice(0, 3); // Next 3 songs

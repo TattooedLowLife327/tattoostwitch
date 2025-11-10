@@ -5,42 +5,42 @@
   <style>
     body {
       margin: 0;
-      padding: 20px;
+      padding: 20px 40px;
       background: transparent;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
     #platform-container {
       display: flex;
-      flex-direction: column;
-      gap: 15px;
+      gap: 40px;
+      align-items: center;
+      justify-content: flex-start;
     }
 
     .platform-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-    }
-
-    .platform-item.hidden {
-      display: none;
+      gap: 14px;
+      min-width: 150px;
     }
 
     .platform-icon {
-      width: 32px;
-      height: 32px;
+      width: 48px;
+      height: 48px;
       object-fit: contain;
     }
 
     .viewer-count {
-      font-size: 24px;
-      font-weight: 600;
+      font-size: 42px;
+      font-weight: 800;
       color: #ffffff;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      letter-spacing: 1px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     }
 
     .error {
-      color: #ff4444;
+      margin-top: 12px;
+      color: #ff6b6b;
       font-size: 14px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     }
@@ -48,47 +48,58 @@
 </head>
 <body>
 
-<div id="platform-container">
-  <div class="platform-item" id="twitch-item">
-    <img class="platform-icon" src="https://sndsyxxcnuwjmjgikzgg.supabase.co/storage/v1/object/public/public.assets/Group%201707478198.png" alt="Twitch">
-    <span class="viewer-count" id="twitch-count">0</span>
-  </div>
-
-  <div class="platform-item" id="facebook-item">
-    <img class="platform-icon" src="https://sndsyxxcnuwjmjgikzgg.supabase.co/storage/v1/object/public/public.assets/Frame%201%20(1).png" alt="Facebook">
-    <span class="viewer-count" id="facebook-count">0</span>
-  </div>
-
-  <div class="platform-item" id="tiktok-item">
-    <img class="platform-icon" src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.png" alt="TikTok">
-    <span class="viewer-count" id="tiktok-count">0</span>
-  </div>
-</div>
+<div id="platform-container"></div>
 
 <div id="error" class="error"></div>
 
 <script>
-const API_URL = ''; // Use relative paths
+function getSiteOrigin() {
+  if (window.OVERLAY_API_BASE) {
+    return window.OVERLAY_API_BASE.replace(/\/$/, '');
+  }
+  if (window.location?.origin && window.location.origin !== 'null') {
+    return window.location.origin;
+  }
+  return 'https://tattoostwitch.netlify.app';
+}
+
+const API_ENDPOINT = `${getSiteOrigin()}/api/viewer-counts`;
+const container = document.getElementById('platform-container');
+
+const PLATFORMS = [
+  { key: 'twitch', label: 'Twitch', icon: 'images/twitchblackicon.png' },
+  { key: 'facebook', label: 'Facebook', icon: 'images/facebookblackicon.png' },
+  { key: 'tiktok', label: 'TikTok', icon: 'images/tiktokblackicon.png' },
+  { key: 'youtube', label: 'YouTube', icon: 'images/youtubeblackicon.png' }
+];
+
+// Build static rows
+PLATFORMS.forEach(({ key, label, icon }) => {
+  const item = document.createElement('div');
+  item.className = 'platform-item';
+  item.id = `${key}-item`;
+  item.innerHTML = `
+    <img class="platform-icon" src="${icon}" alt="${label}">
+    <div class="viewer-count" id="${key}-count">--</div>
+  `;
+  container.appendChild(item);
+});
 
 async function updateViewerCounts() {
   try {
-    const response = await fetch('/api/viewer-counts');
+    const response = await fetch(API_ENDPOINT, { cache: 'no-store' });
 
     if (!response.ok) {
       throw new Error(`API returned ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Viewer counts:', data);
 
-    // Update counts and hide platforms with 0 viewers
-    updatePlatform('twitch', data.twitch);
-    updatePlatform('facebook', data.facebook);
-    updatePlatform('tiktok', data.tiktok);
+    PLATFORMS.forEach(({ key }) => {
+      updatePlatform(key, data[key]);
+    });
 
-    // Clear error
     document.getElementById('error').textContent = '';
-
   } catch (err) {
     console.error('Failed to fetch viewer counts:', err);
     document.getElementById('error').textContent = 'Failed to fetch viewer counts';
@@ -97,21 +108,16 @@ async function updateViewerCounts() {
 
 function updatePlatform(platform, count) {
   const countEl = document.getElementById(`${platform}-count`);
-  const itemEl = document.getElementById(`${platform}-item`);
+  if (!countEl) return;
 
-  if (count === null || count === 0) {
-    // Hide platforms with no viewers
-    itemEl.classList.add('hidden');
-  } else {
-    itemEl.classList.remove('hidden');
-    countEl.textContent = count.toLocaleString();
-  }
+  const displayValue = (count === null || Number.isNaN(count) || typeof count === 'undefined')
+    ? '--'
+    : Number(count).toLocaleString();
+
+  countEl.textContent = displayValue;
 }
 
-// Update immediately on load
 updateViewerCounts();
-
-// Update every 30 seconds
 setInterval(updateViewerCounts, 30000);
 </script>
 

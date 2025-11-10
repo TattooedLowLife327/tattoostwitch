@@ -248,7 +248,18 @@
   </div>
 
   <script>
-    const RENDER_URL = 'https://tattoostwitch327.onrender.com';
+    function getBotOrigin() {
+      if (window.OVERLAY_BOT_BASE) {
+        return window.OVERLAY_BOT_BASE.replace(/\/$/, '');
+      }
+      const host = window.location?.hostname || '';
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return 'http://localhost:8787';
+      }
+      return 'https://tattoostwitch327.onrender.com';
+    }
+
+    const RENDER_URL = getBotOrigin();
 
     // Listen for channel points events
     const cpEventSource = new EventSource(RENDER_URL + '/channel-points-events');

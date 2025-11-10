@@ -767,7 +767,7 @@
       <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">Relative path or full URL (leave empty for transparent)</small>
     </div>
 
-    <button class="btn" onclick="saveSettings()" style="width: 100%; background: #10b981;">Save All Settings</button>
+    <button class="btn" onclick="saveSettings()" style="width: 100%; background: #8400ff;">Save All Settings</button>
   </div>
 
   <button class="btn logout-btn" onclick="logout()">Logout</button>
@@ -784,6 +784,63 @@
   const functionApi = (path = '') => `${FUNCTION_API_URL}${path}`;
   const CORRECT_PIN = '92522';
   let scores = { player1: 0, player2: 0 };
+  let scoreboardSyncInterval = null;
+  let scoreboardSyncPromise = null;
+
+  function setScoreDisplays(newPlayer1, newPlayer2) {
+    scores.player1 = newPlayer1;
+    scores.player2 = newPlayer2;
+    document.getElementById('score1').textContent = newPlayer1;
+    document.getElementById('score2').textContent = newPlayer2;
+  }
+
+  function normalizeScoreboardPayload(payload) {
+    if (!payload) return null;
+    // GET response shape: { player1: { score }, player2: { score } }
+    if (payload.player1 || payload.player2) {
+      return {
+        player1: Number(payload.player1?.score ?? 0) || 0,
+        player2: Number(payload.player2?.score ?? 0) || 0
+      };
+    }
+    // POST response shape: DB row with snake_case columns
+    if (
+      Object.prototype.hasOwnProperty.call(payload, 'player1_score') ||
+      Object.prototype.hasOwnProperty.call(payload, 'player2_score')
+    ) {
+      return {
+        player1: Number(payload.player1_score ?? 0) || 0,
+        player2: Number(payload.player2_score ?? 0) || 0
+      };
+    }
+    return null;
+  }
+
+  async function syncScoreboardFromServer(force = false) {
+    if (!force && scoreboardSyncPromise) {
+      return scoreboardSyncPromise;
+    }
+
+    scoreboardSyncPromise = (async () => {
+      try {
+        const res = await fetch(functionApi('/api/scoreboard'), { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const normalized = normalizeScoreboardPayload(data);
+        if (!normalized) return;
+        const { player1, player2 } = normalized;
+        if (player1 !== scores.player1 || player2 !== scores.player2) {
+          setScoreDisplays(player1, player2);
+        }
+      } catch (e) {
+        console.error('Failed to sync scoreboard:', e);
+      } finally {
+        scoreboardSyncPromise = null;
+      }
+    })();
+
+    return scoreboardSyncPromise;
+  }
 
   function login() {
     const pin = document.getElementById('pin-input').value;
@@ -802,6 +859,10 @@
     localStorage.removeItem('authenticated');
     document.getElementById('admin-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
+    if (scoreboardSyncInterval) {
+      clearInterval(scoreboardSyncInterval);
+      scoreboardSyncInterval = null;
+    }
   }
 
   function showAdmin() {
@@ -936,33 +997,62 @@
   }
 
   async function updateScore(player, delta) {
-    scores[player] = Math.max(0, scores[player] + delta);
-    document.getElementById(player === 'player1' ? 'score1' : 'score2').textContent = scores[player];
-
     try {
-      await fetch(functionApi('/api/scoreboard'), {
+      await syncScoreboardFromServer(true);
+      const updatedScores = {
+        player1: scores.player1,
+        player2: scores.player2
+      };
+      updatedScores[player] = Math.max(0, updatedScores[player] + delta);
+      setScoreDisplays(updatedScores.player1, updatedScores.player2);
+
+      const res = await fetch(functionApi('/api/scoreboard'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(scores)
+        body: JSON.stringify(updatedScores)
       });
+      const responseData = await res.json().catch(() => null);
+
+      if (res.ok) {
+        const normalized = normalizeScoreboardPayload(responseData?.scoreboard || responseData);
+        if (normalized) {
+          setScoreDisplays(normalized.player1, normalized.player2);
+        } else {
+          await syncScoreboardFromServer(true);
+        }
+      } else {
+        console.error('Failed to update scoreboard:', responseData?.error || res.statusText);
+        await syncScoreboardFromServer(true);
+      }
     } catch (e) {
       console.error('Failed to update scoreboard:', e);
+      await syncScoreboardFromServer(true);
     }
   }
 
   async function resetScores() {
-    scores = { player1: 0, player2: 0 };
-    document.getElementById('score1').textContent = '0';
-    document.getElementById('score2').textContent = '0';
+    const resetPayload = { player1: 0, player2: 0 };
+    setScoreDisplays(0, 0);
 
     try {
-      await fetch(functionApi('/api/scoreboard'), {
+      const res = await fetch(functionApi('/api/scoreboard'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(scores)
+        body: JSON.stringify(resetPayload)
       });
+      const responseData = await res.json().catch(() => null);
+      if (res.ok) {
+        const normalized = normalizeScoreboardPayload(responseData?.scoreboard || responseData);
+        if (normalized) {
+          setScoreDisplays(normalized.player1, normalized.player2);
+        }
+      } else {
+        console.error('Failed to reset scoreboard:', responseData?.error || res.statusText);
+      }
     } catch (e) {
       console.error('Failed to reset scoreboard:', e);
+    } finally {
+      await syncScoreboardFromServer(true);
     }
   }
 
@@ -1008,15 +1098,16 @@
     }
   }
 
-  async function triggerPromo() {
+  async function triggerPromo(index = 0) {
     try {
-      await fetch(functionApi('/api/trigger-promo'), {
+      await fetch(botApi('/api/trigger-promo'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: 0 })
+        body: JSON.stringify({ index })
       });
       alert('Promo triggered');
     } catch (e) {
+      console.error('Failed to trigger promo:', e);
       alert('Failed to trigger promo');
     }
   }
@@ -1336,6 +1427,9 @@
     loadSettings();
     checkModeVisibilityUpdate();
     updateFollowerCount();
+    syncScoreboardFromServer();
+    if (scoreboardSyncInterval) clearInterval(scoreboardSyncInterval);
+    scoreboardSyncInterval = setInterval(syncScoreboardFromServer, 2000);
     setInterval(updatePendingQueue, 3000);
     setInterval(checkConnection, 10000);
     setInterval(updateModeDisplay, 5000);
