@@ -1162,17 +1162,37 @@
   }
 
   function handleDubsToggle(checked) {
+    const partnerValue = document.getElementById('dubs-partner').value.trim();
+    if (checked && !partnerValue) {
+      alert('Enter your partner name before enabling Dubs mode.');
+      dubsEnabled = false;
+      applyDubsUIState();
+      updateModeDisplay();
+      return;
+    }
+
     dubsEnabled = checked;
     applyDubsUIState();
     updateModeDisplay();
+
+    if (!checked) {
+      persistDubsSettings(partnerValue, { silent: true });
+    }
   }
 
   async function saveDubsSettings() {
     const partnerValue = document.getElementById('dubs-partner').value.trim();
+    await persistDubsSettings(partnerValue, { silent: false });
+  }
+
+  async function persistDubsSettings(partnerValue, { silent = false } = {}) {
     if (dubsEnabled && !partnerValue) {
-      alert('Enter your partner name before enabling Dubs mode.');
+      if (!silent) {
+        alert('Enter your partner name before enabling Dubs mode.');
+      }
       dubsEnabled = false;
       applyDubsUIState();
+      updateModeDisplay();
       return;
     }
 
@@ -1191,9 +1211,15 @@
       dubsPartnerName = partnerValue;
       applyDubsUIState();
       await loadSettings(); // reload settings so toggle + OBS pick up change immediately
-      alert('Dubs settings saved!');
+      if (!silent) {
+        alert('Dubs settings saved!');
+      }
     } catch (err) {
-      alert('Failed to save dubs settings');
+      if (!silent) {
+        alert('Failed to save dubs settings');
+      } else {
+        console.error('[Dubs Settings] Failed to save:', err);
+      }
     }
   }
   function toggleDubsMode() {

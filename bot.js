@@ -31,6 +31,7 @@ const PORT = process.env.PORT || 8787;
 const ALLOWED_PINS = ['92522', '8317', '5196'];
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 const LURKER_ANNOUNCE_INTERVAL = 30 * 60 * 1000; // 30 minutes
+const SR_REMINDER_INTERVAL = 15 * 60 * 1000; // 15 minutes
 
 console.log('=== LIGHTWEIGHT BOT STARTING ===');
 console.log('TWITCH_CHANNEL:', TWITCH_CHANNEL);
@@ -1272,6 +1273,18 @@ function triggerRaidAlert(username, viewers) {
   });
 }
 
+async function announceSongRequests() {
+  try {
+    const stats = await fetchAnonymousViewerStats();
+    if (!stats || stats.totalViewers <= 0) {
+      return;
+    }
+    await say('Wanna hear a song!? Use !sr with the song title and artist name!');
+  } catch (error) {
+    console.error('[SR REMINDER] Failed:', error);
+  }
+}
+
 // ====== CHANNEL POINTS SSE (for overlay) ======
 const channelPointsClients = [];
 app.get('/channel-points-events', (req, res) => {
@@ -1311,6 +1324,7 @@ async function checkPromoTriggers() {
 }
 setInterval(checkPromoTriggers, 5000);
 setInterval(announceAnonymousLurkers, LURKER_ANNOUNCE_INTERVAL);
+setInterval(announceSongRequests, SR_REMINDER_INTERVAL);
 
 // ====== START SERVER ======
 app.listen(PORT, () => {
