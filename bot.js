@@ -30,6 +30,7 @@ const {
 const PORT = process.env.PORT || 8787;
 const ALLOWED_PINS = ['92522', '8317', '5196'];
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
+const LURKER_ANNOUNCE_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
 console.log('=== LIGHTWEIGHT BOT STARTING ===');
 console.log('TWITCH_CHANNEL:', TWITCH_CHANNEL);
@@ -698,28 +699,47 @@ async function handleChatMessage(event) {
   // !lurkers - show anonymous viewer count
   if (text.toLowerCase() === '!lurkers') {
     try {
-      const streamRes = await fetch(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_CHANNEL}`, {
-        headers: {
-          'Client-ID': TWITCH_CLIENT_ID,
-          'Authorization': `Bearer ${stripOauthPrefix(TWITCH_CHANNEL_OAUTH_TOKEN)}`
-        }
-      });
-      const streamData = await streamRes.json();
-
-      if (!streamData.data || streamData.data.length === 0) {
+      const stats = await fetchAnonymousViewerStats();
+      if (!stats) {
         return say('Stream is not currently live.');
       }
-
-      const totalViewers = streamData.data[0].viewer_count || 0;
-      const chattersCount = lastSeenMap.size;
-      const anonymous = Math.max(0, totalViewers - chattersCount);
-
-      say(`We have ${anonymous} anonymous viewers! Don't be shy, log in - Tattoo loves giving out subs to the fan club so they can hate and watch ads!`);
+      say(`We have ${stats.anonymous} anonymous viewers! Don't be shy, log in - Tattoo loves giving out subs to the fan club so they can hate and watch ads!`);
     } catch (e) {
       console.error('[!lurkers error]:', e);
       say('Failed to get lurker count.');
     }
     return;
+  }
+}
+
+async function fetchAnonymousViewerStats() {
+  const streamRes = await fetch(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_CHANNEL}`, {
+    headers: {
+      'Client-ID': TWITCH_CLIENT_ID,
+      'Authorization': `Bearer ${stripOauthPrefix(TWITCH_CHANNEL_OAUTH_TOKEN)}`
+    }
+  });
+  const streamData = await streamRes.json();
+
+  if (!streamData.data || streamData.data.length === 0) {
+    return null;
+  }
+
+  const totalViewers = streamData.data[0].viewer_count || 0;
+  const chattersCount = lastSeenMap.size;
+  const anonymous = Math.max(0, totalViewers - chattersCount);
+  return { totalViewers, chattersCount, anonymous };
+}
+
+async function announceAnonymousLurkers() {
+  try {
+    const stats = await fetchAnonymousViewerStats();
+    if (!stats || stats.anonymous <= 0) {
+      return;
+    }
+    await say(`We have ${stats.anonymous} anonymous lurkers! Don't be shy, log in!!`);
+  } catch (error) {
+    console.error('[LURKER ANNOUNCER] Failed:', error);
   }
 }
 
@@ -1290,6 +1310,7 @@ async function checkPromoTriggers() {
   // Implementation for promo triggers if needed
 }
 setInterval(checkPromoTriggers, 5000);
+setInterval(announceAnonymousLurkers, LURKER_ANNOUNCE_INTERVAL);
 
 // ====== START SERVER ======
 app.listen(PORT, () => {

@@ -511,10 +511,8 @@
   }
 
   .promo-image-only img {
-    max-width: 92%;
-    max-height: 92%;
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
   }
 </style>
@@ -960,16 +958,19 @@
 
     let html;
     if (allSongs.length > 0) {
-      const songList = allSongs.map((song) => {
+      const songList = allSongs.map((song, index) => {
         const requesterText = song.requester
           ? `<span style="color: var(--purple); font-weight: 800; letter-spacing: 0.6px;">SR: ${song.requester}</span>`
           : '<span style="color: var(--muted); font-weight: 700; letter-spacing: 0.5px;">LLoGB Playlist</span>';
 
         return `
-          <div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 2px; ${song !== allSongs[allSongs.length - 1] ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
-            <div style="font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: 0.4px; line-height: 1.28;">${song.title}</div>
-            <div style="font-size: 13px; color: var(--muted); letter-spacing: 0.2px; line-height: 1.25;">${song.artist || ''}</div>
-            <div style="font-size: 11px;">${requesterText}</div>
+          <div style="display: flex; gap: 10px; padding: 12px 4px; align-items: center; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
+            <div style="color: var(--purple); font-weight: 900; font-size: 18px; min-width: 28px; text-align: right;">${index + 1}</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: 0.6px;">${song.title}</div>
+              <div style="font-size: 14px; color: var(--muted); margin-top: 4px; letter-spacing: 0.3px;">${song.artist || ''}</div>
+              <div style="font-size: 12px; margin-top: 4px;">${requesterText}</div>
+            </div>
           </div>
         `;
       }).join('');
@@ -1046,8 +1047,8 @@
         </div>
         <div style="text-align: center; margin-top: -6px;">
           <div class="notification-type" style="margin-bottom: 2px;">Discount Code</div>
-          <div class="notification-title" style="margin-bottom: 0;">Dead Center Darts</div>
-          <div class="notification-subtitle" style="margin-top: 0;">LOWLIFES15 for 15% off!</div>
+          <div class="notification-title" style="margin-bottom: 0;">LOWLIFES15</div>
+          <div class="notification-subtitle" style="margin-top: 0;">15% off at Dead Center Darts!</div>
         </div>
       </div>
     `,
