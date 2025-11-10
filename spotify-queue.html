@@ -964,12 +964,12 @@
           : '<span style="color: var(--muted); font-weight: 700; letter-spacing: 0.5px;">LLoGB Playlist</span>';
 
         return `
-          <div style="display: flex; gap: 12px; padding: 14px 6px; align-items: center; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
-            <div style="color: var(--purple); font-weight: 900; font-size: 22px; min-width: 34px; text-align: right;">${index + 1}</div>
+          <div style="display: flex; gap: 10px; padding: 12px 4px; align-items: center; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
+            <div style="color: var(--purple); font-weight: 900; font-size: 18px; min-width: 28px; text-align: right;">${index + 1}</div>
             <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: 0.8px; text-transform: uppercase;">${song.title}</div>
-              <div style="font-size: 16px; color: var(--muted); margin-top: 4px; letter-spacing: 0.5px;">${song.artist || ''}</div>
-              <div style="font-size: 13px; margin-top: 6px;">${requesterText}</div>
+              <div style="font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: 0.6px;">${song.title}</div>
+              <div style="font-size: 14px; color: var(--muted); margin-top: 4px; letter-spacing: 0.3px;">${song.artist || ''}</div>
+              <div style="font-size: 12px; margin-top: 4px;">${requesterText}</div>
             </div>
           </div>
         `;
