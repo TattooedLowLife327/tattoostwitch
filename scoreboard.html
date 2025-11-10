@@ -109,40 +109,70 @@
     text-align: center;
   }
 
-  .brb-banner {
+  .brb-overlay {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 6px 12px;
+    inset: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    background: rgba(139, 92, 246, 0.92);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    letter-spacing: 2px;
-    font-weight: 700;
-    text-transform: uppercase;
+    border-radius: 12px;
+    pointer-events: none;
     opacity: 0;
-    transform: translateY(100%);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    clip-path: inset(0 100% 0 0);
+    transition: opacity 0.25s ease, clip-path 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+    z-index: 3;
   }
 
-  .brb-banner.visible {
+  .brb-overlay.active {
     opacity: 1;
-    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
   }
 
-  .brb-banner .label {
+  .brb-overlay-bg {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(15, 9, 31, 0.98), rgba(54, 14, 87, 0.96));
+    overflow: hidden;
+  }
+
+  .brb-overlay-fill {
+    position: absolute;
+    inset: 0;
+    width: var(--fill, 0%);
+    background: linear-gradient(135deg, rgba(92, 32, 195, 0.85), rgba(139, 92, 246, 0.92));
+    transition: width 0.4s linear;
+  }
+
+  .brb-overlay-content {
+    position: relative;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 4px;
     color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 4;
   }
 
-  .brb-banner .time {
-    color: #fcd34d;
-    font-variant-numeric: tabular-nums;
-    min-width: 60px;
-    text-align: left;
+  .brb-overlay-label {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .brb-overlay-countdown {
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .brb-overlay-subtext {
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.9);
   }
 </style>
 </head>
@@ -161,9 +191,15 @@
       </div>
     </div>
   </div>
-  <div class="brb-banner" id="brb-banner">
-    <span class="label">BRB</span>
-    <span class="time" id="brb-timer-value">00:00</span>
+  <div class="brb-overlay" id="brb-overlay">
+    <div class="brb-overlay-bg">
+      <div class="brb-overlay-fill" id="brb-fill" style="--fill: 0%;"></div>
+    </div>
+    <div class="brb-overlay-content">
+      <div class="brb-overlay-label" id="brb-label">Be Right Back</div>
+      <div class="brb-overlay-countdown" id="brb-countdown">00:00</div>
+      <div class="brb-overlay-subtext" id="brb-subtext">Quick break — stay tuned.</div>
+    </div>
   </div>
 </div>
 
@@ -174,8 +210,12 @@
     ? 'http://localhost:8787'
     : 'https://tattoostwitch327.onrender.com';
   const SCREEN_ENDPOINT = BOT_API_BASE + '/api/screen-overlay';
-  const brbBanner = document.getElementById('brb-banner');
-  const brbTimerValue = document.getElementById('brb-timer-value');
+  const brbOverlay = document.getElementById('brb-overlay');
+  const brbFill = document.getElementById('brb-fill');
+  const brbCountdown = document.getElementById('brb-countdown');
+  const brbLabel = document.getElementById('brb-label');
+  const brbSubtext = document.getElementById('brb-subtext');
+  let brbDurationMs = 0;
 
   async function loadBackgroundFromSettings() {
     try {
@@ -218,15 +258,6 @@
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  function updateBrbBanner(remainingMs) {
-    if (remainingMs > 0) {
-      brbTimerValue.textContent = formatTime(remainingMs);
-      brbBanner.classList.add('visible');
-    } else {
-      brbBanner.classList.remove('visible');
-    }
-  }
-
   async function syncBrbTimer() {
     try {
       const response = await fetch(SCREEN_ENDPOINT, { cache: 'no-store' });
@@ -238,35 +269,53 @@
       const isActive = (typeof data.isActive === 'boolean' ? data.isActive : data.is_active);
       const durationMinutes = data.durationMinutes ?? data.duration_minutes;
       const rawTimeRemaining = data.timeRemaining ?? data.time_remaining;
-      const timeRemaining = (rawTimeRemaining === undefined || rawTimeRemaining === null)
-        ? NaN
-        : Number(rawTimeRemaining);
       const rawEndTime = data.endTime ?? data.end_time;
       let remainingMs = 0;
 
+      if (durationMinutes) {
+        brbDurationMs = durationMinutes * 60000;
+      }
+
       if (isActive && type === 'brb') {
-        if (!Number.isNaN(timeRemaining)) {
-          remainingMs = timeRemaining;
+        if (typeof rawTimeRemaining === 'number') {
+          remainingMs = rawTimeRemaining;
         } else if (typeof rawEndTime === 'number') {
           remainingMs = Math.max(0, rawEndTime - Date.now());
         } else if (typeof rawEndTime === 'string') {
-          const parsedEnd = parseInt(rawEndTime, 10);
-          if (!Number.isNaN(parsedEnd)) {
-            remainingMs = Math.max(0, parsedEnd - Date.now());
+          const parsed = parseInt(rawEndTime, 10);
+          if (!Number.isNaN(parsed)) {
+            remainingMs = Math.max(0, parsed - Date.now());
           }
         } else if (data.start_time && durationMinutes) {
-          const startedAt = new Date(data.start_time).getTime();
-          remainingMs = Math.max(0, (durationMinutes * 60000) - (Date.now() - startedAt));
+          const started = new Date(data.start_time).getTime();
+          remainingMs = Math.max(0, (durationMinutes * 60000) - (Date.now() - started));
         } else if (durationMinutes) {
           remainingMs = durationMinutes * 60000;
         }
       }
 
-      updateBrbBanner(remainingMs);
+      updateBrbOverlay(type, remainingMs);
     } catch (error) {
       console.error('Failed to sync BRB timer:', error);
-      updateBrbBanner(0);
+      updateBrbOverlay(null, 0);
     }
+  }
+
+  function updateBrbOverlay(type, remainingMs) {
+    const isActive = type === 'brb' && remainingMs > 0;
+    if (!isActive) {
+      brbOverlay.classList.remove('active');
+      brbFill.style.setProperty('--fill', '0%');
+      return;
+    }
+
+    const duration = brbDurationMs || remainingMs || 1;
+    const elapsedRatio = 1 - Math.max(0, Math.min(1, remainingMs / duration));
+    brbOverlay.classList.add('active');
+    brbFill.style.setProperty('--fill', `${elapsedRatio * 100}%`);
+    brbCountdown.textContent = formatTime(remainingMs);
+    brbLabel.textContent = 'Be Right Back';
+    brbSubtext.textContent = 'Quick break — stay tuned.';
   }
 
   loadBackgroundFromSettings();
