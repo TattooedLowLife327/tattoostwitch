@@ -962,18 +962,15 @@
         const requesterText = song.requester
           ? `<span style="color: var(--purple); font-weight: 800; letter-spacing: 0.6px;">SR: ${song.requester}</span>`
           : '<span style="color: var(--muted); font-weight: 700; letter-spacing: 0.5px;">LLoGB Playlist</span>';
-        const art = song.albumArt
-          ? `<img src="${song.albumArt}" alt="Album Art" style="width: 86px; height: 86px; border-radius: 12px; object-fit: cover; border: 2px solid rgba(255,255,255,0.12); box-shadow: 0 4px 14px rgba(0,0,0,0.55);" />`
-          : `<div style="width: 86px; height: 86px; border-radius: 12px; border: 2px dashed rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5); font-size: 12px; letter-spacing: 1px;">ART</div>`;
 
         return `
-          <div style="display: flex; gap: 16px; padding: 16px 6px; align-items: center; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
+          <div style="display: flex; gap: 14px; padding: 16px 6px; align-items: center; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
+            <div style="color: var(--purple); font-weight: 900; font-size: 26px; min-width: 40px; text-align: right;">${index + 1}</div>
             <div style="flex: 1; min-width: 0;">
               <div style="font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: 1px; text-transform: uppercase;">${song.title}</div>
               <div style="font-size: 18px; color: var(--muted); margin-top: 6px; letter-spacing: 0.6px;">${song.artist || ''}</div>
               <div style="font-size: 15px; margin-top: 8px;">${requesterText}</div>
             </div>
-            ${art}
           </div>
         `;
       }).join('');
