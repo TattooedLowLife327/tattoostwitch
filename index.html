@@ -1364,7 +1364,7 @@
 
   async function loadSettings() {
     try {
-      const res = await fetch(functionApi('/api/settings'));
+      const res = await fetch(functionApi('/api/settings'), { cache: 'no-store' });
       const data = await res.json();
       specialUsers = data.specialUsers || [];
       document.getElementById('promo-minutes').value = data.promoMinutes || 15;
