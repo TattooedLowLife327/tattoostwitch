@@ -1187,7 +1187,7 @@
 
       dubsPartnerName = partnerValue;
       applyDubsUIState();
-      updateModeDisplay();
+      await loadSettings(); // reload settings so toggle + OBS pick up change immediately
       alert('Dubs settings saved!');
     } catch (err) {
       alert('Failed to save dubs settings');
