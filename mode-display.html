@@ -129,8 +129,10 @@
       const currentMode = data.mode || 'tourney';
 
       if (currentMode === 'dubs') {
-        const partner = (dubsPartner || 'Partner').toUpperCase();
-        modeDisplay.innerHTML = `DUBS<br>${partner}`;
+        const partner = (dubsPartner || '').trim();
+        modeDisplay.innerHTML = partner
+          ? `DUBS<br>${partner.toUpperCase()}`
+          : 'DUBS<br>MODE';
       } else {
         modeDisplay.innerHTML = modes[currentMode] || modes.tourney;
       }

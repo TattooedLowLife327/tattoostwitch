@@ -156,25 +156,27 @@
 
   .album-glow {
     position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(168, 85, 247, 0.2) 100%);
-    border-radius: 8px;
-    filter: blur(12px);
+    inset: -8px;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.55) 0%, rgba(59, 7, 100, 0.2) 55%, transparent 70%);
+    border-radius: 16px;
+    filter: blur(18px);
     transform: scale(1.05);
+    opacity: 0.9;
   }
 
   .album-art {
     position: relative;
     width: 200px;
     height: 200px;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.1) 100%);
-    border: 2px solid rgba(139, 92, 246, 0.4);
-    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.45) 0%, rgba(88, 28, 135, 0.35) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     transition: all 0.3s ease;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 25px rgba(139, 92, 246, 0.55);
   }
 
   .album-art:hover {
@@ -277,7 +279,7 @@
   }
 
   .track-artist {
-    font-size: 18px;
+    font-size: 16px;
     color: var(--muted);
     word-wrap: break-word;
     line-height: 1.3;
@@ -285,10 +287,10 @@
   }
 
   .track-requester {
-    font-size: 16px;
+    font-size: 14px;
     color: var(--purple);
     word-wrap: break-word;
-    line-height: 1.3;
+    line-height: 1.2;
     width: 100%;
   }
 
@@ -363,9 +365,9 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    padding: 2px 0;
-    height: 290px;
+    gap: 6px;
+    padding: 8px 0;
+    height: 320px;
   }
 
   .notification.queue-slide-in {
@@ -422,7 +424,7 @@
   }
 
   .notification-title {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text);
     white-space: nowrap;
@@ -432,9 +434,9 @@
   }
 
   .notification-subtitle {
-    font-size: 18px;
+    font-size: 16px;
     color: var(--muted);
-    line-height: 1.3;
+    line-height: 1.4;
   }
 
   .notification-type {
@@ -457,11 +459,22 @@
   .view-content {
     width: 100%;
     height: 100%;
-    transition: opacity 0.4s ease;
+    transition: transform 0.45s ease, opacity 0.45s ease;
   }
 
-  .view-content.fade-out {
+  .view-content.slide-out-left {
+    transform: translateX(-70px);
     opacity: 0;
+  }
+
+  .view-content.slide-out-right {
+    transform: translateX(70px);
+    opacity: 0;
+  }
+
+  .view-content.slide-in-right {
+    transform: translateX(0);
+    opacity: 1;
   }
 </style>
 </head>
@@ -517,7 +530,7 @@
   </div>
 
   <!-- Queue/Promo Card -->
-  <div class="card" style="min-height: 290px;">
+  <div class="card" style="min-height: 320px;">
     <!-- Queue View -->
     <div id="queue-view" class="view-content">
       <div class="notification" id="queue-display">
@@ -790,23 +803,11 @@
         console.error('[QUEUE] Failed to fetch Spotify fallback queue:', err);
       }
 
-      // Store queue data and check for changes
+      // Store queue data and render queue view
       queueData = { ...data, fallback: fallbackTracks };
-
-      // Auto-show queue when new songs are added (approved or pending)
-      const currentQueueLength = (data.queue && data.queue.length) || 0;
-      const currentPendingLength = (data.pending && data.pending.length) || 0;
-
-      if (!queueInitialized) {
-        queueInitialized = true;
-        showQueueView();
-      } else if ((currentQueueLength > lastQueueLength || currentPendingLength > lastPendingLength) && currentView === 'now-playing') {
-        console.log('[QUEUE] New song request detected, showing queue view');
-        showQueueView();
-      }
-
-      lastQueueLength = currentQueueLength;
-      lastPendingLength = currentPendingLength;
+      const queueRender = buildQueueRenderData(queueData);
+      renderQueueView(queueRender, !queueInitialized);
+      queueInitialized = true;
 
     } catch (e){
       document.getElementById('now-title').textContent = 'Queue offline';
@@ -819,11 +820,9 @@
   // View switching system
   let queueData = null;
   let queueInitialized = false;
-  let lastQueueSnapshot = '';
+  let lastQueueSnapshot = 'empty';
   let viewTimeout = null;
   let currentView = 'now-playing';
-  let lastQueueLength = 0;
-  let lastPendingLength = 0;
   const PROMO_SEQUENCE = [0, 1];
   const PROMO_ROTATE_INTERVAL = 150000; // 2.5 minutes
   const PROMO_DISPLAY_DURATION = 9000;
@@ -831,7 +830,6 @@
   let promoSequenceIndex = 0;
 
   function switchToView(viewName, duration = 6000) {
-    // Clear any existing timeout
     if (viewTimeout) {
       clearTimeout(viewTimeout);
     }
@@ -839,41 +837,49 @@
     const queueView = document.getElementById('queue-view');
     const promoView = document.getElementById('promo-view');
 
-    // Only switch between queue and promo (not now-playing)
+    const animateOut = (el, direction = 'left') => {
+      el.classList.remove('slide-in-right', 'slide-out-left', 'slide-out-right');
+      el.classList.add(direction === 'left' ? 'slide-out-left' : 'slide-out-right');
+    };
+
+    const animateIn = (el) => {
+      el.style.display = 'block';
+      el.classList.remove('slide-out-left', 'slide-out-right');
+      el.classList.add('slide-in-right');
+      setTimeout(() => el.classList.remove('slide-in-right'), 450);
+    };
+
     if (viewName === 'promo') {
-      queueView.classList.add('fade-out');
+      if (currentView === 'promo') return;
+      animateOut(queueView, 'left');
       setTimeout(() => {
         queueView.style.display = 'none';
-        promoView.style.display = 'block';
-        promoView.classList.remove('fade-out');
+        queueView.classList.remove('slide-out-left');
+        animateIn(promoView);
         currentView = 'promo';
 
-        // Auto-return to queue after duration
         if (duration > 0) {
           viewTimeout = setTimeout(() => {
             switchToView('queue', 0);
           }, duration);
         }
-      }, 400);
+      }, 320);
     } else if (viewName === 'queue') {
-      promoView.classList.add('fade-out');
+      if (currentView === 'queue') return;
+      animateOut(promoView, 'right');
       setTimeout(() => {
         promoView.style.display = 'none';
-        queueView.style.display = 'block';
-        queueView.classList.remove('fade-out');
+        promoView.classList.remove('slide-out-right');
+        animateIn(queueView);
         currentView = 'queue';
-      }, 400);
+      }, 320);
     }
   }
 
-  function showQueueView() {
-    const display = document.getElementById('queue-display');
-    if (!display) return;
-
-    // Combine pending + approved + fallback
-    const approvedSongs = ((queueData && queueData.queue) || []).map(song => ({ ...song, status: 'approved' }));
-    const pendingSongs = ((queueData && queueData.pending) || []).map(song => ({ ...song, status: 'pending' }));
-    const fallbackSongs = ((queueData && queueData.fallback) || []).map(song => ({ ...song, status: 'spotify' }));
+  function buildQueueRenderData(currentData) {
+    const approvedSongs = ((currentData && currentData.queue) || []).map(song => ({ ...song, status: 'approved' }));
+    const pendingSongs = ((currentData && currentData.pending) || []).map(song => ({ ...song, status: 'pending' }));
+    const fallbackSongs = ((currentData && currentData.fallback) || []).map(song => ({ ...song, status: 'spotify' }));
 
     const pendingKeys = new Set(pendingSongs.map(makeSongKey));
     const combined = [...pendingSongs, ...approvedSongs];
@@ -890,6 +896,7 @@
     const allSongs = combined.slice(0, 3);
     const snapshot = allSongs.map(makeSongKey).join('|') || 'empty';
 
+    let html;
     if (allSongs.length > 0) {
       const songList = allSongs.map((song, index) => {
         const isPending = pendingKeys.has(makeSongKey(song));
@@ -901,26 +908,26 @@
           : '';
 
         return `
-          <div style="display: flex; gap: 8px; padding: 6px 0; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
+          <div style="display: flex; gap: 8px; padding: 8px 0; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
             <div style="color: var(--purple); font-weight: 700; min-width: 18px;">${index + 1}.</div>
             <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${statusBadge}${song.title}</div>
-              <div style="font-size: 12px; color: var(--muted); margin-top: 1px;">${song.artist}</div>
-              ${requesterText ? `<div style="font-size: 11px; color: var(--purple); margin-top: 1px;">${requesterText}</div>` : ''}
+              <div style="font-size: 16px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${statusBadge}${song.title}</div>
+              <div style="font-size: 13px; color: var(--muted); margin-top: 2px;">${song.artist}</div>
+              ${requesterText ? `<div style="font-size: 11px; color: var(--purple); margin-top: 2px;">${requesterText}</div>` : ''}
             </div>
           </div>
         `;
       }).join('');
 
-      display.innerHTML = `
-        <div style="display: block; padding: 8px 12px; height: 290px;">
-          <div class="notification-type" style="margin-bottom: 6px; text-align: center;">Up Next</div>
+      html = `
+        <div style="display: block; padding: 12px 14px; height: 320px;">
+          <div class="notification-type" style="margin-bottom: 8px; text-align: center;">Up Next</div>
           ${songList}
         </div>
       `;
     } else {
-      display.innerHTML = `
-        <div style="height: 290px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+      html = `
+        <div style="height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
           <div class="notification-icon">
             <svg viewBox="0 0 24 24">
               <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
@@ -935,18 +942,46 @@
       `;
     }
 
-    if (snapshot !== lastQueueSnapshot) {
-      const isRemoval = lastQueueSnapshot && snapshot !== 'empty' && !snapshot.includes(lastQueueSnapshot.split('|')[0]);
-      display.classList.remove('queue-slide-in', 'queue-slide-out');
+    return { html, snapshot, hasSongs: allSongs.length > 0 };
+  }
+
+  function renderQueueView(renderData, forceShow = false) {
+    const display = document.getElementById('queue-display');
+    if (!display || !renderData) return;
+
+    const { html, snapshot, hasSongs } = renderData;
+    const changed = snapshot !== lastQueueSnapshot;
+
+    const applyNewContent = () => {
+      display.innerHTML = html;
+      display.classList.remove('queue-slide-in');
       void display.offsetWidth;
-      const animationClass = isRemoval ? 'queue-slide-out' : 'queue-slide-in';
-      display.classList.add(animationClass);
-      setTimeout(() => display.classList.remove('queue-slide-in', 'queue-slide-out'), 500);
+      display.classList.add('queue-slide-in');
+      setTimeout(() => display.classList.remove('queue-slide-in'), 450);
+      lastQueueSnapshot = snapshot;
+    };
+
+    if (changed) {
+      display.classList.remove('queue-slide-in', 'queue-slide-out');
+      display.classList.add('queue-slide-out');
+      setTimeout(() => {
+        display.classList.remove('queue-slide-out');
+        applyNewContent();
+      }, 260);
+    } else if (!queueInitialized) {
+      display.innerHTML = html;
       lastQueueSnapshot = snapshot;
     }
 
-    switchToView('queue');
+    if ((forceShow || currentView === 'now-playing') && currentView !== 'promo' && hasSongs) {
+      switchToView('queue');
+    }
   }
+
+  function showQueueView() {
+    renderQueueView(buildQueueRenderData(queueData), true);
+  }
+
 
   const PROMO_TEMPLATES = {
     dcd: `
@@ -962,14 +997,8 @@
       </div>
     `,
     prime: `
-      <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
-        <div style="display: flex; align-items: center; justify-content: center;">
-          <img src="images/primesubpromo.png" style="width: 260px; height: auto; object-fit: contain;">
-        </div>
-        <div style="text-align: center;">
-          <div class="notification-title" style="font-size: 22px;">Prime Subs Get Extra Entries!</div>
-          <div class="notification-subtitle" style="font-size: 14px;">Use your free Prime sub on TattooedLowLife</div>
-        </div>
+      <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+        <img src="images/primesubpromo.png" style="max-width: 90%; max-height: 90%; object-fit: contain;">
       </div>
     `
   };

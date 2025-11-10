@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Socials Panel</title>
   <style>
+    :root {
+      --social-width: 480px;
+      --social-height: 120px;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -22,7 +27,7 @@
     .socials-container {
       position: absolute;
       top: 200px;
-      left: 15px;
+      left: 0;
       display: flex;
       align-items: center;
       width: 1570px;
@@ -42,9 +47,16 @@
       opacity: 1;
     }
 
+    .social-wrapper {
+      display: flex;
+      align-items: center;
+      width: var(--social-width);
+      height: var(--social-height);
+    }
+
     .social-icon {
-      width: 200px;
-      height: 200px;
+      width: 150px;
+      height: 150px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -52,7 +64,7 @@
       z-index: 2;
       flex-shrink: 0;
       opacity: 0;
-      transform: translateX(-400px);
+      transform: translateX(-150px);
       transition: opacity 0.6s ease, transform 0.6s ease;
     }
 
@@ -63,8 +75,8 @@
 
     .social-item.exiting .social-icon {
       opacity: 0;
-      transform: translateX(-400px);
-      transition: opacity 0.6s ease 0.4s, transform 0.6s ease 0.4s;
+      transform: translateX(-150px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
     }
 
     .social-icon img {
@@ -78,13 +90,13 @@
       color: #fff;
       border: 3px solid #fff;
       border-left: none;
-      padding: 25px 30px 25px 110px;
+      padding: 18px 24px;
       border-radius: 20px;
-      margin-left: -80px;
+      margin-left: -40px;
       clip-path: inset(0 100% 0 0);
       transition: clip-path 0.6s ease 0.4s;
-      width: 900px;
-      height: 130px;
+      width: calc(var(--social-width) - 120px);
+      height: var(--social-height);
       display: flex;
       align-items: center;
       overflow: hidden;
@@ -148,10 +160,12 @@
       const item = document.createElement('div');
       item.className = `social-item ${social.platform}`;
       item.innerHTML = `
-        <div class="social-icon">
-          <img src="${social.icon}" alt="${social.platform}">
+        <div class="social-wrapper">
+          <div class="social-icon">
+            <img src="${social.icon}" alt="${social.platform}">
+          </div>
+          <div class="social-handle"><span>${social.handle}</span></div>
         </div>
-        <div class="social-handle"><span>${social.handle}</span></div>
       `;
       container.appendChild(item);
       fitHandleText(item.querySelector('.social-handle'));
