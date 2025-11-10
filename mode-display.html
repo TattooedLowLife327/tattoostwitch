@@ -12,7 +12,7 @@
     --text: #ffffff;
     --muted: #a3a3a3;
     --font: system-ui, -apple-system, sans-serif;
-    --card-width: 420px;
+    --card-width: 320px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -127,13 +127,17 @@
       const data = await response.json();
 
       const modeDisplay = document.getElementById('mode-display');
-      const currentMode = data.mode || 'tourney';
+      const apiMode = data.mode || 'tourney';
+      const shouldShowDubs = dubsEnabled === true || dubsEnabled === 'true';
+      const safeMode = (!shouldShowDubs && apiMode === 'dubs') ? 'tourney' : apiMode;
 
-      if (dubsEnabled) {
-        const partner = (dubsPartner || 'Partner').trim();
-        modeDisplay.innerHTML = `DUBS<br>${partner.toUpperCase()}`;
+      if (shouldShowDubs) {
+        const partner = (dubsPartner || '').trim();
+        modeDisplay.innerHTML = partner
+          ? `DUBS:<br>${partner.toUpperCase()}`
+          : 'DUBS<br>MODE';
       } else {
-        modeDisplay.innerHTML = modes[currentMode] || modes.tourney;
+        modeDisplay.innerHTML = modes[safeMode] || modes.tourney;
       }
 
     } catch (error) {
@@ -149,12 +153,14 @@
       // Default to visible if not set
       const isVisible = settings.modeDisplayVisible !== 'false';
       dubsPartner = settings.dubsPartner || '';
-      dubsEnabled = settings.dubsEnabled !== 'false';
+      const rawDubs = settings.dubsEnabled;
+      dubsEnabled = rawDubs === true || rawDubs === 'true';
 
       const card = document.querySelector('.card');
       if (card) {
         card.style.display = isVisible ? 'block' : 'none';
       }
+      updateMode();
     } catch (error) {
       console.error('Failed to check visibility:', error);
     }

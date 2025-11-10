@@ -6,7 +6,7 @@
   <title>Socials Panel</title>
   <style>
     :root {
-      --social-width: 720px;
+      --social-width: 600px; /* Match scaled queue width (320px * 1.5) */
       --social-height: 120px;
     }
 
@@ -52,7 +52,7 @@
       align-items: center;
       width: var(--social-width);
       height: var(--social-height);
-      gap: 18px;
+      gap: 0;
     }
 
     .social-icon {
@@ -90,15 +90,18 @@
       flex: 1;
       background: transparent;
       color: #fff;
-      padding: 18px 32px;
+      padding: 18px 32px 18px 32px;
+      margin-left: -8px;
+      border-radius: 0 20px 20px 0;
       clip-path: inset(0 100% 0 0);
-      transition: clip-path 0.6s ease 0.4s;
+      transition: clip-path 0.5s cubic-bezier(0.65, 0, 0.35, 1);
       height: var(--social-height);
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
       text-align: center;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
     }
 
     .social-handle span {
@@ -114,11 +117,16 @@
 
     .social-item.active .social-handle {
       clip-path: inset(0 0 0 0);
+      transition-delay: 0.2s;
     }
 
     .social-item.exiting .social-handle {
       clip-path: inset(0 100% 0 0);
       transition: clip-path 0.4s ease;
+    }
+
+    .social-item.exiting .social-icon {
+      transition-delay: 0.4s;
     }
   </style>
 </head>
