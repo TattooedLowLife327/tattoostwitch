@@ -1207,20 +1207,23 @@
       const res = await fetch(functionApi('/api/mode'));
       const data = await res.json();
       const modeText = document.getElementById('mode-text');
-
       const modeNames = {
         'tourney': 'TOURNEY PLAY',
         'lobby': 'OPEN LOBBY',
         'cash': 'CASH SETS',
         'league': 'LEAGUE PLAY'
       };
+      const shouldShowDubs = dubsEnabled === true || dubsEnabled === 'true';
+      const apiMode = data.mode || 'tourney';
+      const safeMode = (!shouldShowDubs && apiMode === 'dubs') ? 'tourney' : apiMode;
 
-      if (data.mode === 'dubs') {
-        modeText.textContent = dubsPartnerName
-          ? `DUBS: ${dubsPartnerName}`
+      if (shouldShowDubs) {
+        const partner = (dubsPartnerName || '').trim();
+        modeText.textContent = partner
+          ? `DUBS: ${partner.toUpperCase()}`
           : 'DUBS MODE';
       } else {
-        modeText.textContent = modeNames[data.mode] || 'TOURNEY PLAY';
+        modeText.textContent = modeNames[safeMode] || 'TOURNEY PLAY';
       }
     } catch (e) {
       console.error('Failed to update mode display:', e);
@@ -1370,7 +1373,8 @@
       document.getElementById('obs-background-url').value = data.obsBackgroundUrl || '';
       document.getElementById('dubs-partner').value = data.dubsPartner || '';
       dubsPartnerName = data.dubsPartner || '';
-      dubsEnabled = data.dubsEnabled !== 'false';
+      const rawDubsEnabled = data.dubsEnabled;
+      dubsEnabled = rawDubsEnabled === true || rawDubsEnabled === 'true';
       applyDubsUIState();
       renderSpecialUsers();
       updateScoreboardLabels();
@@ -1379,6 +1383,7 @@
       // Load mode display visibility (default to true if not set)
       const modeDisplayVisible = data.modeDisplayVisible !== 'false'; // String comparison for settings
       updateModeVisibilityUI(modeDisplayVisible);
+      updateModeDisplay();
     } catch (e) {
       console.error('Failed to load settings:', e);
     }

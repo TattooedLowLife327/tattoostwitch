@@ -166,8 +166,8 @@
 
   .album-art {
     position: relative;
-    width: 200px;
-    height: 200px;
+    width: 190px;
+    height: 190px;
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.45) 0%, rgba(88, 28, 135, 0.35) 100%);
     border: 2px solid rgba(255, 255, 255, 0.25);
     border-radius: 18px;
@@ -269,21 +269,45 @@
     padding: 0 12px;
   }
 
+  .track-line {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .track-line span {
+    display: inline-block;
+    min-width: 100%;
+    white-space: nowrap;
+    will-change: transform;
+  }
+
+  .track-line.marquee span {
+    animation: marquee-scroll 12s linear infinite;
+    padding-right: 48px;
+  }
+
+  @keyframes marquee-scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(calc(-1 * var(--marquee-distance, 0px)));
+    }
+  }
+
   .track-name {
     font-size: 18px;
     font-weight: 700;
     color: var(--text);
-    word-wrap: break-word;
-    line-height: 1.3;
-    width: 100%;
+    line-height: 1.2;
   }
 
   .track-artist {
     font-size: 16px;
     color: var(--muted);
-    word-wrap: break-word;
-    line-height: 1.3;
-    width: 100%;
+    line-height: 1.2;
   }
 
   .track-requester {
@@ -476,6 +500,21 @@
     transform: translateX(0);
     opacity: 1;
   }
+
+  .promo-image-only {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .promo-image-only img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 </style>
 </head>
 <body>
@@ -490,7 +529,7 @@
           <div class="album-art-container">
             <div class="album-glow"></div>
             <div class="album-art" id="album-art">
-              <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
+              <svg viewBox="0 0 24 24" fill="white" style="width: 50px; height: 50px;">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
               </svg>
             </div>
@@ -503,8 +542,8 @@
 
           <!-- Player Info -->
           <div class="player-info">
-            <div class="track-name" id="now-title">—</div>
-            <div class="track-artist" id="now-artist">—</div>
+            <div class="track-name track-line"><span id="now-title">—</span></div>
+            <div class="track-artist track-line"><span id="now-artist">—</span></div>
             <div class="track-requester" id="now-requester"></div>
 
             <!-- Controls -->
@@ -587,7 +626,8 @@
       artist: track.artist || (track.artists ? track.artists.map(a => a.name).join(', ') : ''),
       albumArt: track.albumArt || (track.album?.images?.[0]?.url ?? null),
       requester: track.requester || null,
-      source: 'spotify'
+      source: 'spotify',
+      status: 'spotify'
     }));
   }
 
@@ -598,6 +638,24 @@
   let isPlaying = false;
   let currentTrackId = null;
   let lastProgress = 0;
+
+  function updateTrackLine(element, value) {
+    if (!element) return;
+    const wrapper = element.closest('.track-line');
+    const text = value || '—';
+    element.textContent = text;
+    if (!wrapper) return;
+    requestAnimationFrame(() => {
+      const overflow = element.scrollWidth - wrapper.clientWidth;
+      if (overflow > 4) {
+        wrapper.classList.add('marquee');
+        element.style.setProperty('--marquee-distance', `${overflow + 40}px`);
+      } else {
+        wrapper.classList.remove('marquee');
+        element.style.removeProperty('--marquee-distance');
+      }
+    });
+  }
 
   // Format milliseconds to MM:SS
   function formatTime(ms) {
@@ -688,8 +746,8 @@
 
           setTimeout(() => {
             // Update content after slide out
-            nowTitle.textContent = data.now.title;
-            nowArtist.textContent = data.now.artist;
+            updateTrackLine(nowTitle, data.now.title);
+            updateTrackLine(nowArtist, data.now.artist);
 
             // Show requester if available, otherwise show playlist name
             if (data.now.requester) {
@@ -716,8 +774,8 @@
           }, 600);
         } else {
           // No animation, just update
-          nowTitle.textContent = data.now.title;
-          nowArtist.textContent = data.now.artist;
+          updateTrackLine(nowTitle, data.now.title);
+          updateTrackLine(nowArtist, data.now.artist);
 
           // Show requester if available, otherwise show playlist name
           if (data.now.requester) {
@@ -772,8 +830,8 @@
       } else {
         currentTrackId = null;
         lastProgress = 0;
-        nowTitle.textContent = '—';
-        nowArtist.textContent = '—';
+        updateTrackLine(nowTitle, '—');
+        updateTrackLine(nowArtist, '—');
         nowRequester.textContent = '';
         albumArt.innerHTML = `<svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
@@ -810,8 +868,8 @@
       queueInitialized = true;
 
     } catch (e){
-      document.getElementById('now-title').textContent = 'Queue offline';
-      document.getElementById('now-artist').textContent = '';
+      updateTrackLine(document.getElementById('now-title'), 'Queue offline');
+      updateTrackLine(document.getElementById('now-artist'), '—');
       targetProgress = 0;
       isPlaying = false;
     }
@@ -878,15 +936,17 @@
 
   function buildQueueRenderData(currentData) {
     const approvedSongs = ((currentData && currentData.queue) || []).map(song => ({ ...song, status: 'approved' }));
-    const pendingSongs = ((currentData && currentData.pending) || []).map(song => ({ ...song, status: 'pending' }));
     const fallbackSongs = ((currentData && currentData.fallback) || []).map(song => ({ ...song, status: 'spotify' }));
 
-    const pendingKeys = new Set(pendingSongs.map(makeSongKey));
-    const combined = [...pendingSongs, ...approvedSongs];
+    const currentKey = makeSongKey(currentData?.now);
+    const combined = approvedSongs.filter(song => makeSongKey(song) !== currentKey);
     const seenKeys = new Set(combined.map(makeSongKey));
 
     fallbackSongs.forEach(track => {
       const key = makeSongKey(track);
+      if (key === currentKey) {
+        return;
+      }
       if (!seenKeys.has(key)) {
         combined.push(track);
         seenKeys.add(key);
@@ -894,27 +954,26 @@
     });
 
     const allSongs = combined.slice(0, 3);
-    const snapshot = allSongs.map(makeSongKey).join('|') || 'empty';
+    const snapshot = allSongs.map(song => `${makeSongKey(song)}:${song.status || 'queue'}`).join('|') || 'empty';
 
     let html;
     if (allSongs.length > 0) {
       const songList = allSongs.map((song, index) => {
-        const isPending = pendingKeys.has(makeSongKey(song));
         const requesterText = song.requester
-          ? `requested by ${song.requester}`
-          : '<span style="color: var(--muted); font-size: 11px;">LLoGB Playlist</span>';
-        const statusBadge = isPending
-          ? '<span style="color: #FFA500; font-size: 10px; font-weight: 700;">(PENDING)</span> '
-          : '';
+          ? `<span style="color: var(--purple); font-weight: 800; letter-spacing: 0.6px;">SR: ${song.requester}</span>`
+          : '<span style="color: var(--muted); font-weight: 700; letter-spacing: 0.5px;">LLoGB Playlist</span>';
+        const art = song.albumArt
+          ? `<img src="${song.albumArt}" alt="Album Art" style="width: 86px; height: 86px; border-radius: 12px; object-fit: cover; border: 2px solid rgba(255,255,255,0.12); box-shadow: 0 4px 14px rgba(0,0,0,0.55);" />`
+          : `<div style="width: 86px; height: 86px; border-radius: 12px; border: 2px dashed rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5); font-size: 12px; letter-spacing: 1px;">ART</div>`;
 
         return `
-          <div style="display: flex; gap: 8px; padding: 8px 0; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
-            <div style="color: var(--purple); font-weight: 700; min-width: 18px;">${index + 1}.</div>
+          <div style="display: flex; gap: 16px; padding: 16px 6px; align-items: center; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
             <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 16px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${statusBadge}${song.title}</div>
-              <div style="font-size: 13px; color: var(--muted); margin-top: 2px;">${song.artist}</div>
-              ${requesterText ? `<div style="font-size: 11px; color: var(--purple); margin-top: 2px;">${requesterText}</div>` : ''}
+              <div style="font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: 1px; text-transform: uppercase;">${song.title}</div>
+              <div style="font-size: 18px; color: var(--muted); margin-top: 6px; letter-spacing: 0.6px;">${song.artist || ''}</div>
+              <div style="font-size: 15px; margin-top: 8px;">${requesterText}</div>
             </div>
+            ${art}
           </div>
         `;
       }).join('');
@@ -985,20 +1044,20 @@
 
   const PROMO_TEMPLATES = {
     dcd: `
-      <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
-        <div style="display: flex; align-items: center; justify-content: center;">
-          <img src="images/dcdlogo.png" style="width: 180px; height: 180px; object-fit: contain;">
+      <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;">
+        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 0;">
+          <img src="images/dcdlogo.png" style="width: 220px; height: 220px; object-fit: contain;">
         </div>
-        <div style="text-align: center;">
-          <div class="notification-type">Discount Code</div>
-          <div class="notification-title">Dead Center Darts</div>
-          <div class="notification-subtitle">LOWLIFES15 for 15% off!</div>
+        <div style="text-align: center; margin-top: -6px;">
+          <div class="notification-type" style="margin-bottom: 2px;">Discount Code</div>
+          <div class="notification-title" style="margin-bottom: 0;">Dead Center Darts</div>
+          <div class="notification-subtitle" style="margin-top: 0;">LOWLIFES15 for 15% off!</div>
         </div>
       </div>
     `,
     prime: `
-      <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-        <img src="images/primesubpromo.png" style="max-width: 90%; max-height: 90%; object-fit: contain;">
+      <div class="promo-image-only">
+        <img src="images/primesubpromo.png" alt="Prime Sub Promo">
       </div>
     `
   };
