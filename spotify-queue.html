@@ -71,6 +71,10 @@
     margin-bottom: 12px;
   }
 
+  .card.now {
+    margin-bottom: 22px;
+  }
+
   .card:not(.now) {
     overflow: hidden;
   }
@@ -161,8 +165,8 @@
 
   .album-art {
     position: relative;
-    width: 160px;
-    height: 160px;
+    width: 200px;
+    height: 200px;
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 2px solid rgba(139, 92, 246, 0.4);
     border-radius: 12px;
@@ -680,7 +684,7 @@
             } else if (data.now.playlistName) {
               nowRequester.textContent = data.now.playlistName;
             } else {
-              nowRequester.textContent = '';
+              nowRequester.textContent = 'LLoGB Playlist';
             }
 
             // Update album art
@@ -708,7 +712,7 @@
           } else if (data.now.playlistName) {
             nowRequester.textContent = data.now.playlistName;
           } else {
-            nowRequester.textContent = '';
+            nowRequester.textContent = 'LLoGB Playlist';
           }
 
           // Update album art
@@ -889,7 +893,9 @@
     if (allSongs.length > 0) {
       const songList = allSongs.map((song, index) => {
         const isPending = pendingKeys.has(makeSongKey(song));
-        const requesterText = song.requester ? `requested by ${song.requester}` : (song.status === 'spotify' ? '<span style="color: var(--muted); font-size: 11px;">Spotify Queue</span>' : '');
+        const requesterText = song.requester
+          ? `requested by ${song.requester}`
+          : '<span style="color: var(--muted); font-size: 11px;">LLoGB Playlist</span>';
         const statusBadge = isPending
           ? '<span style="color: #FFA500; font-size: 10px; font-weight: 700;">(PENDING)</span> '
           : '';
@@ -933,7 +939,9 @@
       const isRemoval = lastQueueSnapshot && snapshot !== 'empty' && !snapshot.includes(lastQueueSnapshot.split('|')[0]);
       display.classList.remove('queue-slide-in', 'queue-slide-out');
       void display.offsetWidth;
-      display.classList.add(isRemoval ? 'queue-slide-out' : 'queue-slide-in');
+      const animationClass = isRemoval ? 'queue-slide-out' : 'queue-slide-in';
+      display.classList.add(animationClass);
+      setTimeout(() => display.classList.remove('queue-slide-in', 'queue-slide-out'), 500);
       lastQueueSnapshot = snapshot;
     }
 

@@ -48,7 +48,24 @@
 </head>
 <body>
 
-<div id="platform-container"></div>
+<div id="platform-container">
+  <div class="platform-item" id="twitch-item">
+    <img class="platform-icon" src="images/twitchblackicon.png" alt="Twitch">
+    <div class="viewer-count" id="twitch-count">--</div>
+  </div>
+  <div class="platform-item" id="facebook-item">
+    <img class="platform-icon" src="images/facebookblackicon.png" alt="Facebook">
+    <div class="viewer-count" id="facebook-count">--</div>
+  </div>
+  <div class="platform-item" id="tiktok-item">
+    <img class="platform-icon" src="images/tiktokblackicon.png" alt="TikTok">
+    <div class="viewer-count" id="tiktok-count">--</div>
+  </div>
+  <div class="platform-item" id="youtube-item">
+    <img class="platform-icon" src="images/youtubeblackicon.png" alt="YouTube">
+    <div class="viewer-count" id="youtube-count">--</div>
+  </div>
+</div>
 
 <div id="error" class="error"></div>
 
@@ -64,26 +81,7 @@ function getSiteOrigin() {
 }
 
 const API_ENDPOINT = `${getSiteOrigin()}/api/viewer-counts`;
-const container = document.getElementById('platform-container');
-
-const PLATFORMS = [
-  { key: 'twitch', label: 'Twitch', icon: 'images/twitchblackicon.png' },
-  { key: 'facebook', label: 'Facebook', icon: 'images/facebookblackicon.png' },
-  { key: 'tiktok', label: 'TikTok', icon: 'images/tiktokblackicon.png' },
-  { key: 'youtube', label: 'YouTube', icon: 'images/youtubeblackicon.png' }
-];
-
-// Build static rows
-PLATFORMS.forEach(({ key, label, icon }) => {
-  const item = document.createElement('div');
-  item.className = 'platform-item';
-  item.id = `${key}-item`;
-  item.innerHTML = `
-    <img class="platform-icon" src="${icon}" alt="${label}">
-    <div class="viewer-count" id="${key}-count">--</div>
-  `;
-  container.appendChild(item);
-});
+const PLATFORMS = ['twitch', 'facebook', 'tiktok', 'youtube'];
 
 async function updateViewerCounts() {
   try {
@@ -95,7 +93,7 @@ async function updateViewerCounts() {
 
     const data = await response.json();
 
-    PLATFORMS.forEach(({ key }) => {
+    PLATFORMS.forEach((key) => {
       updatePlatform(key, data[key]);
     });
 
