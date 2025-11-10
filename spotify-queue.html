@@ -958,19 +958,16 @@
 
     let html;
     if (allSongs.length > 0) {
-      const songList = allSongs.map((song, index) => {
+      const songList = allSongs.map((song) => {
         const requesterText = song.requester
           ? `<span style="color: var(--purple); font-weight: 800; letter-spacing: 0.6px;">SR: ${song.requester}</span>`
           : '<span style="color: var(--muted); font-weight: 700; letter-spacing: 0.5px;">LLoGB Playlist</span>';
 
         return `
-          <div style="display: flex; gap: 10px; padding: 12px 4px; align-items: center; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
-            <div style="color: var(--purple); font-weight: 900; font-size: 18px; min-width: 28px; text-align: right;">${index + 1}</div>
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: 0.6px;">${song.title}</div>
-              <div style="font-size: 14px; color: var(--muted); margin-top: 4px; letter-spacing: 0.3px;">${song.artist || ''}</div>
-              <div style="font-size: 12px; margin-top: 4px;">${requesterText}</div>
-            </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 2px; ${song !== allSongs[allSongs.length - 1] ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
+            <div style="font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: 0.4px; line-height: 1.28;">${song.title}</div>
+            <div style="font-size: 13px; color: var(--muted); letter-spacing: 0.2px; line-height: 1.25;">${song.artist || ''}</div>
+            <div style="font-size: 11px;">${requesterText}</div>
           </div>
         `;
       }).join('');
@@ -992,7 +989,7 @@
           <div style="text-align: center;">
             <div class="notification-type">Up Next</div>
             <div class="notification-title">Queue Empty</div>
-            <div class="notification-subtitle">Use !sr to request a song</div>
+            <div class="notification-subtitle">Use !sr with song title and artist name to queue up a song!</div>
           </div>
         </div>
       `;
