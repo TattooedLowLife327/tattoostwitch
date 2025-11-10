@@ -112,6 +112,7 @@
   const MODE_ENDPOINT = `${API_BASE}/mode`;
   const SETTINGS_ENDPOINT = `${API_BASE}/settings`;
   let dubsPartner = '';
+  let dubsEnabled = false;
 
   const modes = {
     'tourney': 'TOURNEY<br>PLAY',
@@ -128,11 +129,9 @@
       const modeDisplay = document.getElementById('mode-display');
       const currentMode = data.mode || 'tourney';
 
-      if (currentMode === 'dubs') {
-        const partner = (dubsPartner || '').trim();
-        modeDisplay.innerHTML = partner
-          ? `DUBS<br>${partner.toUpperCase()}`
-          : 'DUBS<br>MODE';
+      if (dubsEnabled) {
+        const partner = (dubsPartner || 'Partner').trim();
+        modeDisplay.innerHTML = `DUBS<br>${partner.toUpperCase()}`;
       } else {
         modeDisplay.innerHTML = modes[currentMode] || modes.tourney;
       }
@@ -150,6 +149,7 @@
       // Default to visible if not set
       const isVisible = settings.modeDisplayVisible !== 'false';
       dubsPartner = settings.dubsPartner || '';
+      dubsEnabled = settings.dubsEnabled !== 'false';
 
       const card = document.querySelector('.card');
       if (card) {

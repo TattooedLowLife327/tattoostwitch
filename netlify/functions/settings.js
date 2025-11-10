@@ -57,7 +57,8 @@ export async function handler(event) {
         body.player2Name !== undefined ||
         body.pwaBackgroundUrl !== undefined ||
         body.obsBackgroundUrl !== undefined ||
-        body.dubsPartner !== undefined
+        body.dubsPartner !== undefined ||
+        body.dubsEnabled !== undefined
       ) {
         const updates = [];
 
@@ -128,6 +129,16 @@ export async function handler(event) {
              ON CONFLICT (key)
              DO UPDATE SET value = $2, updated_at = NOW()`,
             ['dubsPartner', body.dubsPartner]
+          ));
+        }
+
+        if (body.dubsEnabled !== undefined) {
+          updates.push(query(
+            `INSERT INTO settings (key, value, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (key)
+             DO UPDATE SET value = $2, updated_at = NOW()`,
+            ['dubsEnabled', body.dubsEnabled.toString()]
           ));
         }
 
