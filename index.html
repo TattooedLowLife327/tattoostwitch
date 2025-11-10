@@ -694,16 +694,18 @@
       Mode Display
       <button onclick="toggleModeDisplayVisibility()" id="mode-visibility-btn" style="background: none; border: none; color: var(--purple); cursor: pointer; font-size: 20px; padding: 5px;" title="Toggle Mode Display Visibility">👁️</button>
     </h2>
-    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-      <button class="btn" style="flex: 1;" onclick="setMode('tourney')">Tourney Play</button>
-      <button class="btn" style="flex: 1;" onclick="setMode('lobby')">Open Lobby</button>
-      <button class="btn" style="flex: 1;" onclick="setMode('cash')">Cash Sets</button>
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+      <div style="display: flex; gap: 10px;">
+        <button class="btn" style="flex: 1;" onclick="setMode('tourney')">Tourney Play</button>
+        <button class="btn" style="flex: 1;" onclick="setMode('lobby')">Open Lobby</button>
+        <button class="btn" style="flex: 1;" onclick="setMode('cash')">Cash Sets</button>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn" style="flex: 1;" onclick="setMode('league')">League Play</button>
+        <button class="btn" style="flex: 1;" onclick="toggleDubsMode()">Dubs Mode</button>
+      </div>
     </div>
-    <div style="display: flex; gap: 10px;">
-      <button class="btn" style="flex: 1;" onclick="setMode('league')">League Play</button>
-      <button class="btn" style="flex: 1;" onclick="setMode('dubs')">Dubs</button>
-    </div>
-    <div style="margin-top: 12px;">
+    <div id="dubs-partner-container" style="margin-top: 12px; display: none;">
       <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Dubs Partner Name</label>
       <input type="text" id="dubs-partner" placeholder="Partner Name" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
       <small style="color: var(--muted); font-size: 12px;">Used when Dubs mode is active.</small>
@@ -1139,15 +1141,38 @@
 
   async function setMode(mode) {
     try {
+      if (mode === 'dubs') {
+        const partner = document.getElementById('dubs-partner').value.trim();
+        if (!partner) {
+          alert('Enter your partner name before activating Dubs mode.');
+          return;
+        }
+      }
+
       const res = await fetch(functionApi('/api/mode'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode })
       });
       const data = await res.json();
+      if (mode === 'dubs') {
+        const dubsContainer = document.getElementById('dubs-partner-container');
+        dubsContainer.style.display = 'block';
+      } else {
+        document.getElementById('dubs-partner-container').style.display = 'none';
+      }
       updateModeDisplay();
     } catch (e) {
       alert('Failed to set mode');
+    }
+  }
+  function toggleDubsMode() {
+    const container = document.getElementById('dubs-partner-container');
+    const isVisible = container.style.display !== 'none';
+    if (!isVisible) {
+      container.style.display = 'block';
+    } else {
+      container.style.display = 'none';
     }
   }
 
@@ -1310,6 +1335,8 @@
       document.getElementById('obs-background-url').value = data.obsBackgroundUrl || '';
       document.getElementById('dubs-partner').value = data.dubsPartner || '';
       dubsPartnerName = data.dubsPartner || '';
+      const dubsContainer = document.getElementById('dubs-partner-container');
+      dubsContainer.style.display = (data.currentMode === 'dubs' || data.lastMode === 'dubs') ? 'block' : 'none';
       renderSpecialUsers();
       updateScoreboardLabels();
       updatePWABackground();
@@ -1412,6 +1439,7 @@
     try {
       const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
       const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
+      const partner = document.getElementById('dubs-partner').value.trim();
 
       // Get current settings first
       const settingsRes = await fetch(functionApi('/api/settings'));
@@ -1427,7 +1455,7 @@
           player2Name,
           pwaBackgroundUrl: currentSettings.pwaBackgroundUrl || 'images/background.png',
           obsBackgroundUrl: currentSettings.obsBackgroundUrl || '',
-          dubsPartner: currentSettings.dubsPartner || ''
+          dubsPartner: partner || currentSettings.dubsPartner || ''
         })
       });
 
