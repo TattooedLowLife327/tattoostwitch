@@ -364,6 +364,36 @@
     height: 290px;
   }
 
+  .notification.queue-slide-in {
+    animation: queueSlideIn 0.45s ease;
+  }
+
+  .notification.queue-slide-out {
+    animation: queueSlideOut 0.45s ease;
+  }
+
+  @keyframes queueSlideIn {
+    0% {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes queueSlideOut {
+    0% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-25px);
+    }
+  }
+
   .notification-icon {
     width: 200px;
     height: 200px;
@@ -526,6 +556,23 @@
   const API_BASE = `${SITE_ORIGIN}/api`;
   const BOT_API_BASE = getBotOrigin();
   const QUEUE_ENDPOINT = `${API_BASE}/queue`;
+
+  const makeSongKey = (song = {}) => {
+    const id = song.spotifyId || song.spotify_id || song.id || song.uri || song.title || '';
+    const requester = (song.requester || '').toLowerCase();
+    return `${id}|${requester}`;
+  };
+
+  function normalizeFallbackTracks(tracks = []) {
+    return tracks.map(track => ({
+      spotifyId: track.spotifyId || track.id || track.uri || '',
+      title: track.title || track.name || 'Unknown track',
+      artist: track.artist || (track.artists ? track.artists.map(a => a.name).join(', ') : ''),
+      albumArt: track.albumArt || (track.album?.images?.[0]?.url ?? null),
+      requester: track.requester || null,
+      source: 'spotify'
+    }));
+  }
 
   let currentProgress = 0;
   let targetProgress = 0;
@@ -727,14 +774,29 @@
         }
       }
 
+      // Fetch Spotify fallback queue for non-requested tracks
+      let fallbackTracks = [];
+      try {
+        const fallbackRes = await fetch(`${BOT_API_BASE}/api/spotify-queue`, { cache: 'no-store' });
+        if (fallbackRes.ok) {
+          const fallbackJson = await fallbackRes.json();
+          fallbackTracks = normalizeFallbackTracks(fallbackJson || []);
+        }
+      } catch (err) {
+        console.error('[QUEUE] Failed to fetch Spotify fallback queue:', err);
+      }
+
       // Store queue data and check for changes
-      queueData = data;
+      queueData = { ...data, fallback: fallbackTracks };
 
       // Auto-show queue when new songs are added (approved or pending)
       const currentQueueLength = (data.queue && data.queue.length) || 0;
       const currentPendingLength = (data.pending && data.pending.length) || 0;
 
-      if ((currentQueueLength > lastQueueLength || currentPendingLength > lastPendingLength) && currentView === 'now-playing') {
+      if (!queueInitialized) {
+        queueInitialized = true;
+        showQueueView();
+      } else if ((currentQueueLength > lastQueueLength || currentPendingLength > lastPendingLength) && currentView === 'now-playing') {
         console.log('[QUEUE] New song request detected, showing queue view');
         showQueueView();
       }
@@ -752,10 +814,17 @@
 
   // View switching system
   let queueData = null;
+  let queueInitialized = false;
+  let lastQueueSnapshot = '';
   let viewTimeout = null;
   let currentView = 'now-playing';
   let lastQueueLength = 0;
   let lastPendingLength = 0;
+  const PROMO_SEQUENCE = [0, 1];
+  const PROMO_ROTATE_INTERVAL = 150000; // 2.5 minutes
+  const PROMO_DISPLAY_DURATION = 9000;
+  let promoRotationTimer = null;
+  let promoSequenceIndex = 0;
 
   function switchToView(viewName, duration = 6000) {
     // Clear any existing timeout
@@ -795,17 +864,35 @@
 
   function showQueueView() {
     const display = document.getElementById('queue-display');
+    if (!display) return;
 
-    // Combine approved queue and pending requests
-    const approvedSongs = (queueData && queueData.queue) || [];
-    const pendingSongs = (queueData && queueData.pending) || [];
-    const allSongs = [...approvedSongs, ...pendingSongs].slice(0, 3);
+    // Combine pending + approved + fallback
+    const approvedSongs = ((queueData && queueData.queue) || []).map(song => ({ ...song, status: 'approved' }));
+    const pendingSongs = ((queueData && queueData.pending) || []).map(song => ({ ...song, status: 'pending' }));
+    const fallbackSongs = ((queueData && queueData.fallback) || []).map(song => ({ ...song, status: 'spotify' }));
+
+    const pendingKeys = new Set(pendingSongs.map(makeSongKey));
+    const combined = [...pendingSongs, ...approvedSongs];
+    const seenKeys = new Set(combined.map(makeSongKey));
+
+    fallbackSongs.forEach(track => {
+      const key = makeSongKey(track);
+      if (!seenKeys.has(key)) {
+        combined.push(track);
+        seenKeys.add(key);
+      }
+    });
+
+    const allSongs = combined.slice(0, 3);
+    const snapshot = allSongs.map(makeSongKey).join('|') || 'empty';
 
     if (allSongs.length > 0) {
       const songList = allSongs.map((song, index) => {
-        const isPending = pendingSongs.includes(song);
-        const requesterText = song.requester ? `requested by ${song.requester}` : '';
-        const statusBadge = isPending ? '<span style="color: #FFA500; font-size: 10px; font-weight: 700;">(PENDING)</span> ' : '';
+        const isPending = pendingKeys.has(makeSongKey(song));
+        const requesterText = song.requester ? `requested by ${song.requester}` : (song.status === 'spotify' ? '<span style="color: var(--muted); font-size: 11px;">Spotify Queue</span>' : '');
+        const statusBadge = isPending
+          ? '<span style="color: #FFA500; font-size: 10px; font-weight: 700;">(PENDING)</span> '
+          : '';
 
         return `
           <div style="display: flex; gap: 8px; padding: 6px 0; ${index < allSongs.length - 1 ? 'border-bottom: 1px solid rgba(139, 92, 246, 0.2);' : ''}">
@@ -842,11 +929,19 @@
       `;
     }
 
+    if (snapshot !== lastQueueSnapshot) {
+      const isRemoval = lastQueueSnapshot && snapshot !== 'empty' && !snapshot.includes(lastQueueSnapshot.split('|')[0]);
+      display.classList.remove('queue-slide-in', 'queue-slide-out');
+      void display.offsetWidth;
+      display.classList.add(isRemoval ? 'queue-slide-out' : 'queue-slide-in');
+      lastQueueSnapshot = snapshot;
+    }
+
     switchToView('queue');
   }
 
-  const PROMO_TEMPLATES = [
-    `
+  const PROMO_TEMPLATES = {
+    dcd: `
       <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
         <div style="display: flex; align-items: center; justify-content: center;">
           <img src="images/dcdlogo.png" style="width: 180px; height: 180px; object-fit: contain;">
@@ -858,7 +953,7 @@
         </div>
       </div>
     `,
-    `
+    prime: `
       <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
         <div style="display: flex; align-items: center; justify-content: center;">
           <img src="images/primesubpromo.png" style="width: 260px; height: auto; object-fit: contain;">
@@ -869,13 +964,32 @@
         </div>
       </div>
     `
-  ];
+  };
 
-  function showPromoView(promoIndex = 0) {
+  function showPromoView(promoIndex = 0, duration = 6000, reason = 'manual') {
     const display = document.getElementById('promo-display');
-    const template = PROMO_TEMPLATES[promoIndex] || PROMO_TEMPLATES[0];
+    const template = promoIndex === 0
+      ? PROMO_TEMPLATES.dcd
+      : PROMO_TEMPLATES.prime;
     display.innerHTML = template;
-    switchToView('promo');
+    switchToView('promo', duration);
+  }
+
+  function startPromoRotation() {
+    if (promoRotationTimer) {
+      clearInterval(promoRotationTimer);
+    }
+
+    const rotate = () => {
+      // Skip rotation if promo is already visible (manual trigger)
+      if (currentView === 'promo') return;
+      const promoIndex = PROMO_SEQUENCE[promoSequenceIndex];
+      promoSequenceIndex = (promoSequenceIndex + 1) % PROMO_SEQUENCE.length;
+      showPromoView(promoIndex, PROMO_DISPLAY_DURATION, 'rotation');
+    };
+
+    rotate();
+    promoRotationTimer = setInterval(rotate, PROMO_ROTATE_INTERVAL);
   }
 
   // Listen for promo triggers from !dcd command
@@ -898,6 +1012,7 @@
 
   // Start smooth animation loop
   animateProgress();
+  startPromoRotation();
 
   refresh();
   setInterval(refresh, 5000); // Update every 5 seconds (optimized)
