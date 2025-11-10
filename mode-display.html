@@ -12,6 +12,7 @@
     --text: #ffffff;
     --muted: #a3a3a3;
     --font: system-ui, -apple-system, sans-serif;
+    --card-width: 420px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,7 +30,7 @@
   }
 
   .card {
-    width: 320px;
+    width: var(--card-width);
     background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
     border: 2px solid rgba(139, 92, 246, 0.5);
     border-radius: 12px;
@@ -96,8 +97,20 @@
 </div>
 
 <script>
-  const API_BASE = 'https://tattoostwitch.netlify.app';
-  const ENDPOINT = API_BASE + '/api/mode';
+  function getSiteOrigin() {
+    if (window.OVERLAY_API_BASE) {
+      return window.OVERLAY_API_BASE.replace(/\/$/, '');
+    }
+    if (window.location?.origin && window.location.origin !== 'null') {
+      return window.location.origin;
+    }
+    return 'https://tattoostwitch.netlify.app';
+  }
+
+  const SITE_ORIGIN = getSiteOrigin();
+  const API_BASE = `${SITE_ORIGIN}/api`;
+  const MODE_ENDPOINT = `${API_BASE}/mode`;
+  const SETTINGS_ENDPOINT = `${API_BASE}/settings`;
 
   const modes = {
     'tourney': 'TOURNEY<br>PLAY',
@@ -107,7 +120,7 @@
 
   async function updateMode() {
     try {
-      const response = await fetch(ENDPOINT, { cache: 'no-store' });
+      const response = await fetch(MODE_ENDPOINT, { cache: 'no-store' });
       const data = await response.json();
 
       const modeDisplay = document.getElementById('mode-display');
@@ -121,7 +134,7 @@
 
   async function checkVisibility() {
     try {
-      const response = await fetch(API_BASE + '/api/settings', { cache: 'no-store' });
+      const response = await fetch(SETTINGS_ENDPOINT, { cache: 'no-store' });
       const settings = await response.json();
 
       // Default to visible if not set

@@ -483,7 +483,7 @@
   </div>
 
   <!-- Queue/Promo Card -->
-  <div class="card" style="min-height: 100px;">
+  <div class="card" style="min-height: 290px;">
     <!-- Queue View -->
     <div id="queue-view" class="view-content">
       <div class="notification" id="queue-display">
@@ -501,8 +501,31 @@
 </div>
 
 <script>
-  const API_BASE = 'https://tattoostwitch.netlify.app';
-  const ENDPOINT = API_BASE + '/api/queue';
+  function getSiteOrigin() {
+    if (window.OVERLAY_API_BASE) {
+      return window.OVERLAY_API_BASE.replace(/\/$/, '');
+    }
+    if (window.location?.origin && window.location.origin !== 'null') {
+      return window.location.origin;
+    }
+    return 'https://tattoostwitch.netlify.app';
+  }
+
+  function getBotOrigin() {
+    if (window.OVERLAY_BOT_BASE) {
+      return window.OVERLAY_BOT_BASE.replace(/\/$/, '');
+    }
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8787';
+    }
+    return 'https://tattoostwitch327.onrender.com';
+  }
+
+  const SITE_ORIGIN = getSiteOrigin();
+  const API_BASE = `${SITE_ORIGIN}/api`;
+  const BOT_API_BASE = getBotOrigin();
+  const QUEUE_ENDPOINT = `${API_BASE}/queue`;
 
   let currentProgress = 0;
   let targetProgress = 0;
@@ -524,7 +547,7 @@
   // Toggle play/pause
   async function togglePlay() {
     try {
-      const endpoint = API_BASE + '/api/play-pause';
+      const endpoint = `${API_BASE}/play-pause`;
       await fetch(endpoint, { method: 'POST', body: JSON.stringify({ action: isPlaying ? 'pause' : 'play' }), headers: { 'Content-Type': 'application/json' } });
       refresh();
     } catch (e) {
@@ -535,7 +558,7 @@
   // Skip current song
   async function skipSong() {
     try {
-      await fetch(API_BASE + '/api/skip-song', { method: 'POST' });
+      await fetch(`${API_BASE}/skip-song`, { method: 'POST' });
       refresh();
     } catch (e) {
       console.error('Failed to skip song:', e);
@@ -581,7 +604,7 @@
 
   async function refresh(){
     try{
-      const r = await fetch(ENDPOINT, { cache: 'no-store' });
+      const r = await fetch(QUEUE_ENDPOINT, { cache: 'no-store' });
       const data = await r.json();
 
       const nowTitle = document.getElementById('now-title');
@@ -822,10 +845,8 @@
     switchToView('queue');
   }
 
-  function showPromoView() {
-    const display = document.getElementById('promo-display');
-
-    display.innerHTML = `
+  const PROMO_TEMPLATES = [
+    `
       <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
         <div style="display: flex; align-items: center; justify-content: center;">
           <img src="images/dcdlogo.png" style="width: 180px; height: 180px; object-fit: contain;">
@@ -836,18 +857,35 @@
           <div class="notification-subtitle">LOWLIFES15 for 15% off!</div>
         </div>
       </div>
-    `;
+    `,
+    `
+      <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
+        <div style="display: flex; align-items: center; justify-content: center;">
+          <img src="images/primesubpromo.png" style="width: 260px; height: auto; object-fit: contain;">
+        </div>
+        <div style="text-align: center;">
+          <div class="notification-title" style="font-size: 22px;">Prime Subs Get Extra Entries!</div>
+          <div class="notification-subtitle" style="font-size: 14px;">Use your free Prime sub on TattooedLowLife</div>
+        </div>
+      </div>
+    `
+  ];
 
+  function showPromoView(promoIndex = 0) {
+    const display = document.getElementById('promo-display');
+    const template = PROMO_TEMPLATES[promoIndex] || PROMO_TEMPLATES[0];
+    display.innerHTML = template;
     switchToView('promo');
   }
 
   // Listen for promo triggers from !dcd command
-  const promoEventSource = new EventSource('https://tattoostwitch327.onrender.com/promo-events');
+  const promoEventSource = new EventSource(`${BOT_API_BASE}/promo-events`);
   promoEventSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      console.log('[PROMO] Received !dcd trigger:', data);
-      showPromoView();
+      const promoIndex = Number.isInteger(data.index) ? data.index : 0;
+      console.log('[PROMO] Received trigger:', data);
+      showPromoView(promoIndex);
     } catch (e) {
       console.error('[PROMO] Failed to parse event:', e);
     }

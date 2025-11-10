@@ -385,7 +385,19 @@
 <div id="purple-flash" class="purple-flash"></div>
 
 <script>
-  const API_BASE = 'https://tattoostwitch.netlify.app';
+  function getBotOrigin() {
+    if (window.OVERLAY_BOT_BASE) {
+      return window.OVERLAY_BOT_BASE.replace(/\/$/, '');
+    }
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8787';
+    }
+    return 'https://tattoostwitch327.onrender.com';
+  }
+
+  const BOT_API_BASE = getBotOrigin();
+  const FOLLOWER_ENDPOINT = `${BOT_API_BASE}/followers`;
   const GOAL = 500;
   let followers = 0;
   let goalReached = false;
@@ -440,9 +452,9 @@
 
   async function fetchFollowerCount() {
     try {
-      const response = await fetch(`${API_BASE}/api/follower-count`, { cache: 'no-store' });
+      const response = await fetch(FOLLOWER_ENDPOINT, { cache: 'no-store' });
       const data = await response.json();
-      return data.followerCount || 0;
+      return typeof data.total === 'number' ? data.total : followers;
     } catch (error) {
       console.error('Failed to fetch follower count:', error);
       return followers; // Return current count if fetch fails
