@@ -514,61 +514,6 @@
     transform: scale(0.95);
   }
 
-  .volume-control {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .volume-slider {
-    flex: 1;
-    -webkit-appearance: none;
-    appearance: none;
-    height: 6px;
-    border-radius: 3px;
-    background: rgba(139, 92, 246, 0.3);
-    outline: none;
-  }
-
-  .volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--purple) 0%, rgba(168, 85, 247, 1) 100%);
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
-    transition: all 0.2s;
-  }
-
-  .volume-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
-  }
-
-  .volume-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--purple) 0%, rgba(168, 85, 247, 1) 100%);
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
-    transition: all 0.2s;
-  }
-
-  .volume-slider::-moz-range-thumb:hover {
-    transform: scale(1.1);
-  }
-
-  .volume-label {
-    min-width: 40px;
-    text-align: right;
-    color: var(--purple);
-    font-size: 14px;
-    font-weight: 600;
-  }
 </style>
 </head>
 <body>
@@ -620,11 +565,6 @@
     <div class="spotify-controls">
       <button class="control-btn" onclick="togglePlayPause()" id="play-pause-btn">▶</button>
       <button class="control-btn" onclick="skipSong()">⏭</button>
-      <div class="volume-control">
-        <span>🔊</span>
-        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="50" oninput="updateVolume(this.value)" />
-        <span class="volume-label" id="volume-label">50%</span>
-      </div>
     </div>
   </div>
 
@@ -974,19 +914,6 @@
       document.getElementById('play-pause-btn').textContent = isPlaying ? '⏸' : '▶';
     } catch (e) {
       console.error('Failed to toggle play/pause:', e);
-    }
-  }
-
-  async function updateVolume(volume) {
-    document.getElementById('volume-label').textContent = `${volume}%`;
-    try {
-      await fetch(functionApi('/api/set-volume'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ volume: parseInt(volume) })
-      });
-    } catch (e) {
-      console.error('Failed to update volume:', e);
     }
   }
 

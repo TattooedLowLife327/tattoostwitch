@@ -5,9 +5,6 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import SpotifyWebApi from 'spotify-web-api-node';
 import { neon } from '@neondatabase/serverless';
-import { StaticAuthProvider } from '@twurple/auth';
-import { EventSubWsListener } from '@twurple/eventsub-ws';
-import { ApiClient } from '@twurple/api';
 
 // ====== ENV VARIABLES ======
 const {
@@ -336,7 +333,7 @@ async function checkActionRequests() {
   try {
     const requests = await query(
       `SELECT * FROM activity_log
-       WHERE event_type IN ('skip_requested', 'play_requested', 'pause_requested', 'promo_requested', 'volume_requested')
+       WHERE event_type IN ('skip_requested', 'play_requested', 'pause_requested', 'promo_requested')
        AND created_at > $1
        ORDER BY created_at DESC`,
       [new Date(lastActionCheck)]
@@ -368,18 +365,6 @@ async function checkActionRequests() {
             const promoIndex = Number.isInteger(details?.index) ? details.index : 0;
             console.log(`[ACTION] Promo requested (index ${promoIndex}), executing...`);
             triggerPromo(promoIndex);
-          } else if (req.event_type === 'volume_requested') {
-            let details = req.details;
-            if (typeof details === 'string') {
-              try {
-                details = JSON.parse(details);
-              } catch {
-                details = {};
-              }
-            }
-            const volume = Number.isFinite(details?.volume) ? details.volume : 50;
-            console.log(`[ACTION] Volume change to ${volume}% requested, executing...`);
-            await spotify.setVolume(volume);
           }
 
           // Delete processed request so it doesn't execute again
@@ -860,47 +845,9 @@ async function getAppAccessToken() {
   }
 }
 
-// ====== CHANNEL POINTS & CHAT (EventSub) ======
-let eventSubListener = null;
-let apiClient = null;
-
-async function setupEventSub() {
-  if (TWITCH_CLIENT_ID && TWITCH_CHANNEL_ID && TWITCH_CHANNEL_OAUTH_TOKEN) {
-    try {
-      console.log('[EVENTSUB] Setting up EventSub for channel:', TWITCH_CHANNEL_ID);
-
-      // Get app access token for sending messages
-      await getAppAccessToken();
-
-      // Use CHANNEL owner's user token for EventSub
-      const cleanToken = stripOauthPrefix(TWITCH_CHANNEL_OAUTH_TOKEN);
-      const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, cleanToken);
-      apiClient = new ApiClient({ authProvider });
-
-      eventSubListener = new EventSubWsListener({ apiClient });
-      await eventSubListener.start();
-
-      // Channel Points
-      await eventSubListener.onChannelRedemptionAdd(TWITCH_CHANNEL_ID, (event) => {
-        const username = event.userName;
-        const rewardName = event.rewardTitle;
-        console.log(`[CHANNEL POINTS] *** ${username} redeemed: ${rewardName} ***`);
-        triggerChannelPointsAlert(username, rewardName);
-      });
-
-      // NOTE: Using IRC for chat instead of EventSub - avoids needing user:read:chat scope
-      // Still get Chat Bot badge because we send via API with app access token
-
-      console.log('[EVENTSUB] EventSub listener ACTIVE (channel points)');
-    } catch (err) {
-      console.error('[EVENTSUB] Setup failed:', err.message);
-    }
-  } else {
-    console.log('[EVENTSUB] Missing env vars - CLIENT_ID:', !!TWITCH_CLIENT_ID, 'CHANNEL_ID:', !!TWITCH_CHANNEL_ID, 'CHANNEL_OAUTH_TOKEN:', !!TWITCH_CHANNEL_OAUTH_TOKEN);
-  }
-}
-
-setupEventSub();
+// ====== CHANNEL POINTS & CHAT (EventSub disabled) ======
+// Previously used Twurple EventSub to receive channel point redemptions.
+// Disabled to avoid duplicate subscription errors across multiple bot instances.
 
 // ====== SPOTIFY AUTH ENDPOINTS ======
 app.get('/spotify-auth', (req, res) => {
@@ -1330,7 +1277,7 @@ setInterval(announceSongRequests, SR_REMINDER_INTERVAL);
 app.listen(PORT, () => {
   console.log(`[BOT] Lightweight bot running on port ${PORT}`);
   console.log('[BOT] Twitch IRC: Enabled');
-  console.log(`[BOT] Twitch EventSub: ${eventSubListener ? 'Enabled' : 'Disabled'}`);
+  console.log('[BOT] Twitch EventSub: Disabled');
   console.log('[BOT] Spotify monitoring: Every 5s');
   console.log('[BOT] Queue processor: Every 10s');
   console.log('[BOT] SSE endpoints: /chat-stream, /promo-events, /raid-events, /channel-points-events');
