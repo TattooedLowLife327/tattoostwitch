@@ -702,13 +702,17 @@
       </div>
       <div style="display: flex; gap: 10px;">
         <button class="btn" style="flex: 1;" onclick="setMode('league')">League Play</button>
-        <button class="btn" style="flex: 1;" onclick="toggleDubsMode()">Dubs Mode</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="dubs-toggle" onchange="handleDubsToggle(this.checked)" />
+        <label for="dubs-toggle" style="color: var(--text); font-weight: 600; cursor: pointer;">Enable Dubs Overlay</label>
       </div>
     </div>
     <div id="dubs-partner-container" style="margin-top: 12px; display: none;">
       <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Dubs Partner Name</label>
       <input type="text" id="dubs-partner" placeholder="Partner Name" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
       <small style="color: var(--muted); font-size: 12px;">Used when Dubs mode is active.</small>
+      <button class="btn" style="margin-top: 10px;" onclick="saveDubsSettings()">Save Dubs Settings</button>
     </div>
     <div id="current-mode" style="text-align: center; margin-top: 10px; color: var(--muted); font-size: 14px;">
       Current: <span id="mode-text" style="color: var(--purple); font-weight: 600;">TOURNEY PLAY</span>
@@ -796,6 +800,7 @@
   const CORRECT_PIN = '92522';
   let scores = { player1: 0, player2: 0 };
   let dubsPartnerName = '';
+  let dubsEnabled = false;
   let scoreboardSyncInterval = null;
   let scoreboardSyncPromise = null;
 
@@ -1141,29 +1146,50 @@
 
   async function setMode(mode) {
     try {
-      if (mode === 'dubs') {
-        const partner = document.getElementById('dubs-partner').value.trim();
-        if (!partner) {
-          alert('Enter your partner name before activating Dubs mode.');
-          return;
-        }
-      }
-
       const res = await fetch(functionApi('/api/mode'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode })
       });
-      const data = await res.json();
-      if (mode === 'dubs') {
-        const dubsContainer = document.getElementById('dubs-partner-container');
-        dubsContainer.style.display = 'block';
-      } else {
-        document.getElementById('dubs-partner-container').style.display = 'none';
-      }
+      await res.json();
       updateModeDisplay();
     } catch (e) {
       alert('Failed to set mode');
+    }
+  }
+
+  function handleDubsToggle(checked) {
+    dubsEnabled = checked;
+    applyDubsUIState();
+  }
+
+  async function saveDubsSettings() {
+    const partnerValue = document.getElementById('dubs-partner').value.trim();
+    if (dubsEnabled && !partnerValue) {
+      alert('Enter your partner name before enabling Dubs mode.');
+      dubsEnabled = false;
+      applyDubsUIState();
+      return;
+    }
+
+    try {
+      const res = await fetch(functionApi('/api/settings'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dubsEnabled,
+          dubsPartner: partnerValue
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to save');
+
+      dubsPartnerName = partnerValue;
+      applyDubsUIState();
+      updateModeDisplay();
+      alert('Dubs settings saved!');
+    } catch (err) {
+      alert('Failed to save dubs settings');
     }
   }
   function toggleDubsMode() {
@@ -1323,6 +1349,15 @@
 
   let specialUsers = [];
 
+  function applyDubsUIState() {
+    const toggle = document.getElementById('dubs-toggle');
+    const partnerContainer = document.getElementById('dubs-partner-container');
+    if (toggle) toggle.checked = dubsEnabled;
+    if (partnerContainer) {
+      partnerContainer.style.display = dubsEnabled ? 'block' : 'none';
+    }
+  }
+
   async function loadSettings() {
     try {
       const res = await fetch(functionApi('/api/settings'));
@@ -1335,8 +1370,8 @@
       document.getElementById('obs-background-url').value = data.obsBackgroundUrl || '';
       document.getElementById('dubs-partner').value = data.dubsPartner || '';
       dubsPartnerName = data.dubsPartner || '';
-      const dubsContainer = document.getElementById('dubs-partner-container');
-      dubsContainer.style.display = (data.currentMode === 'dubs' || data.lastMode === 'dubs') ? 'block' : 'none';
+      dubsEnabled = data.dubsEnabled !== 'false';
+      applyDubsUIState();
       renderSpecialUsers();
       updateScoreboardLabels();
       updatePWABackground();
@@ -1402,7 +1437,8 @@
           player2Name,
           pwaBackgroundUrl,
           obsBackgroundUrl,
-          dubsPartner
+          dubsPartner,
+          dubsEnabled
         })
       });
       if (res.ok) {
