@@ -1140,7 +1140,7 @@ app.get('/api/subscribers', async (req, res) => {
 });
 
 // ====== ADMIN MANAGEMENT ======
-const OWNER_PIN = '92522'; // Owner has special privileges
+const OWNER_PIN = ADMIN_PIN || '0000'; // Owner has special privileges; override via ADMIN_PIN env
 let currentAdmin = null; // { pin, name, checkedInAt }
 
 // Ensure admins table exists
@@ -1156,13 +1156,15 @@ async function initAdminsTable() {
     `);
 
     // Ensure owner exists in database
-    const owner = await query('SELECT * FROM admins WHERE pin = $1', [OWNER_PIN]);
-    if (!owner || owner.length === 0) {
-      await query(
-        'INSERT INTO admins (pin, name, role) VALUES ($1, $2, $3) ON CONFLICT (pin) DO NOTHING',
-        [OWNER_PIN, 'Owner', 'owner']
-      );
-      console.log('[ADMIN] Owner added to database');
+    if (OWNER_PIN) {
+      const owner = await query('SELECT * FROM admins WHERE pin = $1', [OWNER_PIN]);
+      if (!owner || owner.length === 0) {
+        await query(
+          'INSERT INTO admins (pin, name, role) VALUES ($1, $2, $3) ON CONFLICT (pin) DO NOTHING',
+          [OWNER_PIN, 'Owner', 'owner']
+        );
+        console.log('[ADMIN] Owner added to database');
+      }
     }
 
     console.log('[ADMIN] Admins table ready');
