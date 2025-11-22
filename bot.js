@@ -1111,6 +1111,148 @@ app.get('/subscribers', async (req, res) => {
   }
 });
 
+// ====== ADMIN MANAGEMENT ======
+const OWNER_PIN = '92522'; // Owner has special privileges
+let admins = [
+  { pin: '92522', name: 'Owner', role: 'owner' },
+  { pin: '8317', name: 'Admin 1', role: 'admin' },
+  { pin: '5196', name: 'Admin 2', role: 'admin' }
+];
+
+let currentAdmin = null; // { pin, name, checkedInAt }
+
+app.get('/api/admin/current', (req, res) => {
+  res.json(currentAdmin || { active: false });
+});
+
+app.post('/api/admin/checkin', (req, res) => {
+  const { pin, name } = req.body || {};
+
+  if (!pin || !name) {
+    return res.status(400).json({ error: 'PIN and name required' });
+  }
+
+  const admin = admins.find(a => a.pin === pin);
+  if (!admin) {
+    return res.status(403).json({ error: 'Invalid PIN' });
+  }
+
+  // If someone is already checked in and it's not the owner trying to take over
+  if (currentAdmin && currentAdmin.pin !== pin && pin !== OWNER_PIN) {
+    return res.status(409).json({
+      error: 'Admin already active',
+      currentAdmin: { name: currentAdmin.name, since: currentAdmin.checkedInAt }
+    });
+  }
+
+  currentAdmin = {
+    pin,
+    name: admin.name,
+    role: admin.role,
+    checkedInAt: new Date().toISOString()
+  };
+
+  console.log(`[ADMIN] ${admin.name} checked in`);
+
+  // Announce in chat
+  if (typeof say === 'function') {
+    say(`${admin.name} has checked in to the control panel`).catch(err =>
+      console.error('[ADMIN] Failed to announce check-in:', err)
+    );
+  }
+
+  res.json({ success: true, admin: currentAdmin });
+});
+
+app.post('/api/admin/checkout', (req, res) => {
+  const { pin } = req.body || {};
+
+  if (!currentAdmin) {
+    return res.json({ success: true, message: 'No admin active' });
+  }
+
+  if (currentAdmin.pin !== pin && pin !== OWNER_PIN) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+
+  console.log(`[ADMIN] ${currentAdmin.name} checked out`);
+  currentAdmin = null;
+  res.json({ success: true });
+});
+
+app.post('/api/admin/boot', (req, res) => {
+  const { pin } = req.body || {};
+
+  if (pin !== OWNER_PIN) {
+    return res.status(403).json({ error: 'Owner only' });
+  }
+
+  if (!currentAdmin) {
+    return res.json({ success: true, message: 'No admin to boot' });
+  }
+
+  console.log(`[ADMIN] Owner booted ${currentAdmin.name}`);
+  currentAdmin = null;
+  res.json({ success: true });
+});
+
+app.get('/api/admin/list', (req, res) => {
+  const { pin } = req.query;
+
+  if (pin !== OWNER_PIN) {
+    return res.status(403).json({ error: 'Owner only' });
+  }
+
+  res.json({ admins: admins.map(a => ({ pin: a.pin, name: a.name, role: a.role })) });
+});
+
+app.post('/api/admin/add', (req, res) => {
+  const { ownerPin, pin, name } = req.body || {};
+
+  if (ownerPin !== OWNER_PIN) {
+    return res.status(403).json({ error: 'Owner only' });
+  }
+
+  if (!pin || !name) {
+    return res.status(400).json({ error: 'PIN and name required' });
+  }
+
+  if (admins.find(a => a.pin === pin)) {
+    return res.status(409).json({ error: 'PIN already exists' });
+  }
+
+  admins.push({ pin, name, role: 'admin' });
+  console.log(`[ADMIN] Owner added new admin: ${name} (${pin})`);
+  res.json({ success: true, admins });
+});
+
+app.delete('/api/admin/remove', (req, res) => {
+  const { ownerPin, pin } = req.body || {};
+
+  if (ownerPin !== OWNER_PIN) {
+    return res.status(403).json({ error: 'Owner only' });
+  }
+
+  if (pin === OWNER_PIN) {
+    return res.status(400).json({ error: 'Cannot remove owner' });
+  }
+
+  const index = admins.findIndex(a => a.pin === pin);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Admin not found' });
+  }
+
+  const removed = admins.splice(index, 1)[0];
+
+  // If this admin is currently checked in, boot them
+  if (currentAdmin && currentAdmin.pin === pin) {
+    currentAdmin = null;
+  }
+
+  console.log(`[ADMIN] Owner removed admin: ${removed.name} (${pin})`);
+  res.json({ success: true, removed, admins });
+});
+
 // ====== BRB / SCREEN OVERLAY STATE ======
 let screenOverlayState = {
   type: null, // 'brb', 'tech_difficulties', 'starting_soon'
