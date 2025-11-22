@@ -1152,17 +1152,25 @@ async function initAdminsTable() {
         pin VARCHAR(10) PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         role VARCHAR(20) DEFAULT 'admin' CHECK (role IN ('owner', 'admin')),
+        color VARCHAR(7) DEFAULT '#8b5cf6',
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
+
+    // Add color column if it doesn't exist (for existing tables)
+    try {
+      await query(`ALTER TABLE admins ADD COLUMN IF NOT EXISTS color VARCHAR(7) DEFAULT '#8b5cf6'`);
+    } catch (err) {
+      // Column might already exist, ignore error
+    }
 
     // Ensure owner exists in database
     if (OWNER_PIN) {
       const owner = await query('SELECT * FROM admins WHERE pin = $1', [OWNER_PIN]);
       if (!owner || owner.length === 0) {
         await query(
-          'INSERT INTO admins (pin, name, role) VALUES ($1, $2, $3) ON CONFLICT (pin) DO NOTHING',
-          [OWNER_PIN, 'Owner', 'owner']
+          'INSERT INTO admins (pin, name, role, color) VALUES ($1, $2, $3, $4) ON CONFLICT (pin) DO NOTHING',
+          [OWNER_PIN, 'Owner', 'owner', '#8b5cf6']
         );
         console.log('[ADMIN] Owner added to database');
       }
@@ -1177,7 +1185,7 @@ async function initAdminsTable() {
 // Load all admins from database
 async function getAdmins() {
   try {
-    const result = await query('SELECT pin, name, role FROM admins ORDER BY created_at ASC');
+    const result = await query('SELECT pin, name, role, color FROM admins ORDER BY created_at ASC');
     return result || [];
   } catch (error) {
     console.error('[ADMIN] Failed to load admins:', error);
@@ -1202,7 +1210,7 @@ app.post('/api/admin/checkin', async (req, res) => {
 
     // Allow owner PIN even if not in database
     if (!admin && pin === OWNER_PIN) {
-      admin = { pin: OWNER_PIN, name: 'Owner', role: 'owner' };
+      admin = { pin: OWNER_PIN, name: 'Owner', role: 'owner', color: '#8b5cf6' };
     }
 
     if (!admin) {
@@ -1221,6 +1229,7 @@ app.post('/api/admin/checkin', async (req, res) => {
       pin,
       name: admin.name,
       role: admin.role,
+      color: admin.color || '#8b5cf6',
       checkedInAt: new Date().toISOString()
     };
 
@@ -1281,7 +1290,7 @@ app.get('/api/admin/list', async (req, res) => {
 
   try {
     const admins = await getAdmins();
-    res.json({ admins: admins.map(a => ({ pin: a.pin, name: a.name, role: a.role })) });
+    res.json({ admins: admins.map(a => ({ pin: a.pin, name: a.name, role: a.role, color: a.color || '#8b5cf6' })) });
   } catch (error) {
     console.error('[ADMIN] List error:', error);
     res.status(500).json({ error: 'Failed to load admins' });
@@ -1289,7 +1298,7 @@ app.get('/api/admin/list', async (req, res) => {
 });
 
 app.post('/api/admin/add', async (req, res) => {
-  const { ownerPin, pin, name } = req.body || {};
+  const { ownerPin, pin, name, color } = req.body || {};
 
   if (ownerPin !== OWNER_PIN) {
     return res.status(403).json({ error: 'Owner only' });
@@ -1305,11 +1314,12 @@ app.post('/api/admin/add', async (req, res) => {
       return res.status(409).json({ error: 'PIN already exists' });
     }
 
+    const adminColor = color || '#8b5cf6';
     await query(
-      'INSERT INTO admins (pin, name, role) VALUES ($1, $2, $3)',
-      [pin, name, 'admin']
+      'INSERT INTO admins (pin, name, role, color) VALUES ($1, $2, $3, $4)',
+      [pin, name, 'admin', adminColor]
     );
-    console.log(`[ADMIN] Owner added new admin: ${name} (${pin})`);
+    console.log(`[ADMIN] Owner added new admin: ${name} (${pin}) with color ${adminColor}`);
 
     const updatedAdmins = await getAdmins();
     res.json({ success: true, admins: updatedAdmins });
