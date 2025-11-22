@@ -1,0 +1,35 @@
+<svg width="66" height="54" viewBox="0 0 66 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_1_266)">
+<g filter="url(#filter0_dii_1_266)">
+<path d="M50.7119 1H14.0452C9.9951 1 6.71185 4.19797 6.71185 8.14286V43.8571C6.71185 47.802 9.9951 51 14.0452 51H50.7119C54.762 51 58.0452 47.802 58.0452 43.8571V8.14286C58.0452 4.19797 54.762 1 50.7119 1Z" fill="#2B2B2B"/>
+</g>
+</g>
+<path d="M44.3125 13.6875C43.3125 14.6719 41.9219 16.4297 40.1406 18.9609C38.3594 21.4766 36.8672 24.0781 35.6641 26.7656C34.7109 28.875 33.8516 31.4531 33.0859 34.5C32.3203 37.5469 31.9375 40.0469 31.9375 42H25C25.2031 35.9062 27.2031 29.5703 31 22.9922C33.4531 18.9141 35.5078 16.0703 37.1641 14.4609H20.2188L20.3125 8.46094H44.3125V13.6875Z" fill="white"/>
+<defs>
+<filter id="filter0_dii_1_266" x="2.71185" y="-2" width="59.3333" height="61" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_266"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_266" result="shape"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="3" dy="-3"/>
+<feGaussianBlur stdDeviation="2.4"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.71 0"/>
+<feBlend mode="normal" in2="shape" result="effect2_innerShadow_1_266"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="-1" dy="2"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="effect2_innerShadow_1_266" result="effect3_innerShadow_1_266"/>
+</filter>
+<clipPath id="clip0_1_266">
+<rect width="66" height="50" fill="white" transform="translate(0 1)"/>
+</clipPath>
+</defs>
+</svg>
