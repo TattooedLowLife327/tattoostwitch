@@ -5,6 +5,12 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import SpotifyWebApi from 'spotify-web-api-node';
 import { neon } from '@neondatabase/serverless';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Resolve filesystem paths (works in ESM and on Render)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ====== ENV VARIABLES ======
 const {
@@ -24,7 +30,10 @@ const {
   ADMIN_PIN
 } = process.env;
 
-const PORT = process.env.PORT || 8787;
+// Default Netlify Functions dev port is 8888; prefer env PORT when provided (Render sets PORT)
+const DEFAULT_PORT = 8888;
+const envPort = Number.parseInt(process.env.PORT, 10);
+const PORT = Number.isFinite(envPort) ? envPort : DEFAULT_PORT;
 const ALLOWED_PINS = ['92522', '8317', '5196'];
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 const LURKER_ANNOUNCE_INTERVAL = 30 * 60 * 1000; // 30 minutes
@@ -132,6 +141,25 @@ async function query(sql, params = []) {
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from repo root (explicit absolute path for Render)
+const publicDir = __dirname;
+app.use(express.static(publicDir, {
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  }
+}));
+
+// Explicit routes for entry pages (Render occasionally skips static index)
+app.get(['/', '/index.html'], (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+app.get('/:page.html', (req, res, next) => {
+  const filePath = path.join(publicDir, `${req.params.page}.html`);
+  res.sendFile(filePath, (err) => {
+    if (err) return next();
+  });
+});
 
 // ====== SPOTIFY ======
 const spotify = new SpotifyWebApi({
@@ -1095,7 +1123,7 @@ async function fetchSubscriberCountWithChannelToken() {
   }
 }
 
-app.get('/subscribers', async (req, res) => {
+app.get('/api/subscribers', async (req, res) => {
   try {
     let total = await fetchSubscriberCountWithChannelToken();
 
@@ -1104,7 +1132,7 @@ app.get('/subscribers', async (req, res) => {
     }
 
     console.error('[SUBSCRIBERS] Unable to fetch subscriber count');
-    return res.status(502).json({ error: 'Failed to fetch subscribers', total: 0 });
+    return res.json({ total: 0 });
   } catch (e) {
     console.error('[SUBSCRIBERS] Error fetching subscriber count:', e);
     res.status(500).json({ error: 'Failed to fetch subscribers', total: 0 });
@@ -1113,55 +1141,100 @@ app.get('/subscribers', async (req, res) => {
 
 // ====== ADMIN MANAGEMENT ======
 const OWNER_PIN = '92522'; // Owner has special privileges
-let admins = [
-  { pin: '92522', name: 'Owner', role: 'owner' },
-  { pin: '8317', name: 'Admin 1', role: 'admin' },
-  { pin: '5196', name: 'Admin 2', role: 'admin' }
-];
-
 let currentAdmin = null; // { pin, name, checkedInAt }
+
+// Ensure admins table exists
+async function initAdminsTable() {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS admins (
+        pin VARCHAR(10) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        role VARCHAR(20) DEFAULT 'admin' CHECK (role IN ('owner', 'admin')),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Ensure owner exists in database
+    const owner = await query('SELECT * FROM admins WHERE pin = $1', [OWNER_PIN]);
+    if (!owner || owner.length === 0) {
+      await query(
+        'INSERT INTO admins (pin, name, role) VALUES ($1, $2, $3) ON CONFLICT (pin) DO NOTHING',
+        [OWNER_PIN, 'Owner', 'owner']
+      );
+      console.log('[ADMIN] Owner added to database');
+    }
+
+    console.log('[ADMIN] Admins table ready');
+  } catch (error) {
+    console.error('[ADMIN] Failed to initialize admins table:', error);
+  }
+}
+
+// Load all admins from database
+async function getAdmins() {
+  try {
+    const result = await query('SELECT pin, name, role FROM admins ORDER BY created_at ASC');
+    return result || [];
+  } catch (error) {
+    console.error('[ADMIN] Failed to load admins:', error);
+    return [];
+  }
+}
 
 app.get('/api/admin/current', (req, res) => {
   res.json(currentAdmin || { active: false });
 });
 
-app.post('/api/admin/checkin', (req, res) => {
+app.post('/api/admin/checkin', async (req, res) => {
   const { pin } = req.body || {};
 
   if (!pin) {
     return res.status(400).json({ error: 'PIN required' });
   }
 
-  const admin = admins.find(a => a.pin === pin);
-  if (!admin) {
-    return res.status(403).json({ error: 'Invalid PIN' });
+  try {
+    const admins = await getAdmins();
+    let admin = admins.find(a => a.pin === pin);
+
+    // Allow owner PIN even if not in database
+    if (!admin && pin === OWNER_PIN) {
+      admin = { pin: OWNER_PIN, name: 'Owner', role: 'owner' };
+    }
+
+    if (!admin) {
+      return res.status(403).json({ error: 'Invalid PIN' });
+    }
+
+    // If someone is already checked in and it's not the owner trying to take over
+    if (currentAdmin && currentAdmin.pin !== pin && pin !== OWNER_PIN) {
+      return res.status(409).json({
+        error: 'Admin already active',
+        currentAdmin: { name: currentAdmin.name, since: currentAdmin.checkedInAt }
+      });
+    }
+
+    currentAdmin = {
+      pin,
+      name: admin.name,
+      role: admin.role,
+      checkedInAt: new Date().toISOString()
+    };
+
+    console.log(`[ADMIN] ${admin.name} checked in`);
+
+    // Announce in chat
+    if (typeof say === 'function') {
+      say(`${admin.name} has checked in to the control panel`).catch(err =>
+        console.error('[ADMIN] Failed to announce check-in:', err)
+      );
+    }
+
+    res.json({ success: true, admin: currentAdmin });
+  } catch (error) {
+    console.error('[ADMIN] Checkin error:', error);
+    res.status(500).json({ error: 'Failed to check in' });
   }
-
-  // If someone is already checked in and it's not the owner trying to take over
-  if (currentAdmin && currentAdmin.pin !== pin && pin !== OWNER_PIN) {
-    return res.status(409).json({
-      error: 'Admin already active',
-      currentAdmin: { name: currentAdmin.name, since: currentAdmin.checkedInAt }
-    });
-  }
-
-  currentAdmin = {
-    pin,
-    name: admin.name,
-    role: admin.role,
-    checkedInAt: new Date().toISOString()
-  };
-
-  console.log(`[ADMIN] ${admin.name} checked in`);
-
-  // Announce in chat
-  if (typeof say === 'function') {
-    say(`${admin.name} has checked in to the control panel`).catch(err =>
-      console.error('[ADMIN] Failed to announce check-in:', err)
-    );
-  }
-
-  res.json({ success: true, admin: currentAdmin });
 });
 
 app.post('/api/admin/checkout', (req, res) => {
@@ -1196,17 +1269,23 @@ app.post('/api/admin/boot', (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/admin/list', (req, res) => {
+app.get('/api/admin/list', async (req, res) => {
   const { pin } = req.query;
 
   if (pin !== OWNER_PIN) {
     return res.status(403).json({ error: 'Owner only' });
   }
 
-  res.json({ admins: admins.map(a => ({ pin: a.pin, name: a.name, role: a.role })) });
+  try {
+    const admins = await getAdmins();
+    res.json({ admins: admins.map(a => ({ pin: a.pin, name: a.name, role: a.role })) });
+  } catch (error) {
+    console.error('[ADMIN] List error:', error);
+    res.status(500).json({ error: 'Failed to load admins' });
+  }
 });
 
-app.post('/api/admin/add', (req, res) => {
+app.post('/api/admin/add', async (req, res) => {
   const { ownerPin, pin, name } = req.body || {};
 
   if (ownerPin !== OWNER_PIN) {
@@ -1217,16 +1296,27 @@ app.post('/api/admin/add', (req, res) => {
     return res.status(400).json({ error: 'PIN and name required' });
   }
 
-  if (admins.find(a => a.pin === pin)) {
-    return res.status(409).json({ error: 'PIN already exists' });
-  }
+  try {
+    const admins = await getAdmins();
+    if (admins.find(a => a.pin === pin)) {
+      return res.status(409).json({ error: 'PIN already exists' });
+    }
 
-  admins.push({ pin, name, role: 'admin' });
-  console.log(`[ADMIN] Owner added new admin: ${name} (${pin})`);
-  res.json({ success: true, admins });
+    await query(
+      'INSERT INTO admins (pin, name, role) VALUES ($1, $2, $3)',
+      [pin, name, 'admin']
+    );
+    console.log(`[ADMIN] Owner added new admin: ${name} (${pin})`);
+
+    const updatedAdmins = await getAdmins();
+    res.json({ success: true, admins: updatedAdmins });
+  } catch (error) {
+    console.error('[ADMIN] Add error:', error);
+    res.status(500).json({ error: 'Failed to add admin' });
+  }
 });
 
-app.delete('/api/admin/remove', (req, res) => {
+app.delete('/api/admin/remove', async (req, res) => {
   const { ownerPin, pin } = req.body || {};
 
   if (ownerPin !== OWNER_PIN) {
@@ -1237,20 +1327,31 @@ app.delete('/api/admin/remove', (req, res) => {
     return res.status(400).json({ error: 'Cannot remove owner' });
   }
 
-  const index = admins.findIndex(a => a.pin === pin);
-  if (index === -1) {
-    return res.status(404).json({ error: 'Admin not found' });
+  try {
+    const result = await query(
+      'DELETE FROM admins WHERE pin = $1 RETURNING *',
+      [pin]
+    );
+
+    if (!result || result.length === 0) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    const removed = result[0];
+
+    // If this admin is currently checked in, boot them
+    if (currentAdmin && currentAdmin.pin === pin) {
+      currentAdmin = null;
+    }
+
+    console.log(`[ADMIN] Owner removed admin: ${removed.name} (${pin})`);
+
+    const updatedAdmins = await getAdmins();
+    res.json({ success: true, removed, admins: updatedAdmins });
+  } catch (error) {
+    console.error('[ADMIN] Remove error:', error);
+    res.status(500).json({ error: 'Failed to remove admin' });
   }
-
-  const removed = admins.splice(index, 1)[0];
-
-  // If this admin is currently checked in, boot them
-  if (currentAdmin && currentAdmin.pin === pin) {
-    currentAdmin = null;
-  }
-
-  console.log(`[ADMIN] Owner removed admin: ${removed.name} (${pin})`);
-  res.json({ success: true, removed, admins });
 });
 
 // ====== BRB / SCREEN OVERLAY STATE ======
@@ -1462,11 +1563,15 @@ setInterval(announceAnonymousLurkers, LURKER_ANNOUNCE_INTERVAL);
 setInterval(announceSongRequests, SR_REMINDER_INTERVAL);
 
 // ====== START SERVER ======
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`[BOT] Lightweight bot running on port ${PORT}`);
   console.log('[BOT] Twitch IRC: Enabled');
   console.log('[BOT] Twitch EventSub: Disabled');
   console.log('[BOT] Spotify monitoring: Every 5s');
   console.log('[BOT] Queue processor: Every 10s');
   console.log('[BOT] SSE endpoints: /chat-stream, /promo-events, /raid-events, /channel-points-events');
+
+  // Initialize admin table
+  await initAdminsTable();
+  console.log('[BOT] Admin system initialized');
 });
