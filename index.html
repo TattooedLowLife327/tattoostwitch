@@ -8,8 +8,10 @@
 <meta http-equiv="Expires" content="0" />
 <meta name="theme-color" content="#8B5CF6" />
 <link rel="manifest" href="manifest.json" />
-<link rel="apple-touch-icon" href="icon-192.png" />
-<title>Tattoo's Twitch</title>
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
+<title>Tattoo's Twitch Controls</title>
 <style>
   :root {
     --purple: #8B5CF6;
@@ -112,6 +114,138 @@
   .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* PIN pad */
+  .pin-pad-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+
+  .pin-pad {
+    position: relative;
+    width: 430px;           /* allow room for outer glow */
+    min-height: 540px;      /* allow room for outer glow */
+    background: url('images/pinpadbackground.svg') center/contain no-repeat;
+    border: none;
+    border-radius: 16px;
+    padding: 32px 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    box-shadow: none;
+  }
+
+  .pin-pad::before {
+    content: '';
+    position: absolute;
+    inset: -48px -48px -40px;
+    background: radial-gradient(120% 120% at 50% 35%, rgba(167, 139, 250, 0.45), rgba(80, 30, 156, 0.25) 55%, rgba(0, 0, 0, 0));
+    filter: blur(32px);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .pin-pad h3 {
+    text-align: center;
+    color: #ffffff;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+    font-size: 24px;
+    font-weight: 800;
+  }
+
+  .pin-pad-display {
+    width: 260px;
+    height: 46px;
+    text-align: center;
+    letter-spacing: 6px;
+    font-size: 22px;
+    background: #0f0f0f;
+    border: 2px solid #8b5cf6;
+    border-radius: 8px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pin-pad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 6px 0 6px;
+  }
+
+  .pin-btn {
+    width: 74px;
+    height: 60px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color: transparent;
+    color: transparent;
+    cursor: pointer;
+    transition: transform 0.12s ease;
+  }
+
+  .pin-btn:active {
+    transform: scale(0.95);
+  }
+
+  .pin-btn.digit-0 { background-image: url('images/0.svg'); }
+  .pin-btn.digit-1 { background-image: url('images/1.svg'); }
+  .pin-btn.digit-2 { background-image: url('images/2.svg'); }
+  .pin-btn.digit-3 { background-image: url('images/3.svg'); }
+  .pin-btn.digit-4 { background-image: url('images/4.svg'); }
+  .pin-btn.digit-5 { background-image: url('images/5.svg'); }
+  .pin-btn.digit-6 { background-image: url('images/6.svg'); }
+  .pin-btn.digit-7 { background-image: url('images/7.svg'); }
+  .pin-btn.digit-8 { background-image: url('images/8.svg'); }
+  .pin-btn.digit-9 { background-image: url('images/9.svg'); }
+  .pin-btn.clear-btn { background-image: url('images/clear.svg'); }
+  .pin-btn.back-btn { background-image: url('images/backarrowbutton.svg'); }
+
+  .pin-pad-actions {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .submit-btn {
+    width: 181px;
+    height: 58px;
+    background: url('images/submitpinpadbutton.svg') center/contain no-repeat;
+    border: none;
+    color: transparent;
+    cursor: pointer;
+    transition: transform 0.12s ease;
+  }
+
+  .submit-btn:active {
+    transform: scale(0.97);
+  }
+
+  .pin-pad-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    background: url('images/closebutton.svg') center/contain no-repeat;
+    border: none;
+    cursor: pointer;
+    color: transparent;
   }
 
   .error {
@@ -527,6 +661,32 @@
   </div>
 </div>
 
+<!-- PIN Pad Overlay -->
+<div id="pin-pad-overlay" class="pin-pad-overlay" onclick="handlePadBackgroundClick(event)">
+  <div class="pin-pad" role="dialog" aria-modal="true" aria-label="PIN pad">
+    <button class="pin-pad-close" onclick="hidePinPad()" aria-label="Close PIN pad"></button>
+    <h3>Enter PIN</h3>
+    <div class="pin-pad-display" id="pin-pad-display">••••</div>
+    <div class="pin-pad-grid">
+      <button class="pin-btn digit-1" onclick="appendPinDigit('1')" aria-label="1">1</button>
+      <button class="pin-btn digit-2" onclick="appendPinDigit('2')" aria-label="2">2</button>
+      <button class="pin-btn digit-3" onclick="appendPinDigit('3')" aria-label="3">3</button>
+      <button class="pin-btn digit-4" onclick="appendPinDigit('4')" aria-label="4">4</button>
+      <button class="pin-btn digit-5" onclick="appendPinDigit('5')" aria-label="5">5</button>
+      <button class="pin-btn digit-6" onclick="appendPinDigit('6')" aria-label="6">6</button>
+      <button class="pin-btn digit-7" onclick="appendPinDigit('7')" aria-label="7">7</button>
+      <button class="pin-btn digit-8" onclick="appendPinDigit('8')" aria-label="8">8</button>
+      <button class="pin-btn digit-9" onclick="appendPinDigit('9')" aria-label="9">9</button>
+      <button class="pin-btn clear-btn" onclick="clearPin()" aria-label="Clear">C</button>
+      <button class="pin-btn digit-0" onclick="appendPinDigit('0')" aria-label="0">0</button>
+      <button class="pin-btn back-btn" onclick="backspacePinDigit()" aria-label="Backspace">Back</button>
+    </div>
+    <div class="pin-pad-actions">
+      <button class="submit-btn" onclick="submitPinPad()" aria-label="Submit PIN">Submit</button>
+    </div>
+  </div>
+</div>
+
 <div id="admin-screen" class="container hidden">
   <img src="images/bannerphoto.png" alt="Tattoo's Twitch Banner" style="width: 100%; max-width: 600px; margin-bottom: 30px;">
 
@@ -769,8 +929,6 @@
     : 'https://tattoostwitch.netlify.app';
   const botApi = (path = '') => `${BOT_API_URL}${path}`;
   const functionApi = (path = '') => `${FUNCTION_API_URL}${path}`;
-  const CORRECT_PIN = '92522';
-  const OWNER_PIN = '92522';
   let scores = { player1: 0, player2: 0 };
   let dubsPartnerName = '';
   let dubsEnabled = false;
@@ -778,6 +936,7 @@
   let scoreboardSyncPromise = null;
   let userPin = '';
   let isOwner = false;
+  let adminRole = '';
 
   function setScoreDisplays(newPlayer1, newPlayer2) {
     scores.player1 = newPlayer1;
@@ -860,24 +1019,71 @@
       }
 
       userPin = pin;
-      isOwner = pin === OWNER_PIN;
+      adminRole = data.admin?.role || '';
+      isOwner = adminRole === 'owner';
       localStorage.setItem('authenticated', 'true');
       localStorage.setItem('userPin', pin);
+      localStorage.setItem('adminRole', adminRole);
       showAdmin();
     } catch (e) {
-      console.error('Login error - falling back to local PIN check:', e);
-      // Fallback to simple PIN check if API is unavailable
-      if (pin === CORRECT_PIN) {
-        userPin = pin;
-        isOwner = pin === OWNER_PIN;
-        localStorage.setItem('authenticated', 'true');
-        localStorage.setItem('userPin', pin);
-        showAdmin();
-      } else {
-        errorEl.textContent = 'Incorrect PIN';
-        errorEl.classList.remove('hidden');
-      }
+      console.error('Login error:', e);
+      errorEl.textContent = 'Login failed. Please try again.';
+      errorEl.classList.remove('hidden');
     }
+  }
+
+  // ----- PIN PAD -----
+  function showPinPad() {
+    const overlay = document.getElementById('pin-pad-overlay');
+    if (overlay) {
+      overlay.style.display = 'flex';
+      updatePinPadDisplay();
+    }
+  }
+
+  function hidePinPad() {
+    const overlay = document.getElementById('pin-pad-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  function handlePadBackgroundClick(event) {
+    if (event.target.id === 'pin-pad-overlay') {
+      hidePinPad();
+    }
+  }
+
+  function updatePinPadDisplay() {
+    const input = document.getElementById('pin-input');
+    const display = document.getElementById('pin-pad-display');
+    if (!input || !display) return;
+    const length = input.value.length;
+    display.textContent = length > 0 ? '•'.repeat(length) : '••••';
+  }
+
+  function appendPinDigit(digit) {
+    const input = document.getElementById('pin-input');
+    if (!input) return;
+    input.value = (input.value || '') + digit;
+    updatePinPadDisplay();
+  }
+
+  function backspacePinDigit() {
+    const input = document.getElementById('pin-input');
+    if (!input || !input.value) return;
+    input.value = input.value.slice(0, -1);
+    updatePinPadDisplay();
+  }
+
+  function clearPin() {
+    const input = document.getElementById('pin-input');
+    if (!input) return;
+    input.value = '';
+    updatePinPadDisplay();
+  }
+
+  function submitPinPad() {
+    hidePinPad();
+    login();
   }
 
   async function logout() {
@@ -1247,7 +1453,7 @@
 
   async function updateSubscriberCount() {
     try {
-      const res = await fetch(botApi('/subscribers'));
+      const res = await fetch(botApi('/api/subscribers'));
       const data = await res.json();
       const count = data.total || 0;
       document.getElementById('subscriber-count').textContent = count;
@@ -1381,6 +1587,10 @@
   }
 
   async function updateModeDisplay() {
+    // Alternate between base mode and dubs partner when dubs is active
+    // so OBS sees both pieces of info without needing overlay edits.
+    const shouldShowDubs = dubsEnabled === true || dubsEnabled === 'true';
+    const partner = (dubsPartnerName || '').trim();
     try {
       const res = await fetch(functionApi('/api/mode'));
       const data = await res.json();
@@ -1391,17 +1601,26 @@
         'cash': 'CASH SETS',
         'league': 'LEAGUE PLAY'
       };
-      const shouldShowDubs = dubsEnabled === true || dubsEnabled === 'true';
       const apiMode = data.mode || 'tourney';
       const safeMode = (!shouldShowDubs && apiMode === 'dubs') ? 'tourney' : apiMode;
 
-      if (shouldShowDubs) {
-        const partner = (dubsPartnerName || '').trim();
-        modeText.textContent = partner
+      const shouldCycleDubs = shouldShowDubs && partner;
+      const baseModeText = modeNames[safeMode] || 'TOURNEY PLAY';
+
+      // Toggle text between mode and dubs partner on successive calls
+      if (shouldCycleDubs) {
+        if (typeof window.__dubsToggle === 'undefined') {
+          window.__dubsToggle = false;
+        }
+        window.__dubsToggle = !window.__dubsToggle;
+        const showPartner = window.__dubsToggle;
+        modeText.textContent = showPartner
           ? `DUBS: ${partner.toUpperCase()}`
-          : 'DUBS MODE';
+          : baseModeText;
+      } else if (shouldShowDubs) {
+        modeText.textContent = 'DUBS MODE';
       } else {
-        modeText.textContent = modeNames[safeMode] || 'TOURNEY PLAY';
+        modeText.textContent = baseModeText;
       }
     } catch (e) {
       console.error('Failed to update mode display:', e);
@@ -1714,7 +1933,8 @@
   // Check if already authenticated
   if (localStorage.getItem('authenticated') === 'true') {
     userPin = localStorage.getItem('userPin') || '';
-    isOwner = userPin === OWNER_PIN;
+    adminRole = localStorage.getItem('adminRole') || '';
+    isOwner = adminRole === 'owner';
     showAdmin();
   }
 
@@ -1724,6 +1944,11 @@
       login();
     }
   });
+
+  // Show PIN pad when focusing the field
+  const pinInputEl = document.getElementById('pin-input');
+  pinInputEl.addEventListener('focus', showPinPad);
+  pinInputEl.addEventListener('click', showPinPad);
 
   // Register service worker
   if ('serviceWorker' in navigator) {
