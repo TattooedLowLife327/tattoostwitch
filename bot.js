@@ -38,7 +38,7 @@ const ALLOWED_PINS = ['92522', '8317', '5196'];
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 const LURKER_ANNOUNCE_INTERVAL = 30 * 60 * 1000; // 30 minutes
 const SR_REMINDER_INTERVAL = 15 * 60 * 1000; // 15 minutes
-const SPOTIFY_POLL_INTERVAL = 15 * 1000; // 15 seconds (was 5s)
+const SPOTIFY_POLL_INTERVAL = 30 * 1000; // 30 seconds to reduce API churn
 
 console.log('=== LIGHTWEIGHT BOT STARTING ===');
 console.log('TWITCH_CHANNEL:', TWITCH_CHANNEL);
