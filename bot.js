@@ -38,6 +38,7 @@ const ALLOWED_PINS = ['92522', '8317', '5196'];
 const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 const LURKER_ANNOUNCE_INTERVAL = 30 * 60 * 1000; // 30 minutes
 const SR_REMINDER_INTERVAL = 15 * 60 * 1000; // 15 minutes
+const SPOTIFY_POLL_INTERVAL = 15 * 1000; // 15 seconds (was 5s)
 
 console.log('=== LIGHTWEIGHT BOT STARTING ===');
 console.log('TWITCH_CHANNEL:', TWITCH_CHANNEL);
@@ -317,7 +318,7 @@ async function updateCurrentPlayback() {
 }
 
 // Poll Spotify every 5 seconds (optimized from 2s)
-setInterval(updateCurrentPlayback, 5000);
+setInterval(updateCurrentPlayback, SPOTIFY_POLL_INTERVAL);
 updateCurrentPlayback();
 
 // ====== APPROVED SONG QUEUE PROCESSOR ======
@@ -1569,7 +1570,7 @@ app.listen(PORT, async () => {
   console.log(`[BOT] Lightweight bot running on port ${PORT}`);
   console.log('[BOT] Twitch IRC: Enabled');
   console.log('[BOT] Twitch EventSub: Disabled');
-  console.log('[BOT] Spotify monitoring: Every 5s');
+  console.log(`[BOT] Spotify monitoring: Every ${SPOTIFY_POLL_INTERVAL / 1000}s`);
   console.log('[BOT] Queue processor: Every 10s');
   console.log('[BOT] SSE endpoints: /chat-stream, /promo-events, /raid-events, /channel-points-events');
 
