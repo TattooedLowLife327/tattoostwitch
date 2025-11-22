@@ -113,6 +113,8 @@
   const SETTINGS_ENDPOINT = `${API_BASE}/settings`;
   let dubsPartner = '';
   let dubsEnabled = false;
+  let currentMode = 'tourney';
+  let showDubsInfo = true; // Toggle between showing dubs and mode
 
   const modes = {
     'tourney': 'TOURNEY<br>PLAY',
@@ -130,18 +132,34 @@
       const apiMode = data.mode || 'tourney';
       const shouldShowDubs = dubsEnabled === true || dubsEnabled === 'true';
       const safeMode = (!shouldShowDubs && apiMode === 'dubs') ? 'tourney' : apiMode;
+      currentMode = safeMode;
 
-      if (shouldShowDubs) {
-        const partner = (dubsPartner || '').trim();
-        modeDisplay.innerHTML = partner
-          ? `DUBS:<br>${partner.toUpperCase()}`
-          : 'DUBS<br>MODE';
+      // If dubs is enabled and partner is set, rotate between mode and dubs info
+      if (shouldShowDubs && dubsPartner && dubsPartner.trim()) {
+        if (showDubsInfo) {
+          const partner = dubsPartner.trim();
+          modeDisplay.innerHTML = `DUBS:<br>${partner.toUpperCase()}`;
+        } else {
+          modeDisplay.innerHTML = modes[currentMode] || modes.tourney;
+        }
+      } else if (shouldShowDubs) {
+        // If dubs is enabled but no partner, just show dubs mode
+        modeDisplay.innerHTML = 'DUBS<br>MODE';
       } else {
         modeDisplay.innerHTML = modes[safeMode] || modes.tourney;
       }
 
     } catch (error) {
       console.error('Failed to update mode:', error);
+    }
+  }
+
+  // Toggle between showing dubs info and mode info every 5 seconds
+  function toggleDisplay() {
+    const shouldShowDubs = dubsEnabled === true || dubsEnabled === 'true';
+    if (shouldShowDubs && dubsPartner && dubsPartner.trim()) {
+      showDubsInfo = !showDubsInfo;
+      updateMode();
     }
   }
 
@@ -170,6 +188,7 @@
   checkVisibility();
   setInterval(updateMode, 5000); // Optimized polling
   setInterval(checkVisibility, 5000); // Check visibility every 5 seconds
+  setInterval(toggleDisplay, 5000); // Toggle between mode and dubs every 5 seconds
 </script>
 </body>
 </html>
