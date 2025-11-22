@@ -1018,6 +1018,7 @@
         return;
       }
 
+      const data = await checkinRes.json();
       userPin = pin;
       adminRole = data.admin?.role || '';
       isOwner = adminRole === 'owner';
