@@ -1126,10 +1126,10 @@ app.get('/api/admin/current', (req, res) => {
 });
 
 app.post('/api/admin/checkin', (req, res) => {
-  const { pin, name } = req.body || {};
+  const { pin } = req.body || {};
 
-  if (!pin || !name) {
-    return res.status(400).json({ error: 'PIN and name required' });
+  if (!pin) {
+    return res.status(400).json({ error: 'PIN required' });
   }
 
   const admin = admins.find(a => a.pin === pin);
