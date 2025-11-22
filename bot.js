@@ -1065,6 +1065,52 @@ app.get('/followers', async (req, res) => {
   }
 });
 
+async function fetchSubscriberCountWithChannelToken() {
+  if (!TWITCH_CHANNEL_ID || !TWITCH_CHANNEL_OAUTH_TOKEN || !TWITCH_CLIENT_ID) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`https://api.twitch.tv/helix/subscriptions?broadcaster_id=${TWITCH_CHANNEL_ID}&first=1`, {
+      headers: {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': `Bearer ${stripOauthPrefix(TWITCH_CHANNEL_OAUTH_TOKEN)}`
+      }
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error('[SUBSCRIBERS] Channel token request failed:', response.status, body);
+      return null;
+    }
+
+    const data = await response.json();
+    if (typeof data.total === 'number') {
+      return data.total;
+    }
+    return null;
+  } catch (error) {
+    console.error('[SUBSCRIBERS] Channel token fetch errored:', error.message);
+    return null;
+  }
+}
+
+app.get('/subscribers', async (req, res) => {
+  try {
+    let total = await fetchSubscriberCountWithChannelToken();
+
+    if (typeof total === 'number') {
+      return res.json({ total });
+    }
+
+    console.error('[SUBSCRIBERS] Unable to fetch subscriber count');
+    return res.status(502).json({ error: 'Failed to fetch subscribers', total: 0 });
+  } catch (e) {
+    console.error('[SUBSCRIBERS] Error fetching subscriber count:', e);
+    res.status(500).json({ error: 'Failed to fetch subscribers', total: 0 });
+  }
+});
+
 // ====== BRB / SCREEN OVERLAY STATE ======
 let screenOverlayState = {
   type: null, // 'brb', 'tech_difficulties', 'starting_soon'
@@ -1226,7 +1272,7 @@ async function announceSongRequests() {
     if (!stats || stats.totalViewers <= 0) {
       return;
     }
-    await say('Wanna hear a song!? Use !sr with the song title and artist name!');
+    // Song request announcements disabled
   } catch (error) {
     console.error('[SR REMINDER] Failed:', error);
   }

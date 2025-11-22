@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Promo Slide</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .promo-container {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 40px;
+    padding: 60px;
+    align-items: center;
+  }
+
+  .promo-section {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 40px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .promo-section:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-5px);
+  }
+
+  .promo-section img {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
+  }
+
+  .promo-label {
+    font-size: 32px;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .tournament-placeholder {
+    width: 100%;
+    height: 500px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 3px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    padding: 20px;
+  }
+
+  /* Animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .promo-section {
+    animation: fadeIn 0.8s ease-out forwards;
+  }
+
+  .promo-section:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+
+  .promo-section:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .promo-section:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+</style>
+</head>
+<body>
+  <div class="promo-container">
+    <!-- Prime Sub Section -->
+    <div class="promo-section">
+      <div class="promo-label">Prime Sub</div>
+      <img src="images/primesubpromo.png" alt="Prime Sub Promo" id="prime-img">
+    </div>
+
+    <!-- DCD Section -->
+    <div class="promo-section">
+      <div class="promo-label">Dead Center Darts</div>
+      <img src="images/dcdlogo.png" alt="Dead Center Darts" id="dcd-img">
+    </div>
+
+    <!-- Tournament Section (Placeholder) -->
+    <div class="promo-section">
+      <div class="promo-label">Tournament</div>
+      <img src="" alt="Tournament Graphic" id="tournament-img" style="display: none;">
+      <div class="tournament-placeholder" id="tournament-placeholder">
+        Add tournament<br>graphic here
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // To add a tournament graphic, set the tournament image source
+    // Example: setTournamentImage('images/your-tournament-image.png');
+    function setTournamentImage(imagePath) {
+      const img = document.getElementById('tournament-img');
+      const placeholder = document.getElementById('tournament-placeholder');
+
+      if (imagePath) {
+        img.src = imagePath;
+        img.style.display = 'block';
+        placeholder.style.display = 'none';
+      } else {
+        img.style.display = 'none';
+        placeholder.style.display = 'flex';
+      }
+    }
+
+    // You can call this function from the console or modify the script
+    // Example: setTournamentImage('images/500-LOWLIFES-11-8-2025.png');
+  </script>
+</body>
+</html>
