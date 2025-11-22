@@ -1164,6 +1164,13 @@ async function initAdminsTable() {
       // Column might already exist, ignore error
     }
 
+    // Update existing admins with NULL color to default purple
+    try {
+      await query(`UPDATE admins SET color = '#8b5cf6' WHERE color IS NULL`);
+    } catch (err) {
+      // Ignore error if column doesn't exist yet
+    }
+
     // Ensure owner exists in database
     if (OWNER_PIN) {
       const owner = await query('SELECT * FROM admins WHERE pin = $1', [OWNER_PIN]);
