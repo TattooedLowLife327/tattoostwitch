@@ -839,7 +839,7 @@
     const errorEl = document.getElementById('login-error');
 
     try {
-      // Try to check in with this PIN
+      // Try to check in with this PIN via API
       const checkinRes = await fetch(botApi('/api/admin/checkin'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -865,9 +865,18 @@
       localStorage.setItem('userPin', pin);
       showAdmin();
     } catch (e) {
-      console.error('Login error:', e);
-      errorEl.textContent = 'Login failed. Please try again.';
-      errorEl.classList.remove('hidden');
+      console.error('Login error - falling back to local PIN check:', e);
+      // Fallback to simple PIN check if API is unavailable
+      if (pin === CORRECT_PIN) {
+        userPin = pin;
+        isOwner = pin === OWNER_PIN;
+        localStorage.setItem('authenticated', 'true');
+        localStorage.setItem('userPin', pin);
+        showAdmin();
+      } else {
+        errorEl.textContent = 'Incorrect PIN';
+        errorEl.classList.remove('hidden');
+      }
     }
   }
 
