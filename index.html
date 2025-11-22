@@ -536,6 +536,36 @@
   </div>
 
   <div class="section">
+    <h2>Active Admin</h2>
+    <div id="admin-status" style="text-align: center; padding: 15px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; margin-bottom: 10px;">
+      <div style="font-size: 18px; font-weight: 600; color: var(--purple);">
+        Current Admin: <span id="current-admin-name">None</span>
+      </div>
+      <div id="admin-since" style="color: var(--muted); font-size: 14px; margin-top: 5px;"></div>
+    </div>
+    <div id="boot-section" class="hidden" style="text-align: center;">
+      <button class="btn" style="background: #ff6b6b;" onclick="bootAdmin()">Boot Current Admin</button>
+    </div>
+    <div id="checkout-section" class="hidden" style="text-align: center;">
+      <button class="btn" style="background: #ff9800;" onclick="checkoutAdmin()">Check Out</button>
+    </div>
+  </div>
+
+  <div id="admin-management" class="section hidden">
+    <h2>Admin Management</h2>
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: var(--purple); margin-bottom: 10px;">Add New Admin</h3>
+      <input type="text" id="new-admin-name" placeholder="Admin Name" style="margin-bottom: 10px;" />
+      <input type="text" id="new-admin-pin" placeholder="PIN (4+ digits)" style="margin-bottom: 10px;" />
+      <button class="btn" onclick="addAdmin()">Add Admin</button>
+    </div>
+    <div>
+      <h3 style="color: var(--purple); margin-bottom: 10px;">Current Admins</h3>
+      <div id="admin-list"></div>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Now Playing</h2>
     <div class="spotify-player">
       <div class="player-layout">
@@ -741,11 +771,14 @@
   const botApi = (path = '') => `${BOT_API_URL}${path}`;
   const functionApi = (path = '') => `${FUNCTION_API_URL}${path}`;
   const CORRECT_PIN = '92522';
+  const OWNER_PIN = '92522';
   let scores = { player1: 0, player2: 0 };
   let dubsPartnerName = '';
   let dubsEnabled = false;
   let scoreboardSyncInterval = null;
   let scoreboardSyncPromise = null;
+  let userPin = '';
+  let isOwner = false;
 
   function setScoreDisplays(newPlayer1, newPlayer2) {
     scores.player1 = newPlayer1;
@@ -802,21 +835,56 @@
     return scoreboardSyncPromise;
   }
 
-  function login() {
+  async function login() {
     const pin = document.getElementById('pin-input').value;
     const errorEl = document.getElementById('login-error');
 
-    if (pin === CORRECT_PIN) {
+    try {
+      // Try to check in with this PIN
+      const checkinRes = await fetch(botApi('/api/admin/checkin'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin, name: '' })
+      });
+
+      if (checkinRes.status === 409) {
+        const data = await checkinRes.json();
+        errorEl.textContent = `${data.currentAdmin.name} is currently active. Please wait.`;
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (!checkinRes.ok) {
+        errorEl.textContent = 'Incorrect PIN';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      userPin = pin;
+      isOwner = pin === OWNER_PIN;
       localStorage.setItem('authenticated', 'true');
+      localStorage.setItem('userPin', pin);
       showAdmin();
-    } else {
-      errorEl.textContent = 'Incorrect PIN';
+    } catch (e) {
+      console.error('Login error:', e);
+      errorEl.textContent = 'Login failed. Please try again.';
       errorEl.classList.remove('hidden');
     }
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await fetch(botApi('/api/admin/checkout'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: userPin })
+      });
+    } catch (e) {
+      console.error('Checkout error:', e);
+    }
+
     localStorage.removeItem('authenticated');
+    localStorage.removeItem('userPin');
     document.getElementById('admin-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
     if (scoreboardSyncInterval) {
@@ -828,7 +896,162 @@
   function showAdmin() {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('admin-screen').classList.remove('hidden');
+
+    if (isOwner) {
+      document.getElementById('admin-management').classList.remove('hidden');
+      loadAdminList();
+    }
+
     startUpdates();
+  }
+
+  async function checkAdminStatus() {
+    try {
+      const res = await fetch(botApi('/api/admin/current'));
+      const data = await res.json();
+
+      const nameEl = document.getElementById('current-admin-name');
+      const sinceEl = document.getElementById('admin-since');
+      const bootSection = document.getElementById('boot-section');
+      const checkoutSection = document.getElementById('checkout-section');
+
+      if (data.active !== false && data.name) {
+        nameEl.textContent = data.name;
+        if (data.checkedInAt) {
+          const since = new Date(data.checkedInAt);
+          sinceEl.textContent = `Since ${since.toLocaleTimeString()}`;
+        }
+
+        if (isOwner && data.pin !== userPin) {
+          bootSection.classList.remove('hidden');
+          checkoutSection.classList.add('hidden');
+        } else if (data.pin === userPin) {
+          bootSection.classList.add('hidden');
+          checkoutSection.classList.remove('hidden');
+        } else {
+          bootSection.classList.add('hidden');
+          checkoutSection.classList.add('hidden');
+        }
+      } else {
+        nameEl.textContent = 'None';
+        sinceEl.textContent = '';
+        bootSection.classList.add('hidden');
+        checkoutSection.classList.add('hidden');
+      }
+    } catch (e) {
+      console.error('Failed to check admin status:', e);
+    }
+  }
+
+  async function bootAdmin() {
+    if (!confirm('Boot the current admin?')) return;
+
+    try {
+      const res = await fetch(botApi('/api/admin/boot'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: userPin })
+      });
+
+      if (res.ok) {
+        alert('Admin booted successfully');
+        checkAdminStatus();
+      } else {
+        alert('Failed to boot admin');
+      }
+    } catch (e) {
+      alert('Failed to boot admin');
+    }
+  }
+
+  async function checkoutAdmin() {
+    try {
+      await fetch(botApi('/api/admin/checkout'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: userPin })
+      });
+      checkAdminStatus();
+    } catch (e) {
+      console.error('Checkout error:', e);
+    }
+  }
+
+  async function loadAdminList() {
+    try {
+      const res = await fetch(botApi(`/api/admin/list?pin=${userPin}`));
+      const data = await res.json();
+
+      const listEl = document.getElementById('admin-list');
+      listEl.innerHTML = data.admins.map(admin => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 10px;">
+          <div>
+            <div style="font-weight: 600;">${admin.name}</div>
+            <div style="color: var(--muted); font-size: 14px;">PIN: ${admin.pin} ${admin.role === 'owner' ? '(Owner)' : ''}</div>
+          </div>
+          ${admin.role !== 'owner' ? `<button class="btn-small" style="background: #ff6b6b;" onclick="removeAdmin('${admin.pin}')">Remove</button>` : ''}
+        </div>
+      `).join('');
+    } catch (e) {
+      console.error('Failed to load admin list:', e);
+    }
+  }
+
+  async function addAdmin() {
+    const name = document.getElementById('new-admin-name').value.trim();
+    const pin = document.getElementById('new-admin-pin').value.trim();
+
+    if (!name || !pin) {
+      alert('Please enter both name and PIN');
+      return;
+    }
+
+    if (pin.length < 4) {
+      alert('PIN must be at least 4 digits');
+      return;
+    }
+
+    try {
+      const res = await fetch(botApi('/api/admin/add'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerPin: userPin, pin, name })
+      });
+
+      if (res.ok) {
+        alert('Admin added successfully');
+        document.getElementById('new-admin-name').value = '';
+        document.getElementById('new-admin-pin').value = '';
+        loadAdminList();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to add admin');
+      }
+    } catch (e) {
+      alert('Failed to add admin');
+    }
+  }
+
+  async function removeAdmin(pin) {
+    if (!confirm('Remove this admin?')) return;
+
+    try {
+      const res = await fetch(botApi('/api/admin/remove'), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerPin: userPin, pin })
+      });
+
+      if (res.ok) {
+        alert('Admin removed successfully');
+        loadAdminList();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to remove admin');
+      }
+    } catch (e) {
+      alert('Failed to remove admin');
+    }
   }
 
   async function updatePendingQueue() {
@@ -1477,6 +1700,7 @@
     checkModeVisibilityUpdate();
     updateFollowerCount();
     syncScoreboardFromServer();
+    checkAdminStatus();
     if (scoreboardSyncInterval) clearInterval(scoreboardSyncInterval);
     scoreboardSyncInterval = setInterval(syncScoreboardFromServer, 2000);
     setInterval(updatePendingQueue, 3000);
@@ -1484,10 +1708,13 @@
     setInterval(updateModeDisplay, 5000);
     setInterval(checkModeVisibilityUpdate, 5000);
     setInterval(updateFollowerCount, 30000);
+    setInterval(checkAdminStatus, 5000);
   }
 
   // Check if already authenticated
   if (localStorage.getItem('authenticated') === 'true') {
+    userPin = localStorage.getItem('userPin') || '';
+    isOwner = userPin === OWNER_PIN;
     showAdmin();
   }
 
