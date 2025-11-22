@@ -1702,7 +1702,7 @@
     checkAdminStatus();
     if (scoreboardSyncInterval) clearInterval(scoreboardSyncInterval);
     scoreboardSyncInterval = setInterval(syncScoreboardFromServer, 2000);
-    setInterval(updatePendingQueue, 3000);
+    setInterval(updatePendingQueue, 15000);
     setInterval(checkConnection, 10000);
     setInterval(updateModeDisplay, 5000);
     setInterval(checkModeVisibilityUpdate, 5000);
