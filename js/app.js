@@ -6,7 +6,7 @@ import * as settings from './settings.js';
 import * as overlays from './overlays.js';
 import * as stats from './stats.js';
 import { showAdminScreen, showLoginScreen, toggleMenu } from './ui.js';
-import { createNavBar } from './navigation.js';
+import * as navigation from './navigation.js';
 
 // Expose modules to window for onclick handlers
 window.authModule = auth;
@@ -15,6 +15,7 @@ window.scoreboardModule = scoreboard;
 window.settingsModule = settings;
 window.overlaysModule = overlays;
 window.statsModule = stats;
+window.navigation = navigation;
 
 // Expose individual functions needed by HTML onclick handlers
 window.login = auth.login;
@@ -71,16 +72,16 @@ function initializeNavigation() {
   }
 
   // Create and append new navigation
-  const nav = createNavBar();
+  const nav = navigation.createNavBar();
   document.body.appendChild(nav);
 
-  // Show/hide settings tab based on role
-  const settingsTab = document.getElementById('settings-tab-btn');
-  if (settingsTab) {
+  // Show/hide floating settings button based on role
+  const floatingSettingsBtn = document.getElementById('floating-settings-btn');
+  if (floatingSettingsBtn) {
     if (auth.isOwner) {
-      settingsTab.classList.remove('hidden');
+      floatingSettingsBtn.classList.remove('hidden');
     } else {
-      settingsTab.classList.add('hidden');
+      floatingSettingsBtn.classList.add('hidden');
     }
   }
 }

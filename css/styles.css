@@ -1325,6 +1325,54 @@ input:focus {
   }
 }
 
+/* Floating Settings Button */
+.floating-settings-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), rgba(var(--purple-rgb), 0.8));
+  border: 2px solid rgba(var(--purple-rgb), 0.5);
+  box-shadow: 0 4px 12px rgba(var(--purple-rgb), 0.4), 0 0 20px rgba(var(--purple-rgb), 0.2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 999;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.floating-settings-btn:hover {
+  transform: scale(1.05) rotate(90deg);
+  box-shadow: 0 6px 16px rgba(var(--purple-rgb), 0.6), 0 0 30px rgba(var(--purple-rgb), 0.3);
+}
+
+.floating-settings-btn:active {
+  transform: scale(0.95) rotate(90deg);
+}
+
+.floating-settings-btn img {
+  filter: brightness(0) invert(1);
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .floating-settings-btn {
+    top: 15px;
+    right: 15px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .floating-settings-btn img {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
 /* Utility Classes */
 .hidden {
   display: none;

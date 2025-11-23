@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
 <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
-<link rel="stylesheet" href="css/styles.css?v=25" />
+<link rel="stylesheet" href="css/styles.css?v=26" />
 <title>Tattoo's Twitch Controls</title>
 </head>
 <body>
@@ -71,6 +71,11 @@
     </div>
   </div>
 </div>
+
+<!-- Floating Settings Button (Owner Only) -->
+<button id="floating-settings-btn" class="floating-settings-btn hidden" onclick="window.navigation.setActiveTab('settings')" aria-label="Settings">
+  <img src="images/settings.svg" alt="Settings" style="width: 28px; height: 28px;">
+</button>
 
 <!-- Admin Screen -->
 <div id="admin-screen" class="container hidden">
@@ -364,7 +369,7 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=24"></script>
+<script type="module" src="js/app.js?v=25"></script>
 
 </body>
 </html>

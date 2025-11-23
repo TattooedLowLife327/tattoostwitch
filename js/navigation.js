@@ -17,7 +17,6 @@ export function createNavBar() {
     { icon: 'images/dashboardicon.svg', alt: 'Dashboard', dataTab: 'dashboard', active: true },
     { icon: 'images/musicnote.svg', alt: 'Music', dataTab: 'music' },
     { icon: 'images/obsicon.svg', alt: 'Overlays', dataTab: 'overlays' },
-    { icon: 'images/settings.svg', alt: 'Settings', dataTab: 'settings', id: 'settings-tab-btn' },
     { icon: 'images/helpicon.svg', alt: 'Help', dataTab: 'help' },
     { icon: 'images/powerbutton.svg', alt: 'Logout', isLogout: true }
   ];
