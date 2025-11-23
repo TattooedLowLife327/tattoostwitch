@@ -267,7 +267,7 @@ input:focus {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 10000;
 }
 
 .pin-pad {
