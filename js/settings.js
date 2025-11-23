@@ -28,15 +28,12 @@ export async function loadSettings() {
     document.getElementById('promo-minutes').value = data.promoMinutes || 15;
     document.getElementById('player1-name').value = data.player1Name || 'TATTOO';
     document.getElementById('player2-name').value = data.player2Name || 'OPEN';
-    document.getElementById('pwa-background-url').value = data.pwaBackgroundUrl || 'images/background.png';
-    document.getElementById('obs-background-url').value = data.obsBackgroundUrl || '';
     document.getElementById('dubs-partner').value = data.dubsPartner || '';
     dubsPartnerName = data.dubsPartner || '';
     const rawDubsEnabled = data.dubsEnabled;
     dubsEnabled = rawDubsEnabled === true || rawDubsEnabled === 'true';
     applyDubsUIState();
     updateScoreboardLabels();
-    updatePWABackground();
 
     // Load mode display visibility (default to true if not set)
     const modeDisplayVisible = data.modeDisplayVisible !== 'false';
@@ -166,8 +163,6 @@ export async function saveSettings() {
     const promoMinutes = parseInt(document.getElementById('promo-minutes').value);
     const player1Name = document.getElementById('player1-name').value.trim() || 'TATTOO';
     const player2Name = document.getElementById('player2-name').value.trim() || 'OPEN';
-    const pwaBackgroundUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
-    const obsBackgroundUrl = document.getElementById('obs-background-url').value.trim() || '';
     const dubsPartner = document.getElementById('dubs-partner').value.trim();
     const res = await fetch(functionApi('/api/settings'), {
       method: 'POST',
@@ -176,15 +171,12 @@ export async function saveSettings() {
         promoMinutes,
         player1Name,
         player2Name,
-        pwaBackgroundUrl,
-        obsBackgroundUrl,
         dubsPartner,
         dubsEnabled
       })
     });
     if (res.ok) {
       updateScoreboardLabels();
-      updatePWABackground();
       dubsPartnerName = dubsPartner;
       alert('Settings saved!');
     } else {
@@ -193,11 +185,6 @@ export async function saveSettings() {
   } catch (e) {
     alert('Failed to save settings');
   }
-}
-
-function updatePWABackground() {
-  const bgUrl = document.getElementById('pwa-background-url').value.trim() || 'images/background.png';
-  document.body.style.background = `url('${bgUrl}') center center / cover no-repeat fixed`;
 }
 
 function applyDubsUIState() {

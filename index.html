@@ -139,21 +139,22 @@
               <div class="player-column">
                 <div class="player-name">TATTOO</div>
                 <div class="player-score" id="score1">0</div>
+                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px;">
+                  <button class="score-btn" onclick="updateScore('player1', -1)" style="width: 36px; height: 36px;">-</button>
+                  <button class="score-btn" onclick="updateScore('player1', 1)" style="width: 36px; height: 36px;">+</button>
+                </div>
               </div>
               <div class="player-column">
                 <div class="player-name">OPEN</div>
                 <div class="player-score" id="score2">0</div>
+                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px;">
+                  <button class="score-btn" onclick="updateScore('player2', -1)" style="width: 36px; height: 36px;">-</button>
+                  <button class="score-btn" onclick="updateScore('player2', 1)" style="width: 36px; height: 36px;">+</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 15px;">
-        <button class="score-btn" onclick="updateScore('player1', -1)" style="width: 36px; height: 36px;">-</button>
-        <button class="score-btn" onclick="updateScore('player1', 1)" style="width: 36px; height: 36px;">+</button>
-        <div style="width: 20px;"></div>
-        <button class="score-btn" onclick="updateScore('player2', -1)" style="width: 36px; height: 36px;">-</button>
-        <button class="score-btn" onclick="updateScore('player2', 1)" style="width: 36px; height: 36px;">+</button>
       </div>
       <button class="btn" style="margin-top: 15px;" onclick="resetScores()">Reset Scores</button>
     </div>
@@ -315,18 +316,6 @@
         <input type="number" id="promo-minutes" min="1" max="60" value="15" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" onchange="updatePromoInterval()" />
       </div>
 
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">PWA Background URL</label>
-        <input type="text" id="pwa-background-url" placeholder="images/background.png" value="images/background.png" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
-        <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">Relative path or full URL</small>
-      </div>
-
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">OBS Overlays Background URL</label>
-        <input type="text" id="obs-background-url" placeholder="Leave empty for transparent" value="" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
-        <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">Relative path or full URL (leave empty for transparent)</small>
-      </div>
-
       <button class="btn" onclick="saveSettings()" style="width: 100%; background: #8400ff;">Save All Settings</button>
     </div>
 
@@ -369,7 +358,7 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=26"></script>
+<script type="module" src="js/app.js?v=27"></script>
 
 </body>
 </html>
