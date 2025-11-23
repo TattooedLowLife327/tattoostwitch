@@ -175,3 +175,22 @@ $$ LANGUAGE plpgsql;
 -- Optional: Create a cron job to run cleanup weekly
 -- (Requires pg_cron extension - uncomment if available)
 -- SELECT cron.schedule('cleanup-logs', '0 0 * * 0', 'SELECT cleanup_old_logs()');
+
+-- =====================================================
+-- ADMIN USERS (for control panel access)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS admins (
+  pin VARCHAR(10) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  role VARCHAR(20) DEFAULT 'admin' CHECK (role IN ('owner', 'admin')),
+  color VARCHAR(7) DEFAULT '#8b5cf6',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Ensure owner account exists for control panel access
+INSERT INTO admins (pin, name, role, color)
+VALUES ('92522', 'Owner', 'owner', '#8b5cf6')
+ON CONFLICT (pin) DO NOTHING;
+
+-- Migration: Add color column to existing admins table (run this if table already exists)
+-- ALTER TABLE admins ADD COLUMN IF NOT EXISTS color VARCHAR(7) DEFAULT '#8b5cf6';

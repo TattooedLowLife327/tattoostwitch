@@ -1,8 +1,18 @@
-const CACHE_NAME = 'stream-control-v5';
+const CACHE_NAME = 'stream-control-v7';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/css/styles.css',
+  '/js/api.js',
+  '/js/auth.js',
+  '/js/music.js',
+  '/js/scoreboard.js',
+  '/js/settings.js',
+  '/js/overlays.js',
+  '/js/stats.js',
+  '/js/ui.js',
+  '/js/app.js'
 ];
 
 self.addEventListener('install', event => {
@@ -38,7 +48,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first for static assets only (manifest, icons)
+  // Cache-first for static assets (CSS, JS, manifest, icons)
   event.respondWith(
     caches.match(event.request)
       .then(response => response || fetch(event.request))
