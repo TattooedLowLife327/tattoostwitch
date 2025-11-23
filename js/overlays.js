@@ -169,3 +169,22 @@ export async function triggerPromo(index = 0) {
     alert('Failed to trigger promo');
   }
 }
+
+// Check BRB status and update blur overlay
+export async function checkBRBStatus() {
+  try {
+    const res = await fetch(botApi('/api/screen-overlay'), { cache: 'no-store' });
+    const data = await res.json();
+    const overlay = document.getElementById('brb-blur-overlay');
+
+    if (overlay) {
+      if (data.isActive && data.type === 'brb') {
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+      }
+    }
+  } catch (e) {
+    console.error('Failed to check BRB status:', e);
+  }
+}

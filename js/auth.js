@@ -3,7 +3,6 @@ import { botApi } from './api.js';
 export let userPin = '';
 export let isOwner = false;
 export let adminRole = '';
-export let userColor = '#8b5cf6';
 
 export function setUserPin(pin) {
   userPin = pin;
@@ -14,17 +13,13 @@ export function setAdminRole(role) {
   isOwner = role === 'owner';
 }
 
-export function setUserColor(color) {
-  userColor = color || '#8b5cf6';
-  applyThemeColor(userColor);
-}
-
-export function applyThemeColor(color) {
-  document.documentElement.style.setProperty('--purple', color);
-  localStorage.setItem('userColor', color);
-}
-
 // PIN Pad functions
+function hapticFeedback(duration = 10) {
+  if (navigator.vibrate) {
+    navigator.vibrate(duration);
+  }
+}
+
 export function showPinPad() {
   const overlay = document.getElementById('pin-pad-overlay');
   if (overlay) {
@@ -53,6 +48,7 @@ export function updatePinPadDisplay() {
 }
 
 export function appendPinDigit(digit) {
+  hapticFeedback(10);
   const input = document.getElementById('pin-input');
   if (!input) return;
   input.value = (input.value || '') + digit;
@@ -60,6 +56,7 @@ export function appendPinDigit(digit) {
 }
 
 export function backspacePinDigit() {
+  hapticFeedback(10);
   const input = document.getElementById('pin-input');
   if (!input || !input.value) return;
   input.value = input.value.slice(0, -1);
@@ -67,6 +64,7 @@ export function backspacePinDigit() {
 }
 
 export function clearPin() {
+  hapticFeedback(15);
   const input = document.getElementById('pin-input');
   if (!input) return;
   input.value = '';
@@ -74,6 +72,7 @@ export function clearPin() {
 }
 
 export function submitPinPad() {
+  hapticFeedback(20);
   hidePinPad();
   login();
 }
@@ -106,11 +105,9 @@ export async function login() {
     const data = await checkinRes.json();
     setUserPin(pin);
     setAdminRole(data.admin?.role || '');
-    setUserColor(data.admin?.color || '#8b5cf6');
     localStorage.setItem('authenticated', 'true');
     localStorage.setItem('userPin', pin);
     localStorage.setItem('adminRole', adminRole);
-    localStorage.setItem('userColor', userColor);
 
     // Dispatch event so app.js can handle showing admin screen
     window.dispatchEvent(new CustomEvent('auth:login'));
@@ -119,6 +116,25 @@ export async function login() {
     errorEl.textContent = 'Login failed. Please try again.';
     errorEl.classList.remove('hidden');
   }
+}
+
+export function confirmLogout() {
+  const modal = document.getElementById('logout-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+}
+
+export function hideLogoutModal() {
+  const modal = document.getElementById('logout-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+export function confirmLogoutAction() {
+  hideLogoutModal();
+  logout();
 }
 
 export async function logout() {
@@ -135,10 +151,6 @@ export async function logout() {
   localStorage.removeItem('authenticated');
   localStorage.removeItem('userPin');
   localStorage.removeItem('adminRole');
-  localStorage.removeItem('userColor');
-
-  // Reset to default purple
-  setUserColor('#8b5cf6');
 
   // Dispatch event so app.js can handle hiding admin screen
   window.dispatchEvent(new CustomEvent('auth:logout'));
@@ -153,8 +165,8 @@ export async function checkAdminStatus() {
     const nameEl = document.getElementById('current-admin-name');
     const sinceEl = document.getElementById('admin-since');
 
-    // Only show the section if a non-owner admin is checked in
-    if (data.active !== false && data.name && data.role !== 'owner') {
+    // Only show the section if current user is owner AND a non-owner admin is checked in
+    if (isOwner && data.active !== false && data.name && data.role !== 'owner') {
       nameEl.textContent = data.name;
       if (data.checkedInAt) {
         const since = new Date(data.checkedInAt);
@@ -162,7 +174,7 @@ export async function checkAdminStatus() {
       }
       activeAdminSection.classList.remove('hidden');
     } else {
-      // Hide the section if no admin is checked in or if the owner is the only one active
+      // Hide the section if current user is not owner, no admin is checked in, or if the owner is the only one active
       activeAdminSection.classList.add('hidden');
     }
   } catch (e) {
@@ -227,7 +239,6 @@ export async function loadAdminList() {
 export async function addAdmin() {
   const name = document.getElementById('new-admin-name').value.trim();
   const pin = document.getElementById('new-admin-pin').value.trim();
-  const color = document.getElementById('new-admin-color').value;
 
   if (!name || !pin) {
     alert('Please enter both name and PIN');
@@ -243,14 +254,13 @@ export async function addAdmin() {
     const res = await fetch(botApi('/api/admin/add'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ownerPin: userPin, pin, name, color })
+      body: JSON.stringify({ ownerPin: userPin, pin, name })
     });
 
     if (res.ok) {
       alert('Admin added successfully');
       document.getElementById('new-admin-name').value = '';
       document.getElementById('new-admin-pin').value = '';
-      document.getElementById('new-admin-color').value = '#8b5cf6';
       loadAdminList();
     } else {
       const data = await res.json();
@@ -360,4 +370,8 @@ export async function updateMyCheckinStatus() {
   } catch (e) {
     console.error('Failed to update check-in status:', e);
   }
+}
+
+export function requestPinChange() {
+  alert('To request a PIN change, please contact the owner or a lead admin. Your current PIN cannot be changed from this interface for security reasons.');
 }
