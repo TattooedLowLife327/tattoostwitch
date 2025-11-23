@@ -93,7 +93,7 @@ function startUpdates() {
   overlays.checkModeVisibilityUpdate();
   overlays.checkBRBStatus();
   stats.updateFollowerCount();
-  stats.updateSubscriberCount();
+  // stats.updateSubscriberCount();
   scoreboard.syncScoreboardFromServer();
   auth.checkAdminStatus();
 
@@ -110,7 +110,7 @@ function startUpdates() {
   setInterval(overlays.checkModeVisibilityUpdate, 5000);
   setInterval(overlays.checkBRBStatus, 5000);
   setInterval(stats.updateFollowerCount, 30000);
-  setInterval(stats.updateSubscriberCount, 30000);
+  // setInterval(stats.updateSubscriberCount, 30000);
   setInterval(auth.checkAdminStatus, 5000);
 
   // Poll check-in status for non-owner admins
