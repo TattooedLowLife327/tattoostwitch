@@ -25,3 +25,6 @@ admin/
 
 #Ignore insiders AI rules
 .github\instructions\codacy.instructions.md
+
+# Local Netlify folder
+.netlify

@@ -418,7 +418,6 @@ const lastSeenMap = new Map();
 
 const specialUserMessages = {
   'chantheman814': 'TheMan has arrived.',
-  'coil666': 'HI KEVIN!!',
   default: [
     'has entered the chat!',
     'just rolled in!',
@@ -977,11 +976,15 @@ app.post('/restart-bot', (req, res) => {
 
 // ====== SPECIAL USERS MANAGEMENT ======
 app.get('/special-users', (req, res) => {
-  res.json({ users: specialUsersList });
+  const usersWithMessages = specialUsersList.map(user => ({
+    username: user,
+    message: specialUserMessages[user] || null
+  }));
+  res.json({ users: usersWithMessages, defaultMessages: specialUserMessages.default });
 });
 
 app.post('/special-users', (req, res) => {
-  const { username, action } = req.body || {};
+  const { username, action, message } = req.body || {};
 
   if (!username || !action) {
     return res.status(400).json({ error: 'Missing username or action' });
@@ -992,16 +995,28 @@ app.post('/special-users', (req, res) => {
   if (action === 'add') {
     if (!specialUsersList.includes(user)) {
       specialUsersList.push(user);
-      console.log(`[ADMIN] Added special user: ${user}`);
+      if (message) {
+        specialUserMessages[user] = message;
+      }
+      console.log(`[ADMIN] Added special user: ${user} with message: "${message || 'default'}"`);
     }
-    res.json({ success: true, users: specialUsersList });
+    const usersWithMessages = specialUsersList.map(u => ({
+      username: u,
+      message: specialUserMessages[u] || null
+    }));
+    res.json({ success: true, users: usersWithMessages });
   } else if (action === 'remove') {
     const index = specialUsersList.indexOf(user);
     if (index > -1) {
       specialUsersList.splice(index, 1);
+      delete specialUserMessages[user];
       console.log(`[ADMIN] Removed special user: ${user}`);
     }
-    res.json({ success: true, users: specialUsersList });
+    const usersWithMessages = specialUsersList.map(u => ({
+      username: u,
+      message: specialUserMessages[u] || null
+    }));
+    res.json({ success: true, users: usersWithMessages });
   } else {
     res.status(400).json({ error: 'Invalid action' });
   }
@@ -1242,8 +1257,8 @@ app.post('/api/admin/checkin', async (req, res) => {
 
     console.log(`[ADMIN] ${admin.name} checked in`);
 
-    // Announce in chat
-    if (typeof say === 'function') {
+    // Announce in chat (skip owner)
+    if (typeof say === 'function' && admin.role !== 'owner') {
       say(`${admin.name} has checked in to the control panel`).catch(err =>
         console.error('[ADMIN] Failed to announce check-in:', err)
       );
@@ -1267,7 +1282,18 @@ app.post('/api/admin/checkout', (req, res) => {
     return res.status(403).json({ error: 'Not authorized' });
   }
 
-  console.log(`[ADMIN] ${currentAdmin.name} checked out`);
+  const adminName = currentAdmin.name;
+  const adminRole = currentAdmin.role;
+
+  console.log(`[ADMIN] ${adminName} checked out`);
+
+  // Announce checkout in chat (skip owner)
+  if (typeof say === 'function' && adminRole !== 'owner') {
+    say(`${adminName} has checked out`).catch(err =>
+      console.error('[ADMIN] Failed to announce checkout:', err)
+    );
+  }
+
   currentAdmin = null;
   res.json({ success: true });
 });

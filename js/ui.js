@@ -49,3 +49,18 @@ export function showAdminScreen() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('admin-screen').classList.remove('hidden');
 }
+
+export function toggleMenu() {
+  const dropdown = document.getElementById('menu-dropdown');
+  dropdown.classList.toggle('hidden');
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', (event) => {
+  const menuContainer = document.querySelector('.hamburger-menu-container');
+  const dropdown = document.getElementById('menu-dropdown');
+
+  if (menuContainer && dropdown && !menuContainer.contains(event.target)) {
+    dropdown.classList.add('hidden');
+  }
+});

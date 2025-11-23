@@ -5,7 +5,8 @@ import * as scoreboard from './scoreboard.js';
 import * as settings from './settings.js';
 import * as overlays from './overlays.js';
 import * as stats from './stats.js';
-import { initializeTabs, showAdminScreen, showLoginScreen } from './ui.js';
+import { showAdminScreen, showLoginScreen, toggleMenu } from './ui.js';
+import { createNavBar } from './navigation.js';
 
 // Expose modules to window for onclick handlers
 window.authModule = auth;
@@ -18,6 +19,9 @@ window.statsModule = stats;
 // Expose individual functions needed by HTML onclick handlers
 window.login = auth.login;
 window.logout = auth.logout;
+window.confirmLogout = auth.confirmLogout;
+window.hideLogoutModal = auth.hideLogoutModal;
+window.confirmLogoutAction = auth.confirmLogoutAction;
 window.showPinPad = auth.showPinPad;
 window.hidePinPad = auth.hidePinPad;
 window.handlePadBackgroundClick = auth.handlePadBackgroundClick;
@@ -31,6 +35,7 @@ window.addAdmin = auth.addAdmin;
 window.removeAdmin = auth.removeAdmin;
 window.checkIn = auth.checkIn;
 window.checkOut = auth.checkOut;
+window.requestPinChange = auth.requestPinChange;
 
 window.togglePlayPause = music.togglePlayPause;
 window.skipSong = music.skipSong;
@@ -55,12 +60,38 @@ window.triggerPromo = overlays.triggerPromo;
 
 window.restartBot = stats.restartBot;
 
+window.toggleMenu = toggleMenu;
+
+// Initialize navigation bar
+function initializeNavigation() {
+  // Remove existing navigation if present
+  const existingNav = document.querySelector('.nav');
+  if (existingNav) {
+    existingNav.remove();
+  }
+
+  // Create and append new navigation
+  const nav = createNavBar();
+  document.body.appendChild(nav);
+
+  // Show/hide settings tab based on role
+  const settingsTab = document.getElementById('settings-tab-btn');
+  if (settingsTab) {
+    if (auth.isOwner) {
+      settingsTab.classList.remove('hidden');
+    } else {
+      settingsTab.classList.add('hidden');
+    }
+  }
+}
+
 function startUpdates() {
   music.updatePendingQueue();
   stats.checkConnection();
   overlays.updateModeDisplay();
   settings.loadSettings();
   overlays.checkModeVisibilityUpdate();
+  overlays.checkBRBStatus();
   stats.updateFollowerCount();
   stats.updateSubscriberCount();
   scoreboard.syncScoreboardFromServer();
@@ -77,6 +108,7 @@ function startUpdates() {
   setInterval(stats.checkConnection, 10000);
   setInterval(overlays.updateModeDisplay, 5000);
   setInterval(overlays.checkModeVisibilityUpdate, 5000);
+  setInterval(overlays.checkBRBStatus, 5000);
   setInterval(stats.updateFollowerCount, 30000);
   setInterval(stats.updateSubscriberCount, 30000);
   setInterval(auth.checkAdminStatus, 5000);
@@ -97,13 +129,19 @@ window.addEventListener('auth:login', () => {
   } else {
     document.getElementById('admin-checkin-section').classList.remove('hidden');
   }
-  initializeTabs();
+  initializeNavigation();
   startUpdates();
 });
 
 window.addEventListener('auth:logout', () => {
   showLoginScreen();
   scoreboard.stopScoreboardSync();
+
+  // Remove navigation on logout
+  const existingNav = document.querySelector('.nav');
+  if (existingNav) {
+    existingNav.remove();
+  }
 });
 
 // Initialize app
@@ -112,10 +150,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (localStorage.getItem('authenticated') === 'true') {
     const pin = localStorage.getItem('userPin') || '';
     const role = localStorage.getItem('adminRole') || '';
-    const color = localStorage.getItem('userColor') || '#8b5cf6';
     auth.setUserPin(pin);
     auth.setAdminRole(role);
-    auth.setUserColor(color);
     showAdminScreen();
     if (auth.isOwner) {
       document.getElementById('admin-management').classList.remove('hidden');
@@ -124,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       document.getElementById('admin-checkin-section').classList.remove('hidden');
     }
-    initializeTabs();
+    initializeNavigation();
     startUpdates();
   } else {
     showLoginScreen();

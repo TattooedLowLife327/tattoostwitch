@@ -11,18 +11,38 @@
 <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
 <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
-<link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/styles.css?v=25" />
 <title>Tattoo's Twitch Controls</title>
 </head>
 <body>
 
+<!-- BRB Blur Overlay -->
+<div id="brb-blur-overlay" class="brb-blur-overlay hidden">
+  <div class="brb-message">
+    <h2>BRB</h2>
+    <p>Be Right Back</p>
+  </div>
+</div>
+
 <!-- Login Screen -->
 <div id="login-screen" class="container">
   <div class="login-form">
-    <img src="images/bannerphoto.png" alt="Tattoo's Twitch Banner" style="width: 100%; max-width: 500px; margin-bottom: 20px;">
-    <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" inputmode="numeric" />
+    <img src="images/bannerphoto.svg" alt="Tattoo's Twitch Banner" style="width: 100%; max-width: 350px; margin-bottom: 20px;">
+    <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" readonly onclick="showPinPad()" />
     <button class="btn" onclick="login()">Login</button>
     <div id="login-error" class="error hidden"></div>
+  </div>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div id="logout-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out? This will end your current admin session.</p>
+    <div class="modal-actions">
+      <button class="btn" style="background: #6c757d; flex: 1;" onclick="hideLogoutModal()">Cancel</button>
+      <button class="btn" style="background: #ff6b6b; flex: 1;" onclick="confirmLogoutAction()">Logout</button>
+    </div>
   </div>
 </div>
 
@@ -54,21 +74,8 @@
 
 <!-- Admin Screen -->
 <div id="admin-screen" class="container hidden">
-  <img src="images/bannerphoto.png" alt="Tattoo's Twitch Banner" style="width: 100%; max-width: 600px; margin: 0 auto 20px; display: block;">
-
-  <!-- Tab Navigation -->
-  <div class="tabs">
-    <div style="display: flex; gap: 10px; flex: 1; overflow-x: auto;">
-      <button class="tab-button active" data-tab="dashboard">Dashboard</button>
-      <button class="tab-button" data-tab="music">Music</button>
-      <button class="tab-button" data-tab="overlays">Overlays</button>
-      <button class="tab-button" data-tab="settings">Settings</button>
-      <button class="tab-button" data-tab="help">Help</button>
-    </div>
-    <div id="connection-indicator" class="connection-indicator">
-      <div class="connection-dot disconnected"></div>
-      <button id="restart-bot-btn" class="restart-bot-btn hidden" onclick="restartBot()">Restart Bot</button>
-    </div>
+  <div class="banner-wrapper">
+    <img src="images/bannerphoto.svg" alt="Tattoo's Twitch Banner" class="banner-image">
   </div>
 
   <!-- Dashboard Tab -->
@@ -86,7 +93,7 @@
         <button class="btn" style="background: #10b981;" onclick="checkIn()">Check In</button>
       </div>
       <div id="checkout-btn-container" class="hidden">
-        <button class="btn" style="background: #ff9800;" onclick="checkOut()">Check Out</button>
+        <button class="btn" style="background: #6c757d;" onclick="checkOut()">Check Out</button>
       </div>
     </div>
 
@@ -102,116 +109,120 @@
       <button class="btn" style="background: #ff6b6b;" onclick="bootAdmin()">Boot Admin</button>
     </div>
 
-    <div class="grid-2">
-      <!-- Now Playing -->
-      <div class="section">
-        <h2>Now Playing</h2>
-        <div class="spotify-player">
-          <div class="player-layout">
-            <div class="album-art-container">
-              <div class="album-glow"></div>
-              <div class="album-art" id="album-art">
-                <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-                </svg>
-              </div>
-              <div class="music-notes" id="music-notes">
-                <div class="music-note">♪</div>
-                <div class="music-note">♫</div>
-                <div class="music-note">♪</div>
-              </div>
-            </div>
-            <div class="player-info">
-              <div class="track-title" id="track-title">—</div>
-              <div class="track-artist" id="track-artist">—</div>
-              <div class="track-playlist" id="track-playlist"></div>
-            </div>
+    <!-- Channel Stats & Scoreboard -->
+    <div class="section" style="max-width: 500px; margin: 0 auto 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center; margin-bottom: 20px;">
+        <div>
+          <div style="color: var(--muted); font-size: 12px; margin-bottom: 5px;">Followers</div>
+          <div style="font-size: 32px; font-weight: 900; color: var(--purple);">
+            <span id="follower-count">---</span>
           </div>
         </div>
-        <div class="spotify-controls">
-          <button class="control-btn" onclick="togglePlayPause()" id="play-pause-btn">▶</button>
-          <button class="control-btn" onclick="skipSong()">⏭</button>
+        <div>
+          <div style="color: var(--muted); font-size: 12px; margin-bottom: 5px;">Subscribers</div>
+          <div style="font-size: 32px; font-weight: 900; color: var(--purple);">
+            <span id="subscriber-count">---</span>
+          </div>
         </div>
       </div>
 
-      <!-- Channel Stats -->
-      <div class="section">
-        <h2>Channel Stats</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center;">
-          <div>
-            <div style="color: var(--muted); font-size: 14px; margin-bottom: 5px;">Followers</div>
-            <div style="font-size: 48px; font-weight: 900; color: var(--purple);">
-              <span id="follower-count">---</span>
-            </div>
-          </div>
-          <div>
-            <div style="color: var(--muted); font-size: 14px; margin-bottom: 5px;">Subscribers</div>
-            <div style="font-size: 48px; font-weight: 900; color: var(--purple);">
-              <span id="subscriber-count">---</span>
+      <div style="padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <div class="scoreboard-card">
+          <div class="scoreboard-card-overlay"></div>
+          <div class="scoreboard-card-content">
+            <div class="scoreboard">
+              <div class="player-column">
+                <div class="player-name">TATTOO</div>
+                <div class="player-score" id="score1">0</div>
+              </div>
+              <div class="player-column">
+                <div class="player-name">OPEN</div>
+                <div class="player-score" id="score2">0</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 15px;">
+        <button class="score-btn" onclick="updateScore('player1', -1)" style="width: 36px; height: 36px;">-</button>
+        <button class="score-btn" onclick="updateScore('player1', 1)" style="width: 36px; height: 36px;">+</button>
+        <div style="width: 20px;"></div>
+        <button class="score-btn" onclick="updateScore('player2', -1)" style="width: 36px; height: 36px;">-</button>
+        <button class="score-btn" onclick="updateScore('player2', 1)" style="width: 36px; height: 36px;">+</button>
+      </div>
+      <button class="btn" style="margin-top: 15px;" onclick="resetScores()">Reset Scores</button>
     </div>
   </div>
 
   <!-- Music Tab -->
   <div id="tab-music" class="tab-content">
-    <!-- Pending Song Requests -->
-    <div class="section">
-      <h2>Pending Song Requests</h2>
-      <div id="pending-queue"></div>
+    <!-- Combined Music Card -->
+    <div class="section" style="max-width: 600px; margin: 0 auto;">
+      <h2>Music Control</h2>
+
+      <!-- Now Playing -->
+      <div class="spotify-player">
+        <div class="player-layout">
+          <div class="album-art-container">
+            <div class="album-glow"></div>
+            <div class="album-art" id="album-art">
+              <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+              </svg>
+            </div>
+            <div class="music-notes" id="music-notes">
+              <div class="music-note">♪</div>
+              <div class="music-note">♫</div>
+              <div class="music-note">♪</div>
+            </div>
+          </div>
+          <div class="player-info">
+            <div class="track-title" id="track-title">—</div>
+            <div class="track-artist" id="track-artist">—</div>
+            <div class="track-playlist" id="track-playlist"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Player Controls -->
+      <div class="spotify-controls">
+        <button class="control-btn" onclick="togglePlayPause()" id="play-pause-btn">
+          <img src="images/play.svg?v=2" alt="Play" style="width: 50px; height: 50px;">
+        </button>
+        <button class="control-btn" onclick="skipSong()">
+          <svg width="50" height="50" viewBox="0 0 127 127" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g filter="url(#filter0_ii_skip)">
+              <path d="M127 63.5C127 98.5701 98.5701 127 63.5 127C28.4299 127 0 98.5701 0 63.5C0 28.4299 28.4299 0 63.5 0C98.5701 0 127 28.4299 127 63.5ZM11.5884 63.5C11.5884 92.17 34.83 115.412 63.5 115.412C92.17 115.412 115.412 92.17 115.412 63.5C115.412 34.83 92.17 11.5884 63.5 11.5884C34.83 11.5884 11.5884 34.83 11.5884 63.5Z" fill="#8b5cf6"/>
+            </g>
+            <g filter="url(#filter1_ii_skip)">
+              <path d="M29.7723 39.919C29.7587 37.1405 33.2035 35.8381 35.0315 37.9306L54.2372 59.9148C55.5383 61.4041 55.5557 63.6208 54.2782 65.1304L35.2861 87.573C33.4855 89.7007 30.0097 88.4371 29.996 85.6498L29.7723 39.919Z" fill="#8b5cf6"/>
+            </g>
+            <g filter="url(#filter2_ii_skip)">
+              <path d="M56.7723 39.919C56.7587 37.1405 60.2035 35.8381 62.0315 37.9306L81.2372 59.9148C82.5383 61.4041 82.5557 63.6208 81.2782 65.1304L62.2861 87.573C60.4855 89.7007 57.0097 88.4371 56.996 85.6498L56.7723 39.919Z" fill="#8b5cf6"/>
+            </g>
+            <g filter="url(#filter3_ii_skip)">
+              <path d="M84.9994 40.5927C84.9895 38.9289 86.3355 37.5749 87.9993 37.5749L93.7844 37.5749C95.9935 37.5749 97.7844 39.3657 97.7844 41.5749L97.7844 84.5749C97.7844 86.784 95.9935 88.5749 93.7844 88.5749L88.2666 88.5749C86.6167 88.5749 85.2765 87.2426 85.2667 85.5927L84.9994 40.5927Z" fill="#8b5cf6"/>
+            </g>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Pending Queue -->
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <h3 style="color: var(--purple); margin-bottom: 12px; font-size: 18px;">Up Next</h3>
+        <div id="pending-queue"></div>
+      </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="section">
-      <h2>Quick Actions</h2>
-      <button class="btn" style="margin-bottom: 10px;" onclick="skipSong()">Skip Current Song</button>
-      <button class="btn" style="margin-bottom: 10px;" onclick="triggerPromo()">Trigger DCD Promo</button>
-      <button class="btn" style="margin-bottom: 10px; background: #ff6b6b;" onclick="resetBot()">Reset Bot (Clear All Queues)</button>
+    <!-- Bot Controls -->
+    <div class="section" style="max-width: 600px; margin: 20px auto 0;">
+      <h2>Bot Controls</h2>
+      <button class="btn" onclick="resetBot()">Reset Queue</button>
     </div>
   </div>
 
   <!-- Overlays Tab -->
   <div id="tab-overlays" class="tab-content">
-    <!-- Scoreboard -->
-    <div class="section">
-      <h2 style="display: flex; justify-content: space-between; align-items: center;">
-        Scoreboard
-        <button onclick="toggleScoreboardEdit()" style="background: none; border: none; color: var(--purple); cursor: pointer; font-size: 20px; padding: 5px;">✏️</button>
-      </h2>
-      <div id="scoreboard-edit-section" class="hidden" style="margin-bottom: 15px;">
-        <div style="margin-bottom: 15px;">
-          <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 1 Name</label>
-          <input type="text" id="player1-name" placeholder="TATTOO" value="TATTOO" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
-        </div>
-        <div style="margin-bottom: 15px;">
-          <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Player 2 Name</label>
-          <input type="text" id="player2-name" placeholder="OPEN" value="OPEN" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
-        </div>
-        <button class="btn" onclick="saveScoreboardNames()" style="width: 100%; background: #10b981;">Save Names</button>
-      </div>
-      <div class="scoreboard-controls">
-        <div class="score-section">
-          <label>Player 1 (TATTOO)</label>
-          <div class="score-controls">
-            <button class="score-btn" onclick="updateScore('player1', -1)">-</button>
-            <div class="score-display" id="score1">0</div>
-            <button class="score-btn" onclick="updateScore('player1', 1)">+</button>
-          </div>
-        </div>
-        <div class="score-section">
-          <label>Player 2 (OPEN)</label>
-          <div class="score-controls">
-            <button class="score-btn" onclick="updateScore('player2', -1)">-</button>
-            <div class="score-display" id="score2">0</div>
-            <button class="score-btn" onclick="updateScore('player2', 1)">+</button>
-          </div>
-        </div>
-      </div>
-      <button class="btn" style="margin-top: 15px;" onclick="resetScores()">Reset Scores</button>
-    </div>
-
     <!-- Mode Display -->
     <div class="section">
       <h2 style="display: flex; justify-content: space-between; align-items: center;">
@@ -266,10 +277,6 @@
         <h3 style="color: var(--purple); margin-bottom: 10px;">Add New Admin</h3>
         <input type="text" id="new-admin-name" placeholder="Admin Name" style="margin-bottom: 10px;" />
         <input type="text" id="new-admin-pin" placeholder="PIN (4+ digits)" style="margin-bottom: 10px;" />
-        <div style="margin-bottom: 10px;">
-          <label style="display: block; margin-bottom: 5px; color: var(--muted);">Theme Color</label>
-          <input type="color" id="new-admin-color" value="#8b5cf6" style="width: 100%; height: 40px; border: none; border-radius: 8px; cursor: pointer;" />
-        </div>
         <button class="btn" onclick="addAdmin()">Add Admin</button>
       </div>
       <div>
@@ -284,10 +291,17 @@
 
       <div style="margin-bottom: 20px;">
         <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Special Users</label>
-        <div id="special-users-list" style="margin-bottom: 10px;"></div>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="new-special-user" placeholder="Username" style="flex: 1; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
-          <button class="btn" onclick="addSpecialUser()" style="padding: 10px 20px;">Add</button>
+        <small style="color: var(--muted); font-size: 12px; display: block; margin-bottom: 10px;">Users who get a custom chat announcement when they join</small>
+        <div id="special-users-list" style="margin-bottom: 15px;"></div>
+        <div style="background: rgba(139, 92, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+          <h4 style="color: var(--purple); margin-bottom: 8px; font-size: 14px;">Add New Special User</h4>
+          <input type="text" id="new-special-user" placeholder="Username" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 8px;" />
+          <input type="text" id="new-special-user-message" placeholder="Custom Message (optional - uses random default if empty)" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 8px;" />
+          <button class="btn" onclick="addSpecialUser()" style="width: 100%;">Add Special User</button>
+        </div>
+        <div style="font-size: 12px; color: var(--muted);">
+          <strong>Default messages (random if no custom message):</strong>
+          <ul id="default-messages-list" style="margin: 5px 0 0 20px; color: var(--muted);"></ul>
         </div>
       </div>
 
@@ -318,26 +332,39 @@
   <!-- Help Tab -->
   <div id="tab-help" class="tab-content">
     <div class="section">
-      <h2>Available Commands</h2>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
-        <div><strong>!sr [song]</strong> - Request a song</div>
-        <div><strong>!queue</strong> - View current queue</div>
+      <h2>Viewer Commands</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
         <div><strong>!cancel</strong> - Cancel your request</div>
-        <div><strong>!lastseen [user]</strong> - Check last activity</div>
-        <div><strong>!lurkers</strong> - Show anonymous viewers</div>
         <div><strong>!dcd</strong> - Dead Center Darts promo</div>
+        <div><strong>!lastseen [user]</strong> - Check last activity</div>
+        <div><strong>!llogb</strong> - Join our Facebook group!<br>https://www.facebook.com/groups/thelowlifesofgranboard</div>
+        <div><strong>!lurkers</strong> - Show anonymous viewers</div>
         <div><strong>!prime</strong> - Prime sub promo</div>
-        <div><strong>!llogb</strong> - Join our Facebook group!<br>facebook.com/groups/thelowlifesofgranboard</div>
-        <div><strong>!waitlist</strong> - Join our waitlist!<br>www.lowlifesofgranboard.com/launch</div>
-        <div style="color: var(--purple);"><strong>!approve [id]</strong> - Mod only</div>
-        <div style="color: var(--purple);"><strong>!deny [id]</strong> - Mod only</div>
-        <div style="color: var(--purple);"><strong>!skip</strong> - Mod only</div>
+        <div><strong>!queue</strong> - View current queue</div>
+        <div><strong>!sr [song]</strong> - Request a song</div>
+        <div><strong>!waitlist</strong> - Join our waitlist!<br>https://www.lowlifesofgranboard.com/launch</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Admin Commands</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+        <div><strong>!approve [id]</strong> - Approve pending song</div>
+        <div><strong>!deny [id]</strong> - Deny pending song</div>
+        <div><strong>!skip</strong> - Skip current song</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Owner Commands</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+        <div style="color: var(--muted); font-style: italic;">Owner commands are available via the admin panel</div>
       </div>
     </div>
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=8"></script>
+<script type="module" src="js/app.js?v=20"></script>
 
 </body>
 </html>

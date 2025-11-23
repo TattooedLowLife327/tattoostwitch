@@ -1,7 +1,8 @@
-import { functionApi } from './api.js';
+import { functionApi, botApi } from './api.js';
 import { updateScoreboardLabels } from './scoreboard.js';
 
 let specialUsers = [];
+let defaultMessages = [];
 let dubsPartnerName = '';
 let dubsEnabled = false;
 
@@ -9,7 +10,21 @@ export async function loadSettings() {
   try {
     const res = await fetch(functionApi('/api/settings'), { cache: 'no-store' });
     const data = await res.json();
-    specialUsers = data.specialUsers || [];
+
+    // Load special users from bot API
+    try {
+      const specialUsersRes = await fetch(botApi('/special-users'), { cache: 'no-store' });
+      const specialUsersData = await specialUsersRes.json();
+      specialUsers = specialUsersData.users || [];
+      defaultMessages = specialUsersData.defaultMessages || [];
+      renderSpecialUsers();
+      renderDefaultMessages();
+    } catch (e) {
+      console.error('Failed to load special users:', e);
+      specialUsers = [];
+      defaultMessages = [];
+    }
+
     document.getElementById('promo-minutes').value = data.promoMinutes || 15;
     document.getElementById('player1-name').value = data.player1Name || 'TATTOO';
     document.getElementById('player2-name').value = data.player2Name || 'OPEN';
@@ -20,7 +35,6 @@ export async function loadSettings() {
     const rawDubsEnabled = data.dubsEnabled;
     dubsEnabled = rawDubsEnabled === true || rawDubsEnabled === 'true';
     applyDubsUIState();
-    renderSpecialUsers();
     updateScoreboardLabels();
     updatePWABackground();
 
@@ -38,33 +52,103 @@ function renderSpecialUsers() {
     list.innerHTML = '<div style="color: var(--muted); font-size: 14px; padding: 10px; text-align: center;">No special users added</div>';
     return;
   }
-  list.innerHTML = specialUsers.map(user => `
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; margin-bottom: 8px;">
-      <span style="color: var(--text); font-size: 14px;">${user}</span>
-      <button onclick="window.settingsModule.removeSpecialUser('${user}')" style="background: #ff6b6b; border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
-    </div>
+  list.innerHTML = specialUsers.map(user => {
+    const messageText = user.message
+      ? `<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">"${user.message}"</div>`
+      : '<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Uses random default</div>';
+
+    return `
+      <div style="padding: 8px 12px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="color: var(--text); font-size: 14px; font-weight: 500;">${user.username}</span>
+          <button onclick="window.settingsModule.removeSpecialUser('${user.username}')" style="background: #ff6b6b; border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
+        </div>
+        ${messageText}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDefaultMessages() {
+  const list = document.getElementById('default-messages-list');
+  if (!list) return;
+
+  if (defaultMessages.length === 0) {
+    list.innerHTML = '<div style="color: var(--muted); font-size: 12px;">No default messages available</div>';
+    return;
+  }
+
+  list.innerHTML = defaultMessages.map(msg => `
+    <div style="color: var(--muted); font-size: 12px; padding: 4px 0;">"${msg}"</div>
   `).join('');
 }
 
-export function addSpecialUser() {
+export async function addSpecialUser() {
   const input = document.getElementById('new-special-user');
+  const messageInput = document.getElementById('new-special-user-message');
   const username = input.value.trim();
+  const message = messageInput.value.trim();
+
   if (!username) {
     alert('Please enter a username');
     return;
   }
-  if (specialUsers.includes(username.toLowerCase())) {
+
+  if (specialUsers.some(u => u.username === username.toLowerCase())) {
     alert('User already in list');
     return;
   }
-  specialUsers.push(username.toLowerCase());
-  input.value = '';
-  renderSpecialUsers();
+
+  try {
+    const res = await fetch(botApi('/special-users'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: username.toLowerCase(),
+        action: 'add',
+        message: message || null
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      specialUsers = data.users || [];
+      input.value = '';
+      messageInput.value = '';
+      renderSpecialUsers();
+      alert('Special user added!');
+    } else {
+      alert('Failed to add special user');
+    }
+  } catch (e) {
+    console.error('Failed to add special user:', e);
+    alert('Failed to add special user');
+  }
 }
 
-export function removeSpecialUser(username) {
-  specialUsers = specialUsers.filter(u => u !== username);
-  renderSpecialUsers();
+export async function removeSpecialUser(username) {
+  try {
+    const res = await fetch(botApi('/special-users'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: username,
+        action: 'remove'
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      specialUsers = data.users || [];
+      renderSpecialUsers();
+      alert('Special user removed!');
+    } else {
+      alert('Failed to remove special user');
+    }
+  } catch (e) {
+    console.error('Failed to remove special user:', e);
+    alert('Failed to remove special user');
+  }
 }
 
 export async function saveSettings() {
@@ -79,7 +163,6 @@ export async function saveSettings() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        specialUsers,
         promoMinutes,
         player1Name,
         player2Name,
