@@ -125,6 +125,24 @@ function initNavBehavior(navElement) {
 
 // Export function to update active tab programmatically
 export function setActiveTab(tabName) {
+  // For settings tab (not in nav bar), manually switch
+  if (tabName === 'settings') {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    // Show settings tab
+    const settingsTab = document.getElementById('tab-settings');
+    if (settingsTab) {
+      settingsTab.classList.add('active');
+    }
+    // Update nav highlight (remove active from all nav links)
+    const navLinks = document.querySelectorAll('.nav__link');
+    navLinks.forEach(link => link.classList.remove('active'));
+    return;
+  }
+
+  // For regular nav tabs, use the normal click method
   const link = document.querySelector(`.nav__link[data-tab="${tabName}"]`);
   if (link) {
     link.click();
