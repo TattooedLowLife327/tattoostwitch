@@ -30,7 +30,11 @@
       "Bash(done)",
       "Bash(git diff-tree:*)",
       "Bash(npm uninstall:*)",
-      "Bash(timeout 3 head:*)"
+      "Bash(timeout 3 head:*)",
+      "Bash(npx http-server:*)",
+      "Bash(sh)",
+      "Bash(cat:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
