@@ -296,26 +296,34 @@ export async function removeAdmin(pin) {
 // Admin check-in/check-out for non-owners
 export async function checkIn() {
   try {
+    console.log('[CHECK-IN] Attempting check-in with PIN:', userPin ? 'SET' : 'NOT SET');
     const res = await fetch(botApi('/api/admin/checkin'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin: userPin, name: '' })
     });
 
+    console.log('[CHECK-IN] Response status:', res.status);
+
     if (res.status === 409) {
       const data = await res.json();
+      console.log('[CHECK-IN] 409 Conflict:', data);
       alert(`${data.currentAdmin.name} is currently checked in. Please wait.`);
       return;
     }
 
     if (!res.ok) {
-      alert('Failed to check in');
+      const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('[CHECK-IN] Failed with status', res.status, ':', errorData);
+      alert(`Failed to check in: ${errorData.error || 'Unknown error'}`);
       return;
     }
 
+    const data = await res.json();
+    console.log('[CHECK-IN] Success:', data);
     updateMyCheckinStatus();
   } catch (e) {
-    console.error('Check-in error:', e);
+    console.error('[CHECK-IN] Exception:', e);
     alert('Failed to check in');
   }
 }
