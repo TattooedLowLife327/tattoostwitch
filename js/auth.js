@@ -226,7 +226,7 @@ export async function loadAdminList() {
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 10px;">
         <div>
           <div style="font-weight: 600;">${admin.name}</div>
-          <div style="color: var(--muted); font-size: 14px;">${admin.role === 'owner' ? '(Owner)' : ''}</div>
+          <div style="color: var(--muted); font-size: 14px;">${admin.role === 'owner' ? '(TattooedLowLife)' : ''}</div>
         </div>
         ${admin.pin !== userPin ? `<button class="btn-small" style="background: #ff6b6b;" onclick="removeAdmin('${admin.pin}')">Remove</button>` : ''}
       </div>
