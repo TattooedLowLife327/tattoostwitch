@@ -53,15 +53,19 @@ function renderSpecialUsers() {
     return;
   }
   list.innerHTML = specialUsers.map(user => {
-    const messageText = user.message
-      ? `<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">"${user.message}"</div>`
+    // Handle both old format (string) and new format (object)
+    const username = typeof user === 'string' ? user : user.username;
+    const message = typeof user === 'string' ? null : user.message;
+
+    const messageText = message
+      ? `<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">"${message}"</div>`
       : '<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Uses random default</div>';
 
     return `
       <div style="padding: 8px 12px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; margin-bottom: 8px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: var(--text); font-size: 14px; font-weight: 500;">${user.username}</span>
-          <button onclick="window.settingsModule.removeSpecialUser('${user.username}')" style="background: #ff6b6b; border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
+          <span style="color: var(--text); font-size: 14px; font-weight: 500;">${username}</span>
+          <button onclick="window.settingsModule.removeSpecialUser('${username}')" style="background: #ff6b6b; border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
         </div>
         ${messageText}
       </div>
@@ -94,7 +98,13 @@ export async function addSpecialUser() {
     return;
   }
 
-  if (specialUsers.some(u => u.username === username.toLowerCase())) {
+  // Handle both old format (string) and new format (object)
+  const userExists = specialUsers.some(u => {
+    const existingUsername = typeof u === 'string' ? u : u.username;
+    return existingUsername === username.toLowerCase();
+  });
+
+  if (userExists) {
     alert('User already in list');
     return;
   }
