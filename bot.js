@@ -413,7 +413,7 @@ async function checkActionRequests() {
 setInterval(checkActionRequests, 3000);
 
 // ====== TWITCH BOT ======
-const seenUsers = new Set(); // Session-only tracking
+const seenUsers = new Map(); // Track announcement count per user per stream session
 const lastSeenMap = new Map();
 
 const specialUserMessages = {
@@ -788,27 +788,10 @@ function formatTimeAgo(ms) {
 
 function checkSpecialUser(username) {
   const lowerUsername = username.toLowerCase();
-  if (!seenUsers.has(lowerUsername)) {
-    seenUsers.add(lowerUsername);
-    if (specialUsersList.includes(lowerUsername)) {
-      let message;
-      if (specialUserMessages[lowerUsername]) {
-        message = specialUserMessages[lowerUsername];
-      } else {
-        const messages = specialUserMessages.default;
-        message = `${username} ${messages[Math.floor(Math.random() * messages.length)]}`;
-      }
-      say(message);
-      console.log(`[SPECIAL USER] ${username}`);
-    }
-  }
-}
+  const announceCount = seenUsers.get(lowerUsername) || 0;
 
-client.on('join', (channel, username, self) => {
-  if (self) return;
-  const lowerUsername = username.toLowerCase();
-  lastSeenMap.set(lowerUsername, Date.now());
-  if (specialUsersList.includes(lowerUsername)) {
+  // Limit to 2 announcements per user per stream
+  if (announceCount < 2 && specialUsersList.includes(lowerUsername)) {
     let message;
     if (specialUserMessages[lowerUsername]) {
       message = specialUserMessages[lowerUsername];
@@ -817,6 +800,29 @@ client.on('join', (channel, username, self) => {
       message = `${username} ${messages[Math.floor(Math.random() * messages.length)]}`;
     }
     say(message);
+    seenUsers.set(lowerUsername, announceCount + 1);
+    console.log(`[SPECIAL USER] ${username} (${announceCount + 1}/2)`);
+  }
+}
+
+client.on('join', (channel, username, self) => {
+  if (self) return;
+  const lowerUsername = username.toLowerCase();
+  lastSeenMap.set(lowerUsername, Date.now());
+
+  // Check if special user and hasn't exceeded 2 announcements
+  const announceCount = seenUsers.get(lowerUsername) || 0;
+  if (announceCount < 2 && specialUsersList.includes(lowerUsername)) {
+    let message;
+    if (specialUserMessages[lowerUsername]) {
+      message = specialUserMessages[lowerUsername];
+    } else {
+      const messages = specialUserMessages.default;
+      message = `${username} ${messages[Math.floor(Math.random() * messages.length)]}`;
+    }
+    say(message);
+    seenUsers.set(lowerUsername, announceCount + 1);
+    console.log(`[JOIN ANNOUNCE] ${username} (${announceCount + 1}/2)`);
   }
 });
 
