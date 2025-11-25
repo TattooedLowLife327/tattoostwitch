@@ -191,8 +191,9 @@ function applyDubsUIState() {
   const toggle = document.getElementById('dubs-toggle');
   const partnerContainer = document.getElementById('dubs-partner-container');
   if (toggle) toggle.checked = dubsEnabled;
+  // Always show partner input so user can enter name before enabling
   if (partnerContainer) {
-    partnerContainer.style.display = dubsEnabled ? 'block' : 'none';
+    partnerContainer.style.display = 'block';
   }
 }
 
