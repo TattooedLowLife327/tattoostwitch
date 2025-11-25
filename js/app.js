@@ -92,7 +92,6 @@ function startUpdates() {
   overlays.updateModeDisplay();
   settings.loadSettings();
   overlays.checkModeVisibilityUpdate();
-  overlays.checkBRBStatus();
   stats.updateFollowerCount();
   // stats.updateSubscriberCount();
   scoreboard.syncScoreboardFromServer();
@@ -109,7 +108,6 @@ function startUpdates() {
   setInterval(stats.checkConnection, 10000);
   setInterval(overlays.updateModeDisplay, 5000);
   setInterval(overlays.checkModeVisibilityUpdate, 5000);
-  setInterval(overlays.checkBRBStatus, 5000);
   setInterval(stats.updateFollowerCount, 30000);
   // setInterval(stats.updateSubscriberCount, 30000);
   setInterval(auth.checkAdminStatus, 5000);

@@ -16,14 +16,6 @@
 </head>
 <body>
 
-<!-- BRB Blur Overlay -->
-<div id="brb-blur-overlay" class="brb-blur-overlay hidden">
-  <div class="brb-message">
-    <h2>BRB</h2>
-    <p>Be Right Back</p>
-  </div>
-</div>
-
 <!-- Login Screen -->
 <div id="login-screen" class="container">
   <div class="login-form">
@@ -249,7 +241,7 @@
           <label for="dubs-toggle" style="color: var(--text); font-weight: 600; cursor: pointer;">Enable Dubs Overlay</label>
         </div>
       </div>
-      <div id="dubs-partner-container" style="margin-top: 12px; display: none;">
+      <div id="dubs-partner-container" style="margin-top: 12px;">
         <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Dubs Partner Name</label>
         <input type="text" id="dubs-partner" placeholder="Partner Name" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
         <small style="color: var(--muted); font-size: 12px;">Used when Dubs mode is active.</small>
@@ -358,7 +350,7 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=101"></script>
+<script type="module" src="js/app.js?v=102"></script>
 
 </body>
 </html>
