@@ -689,7 +689,7 @@ async function handleChatMessage(event) {
 
   // !dcd (Dead Center Darts promo)
   if (text.toLowerCase() === '!dcd') {
-    say('Dead Center Darts - www.deadcenterdarts.com');
+    say('www.deadcenterdarts.com - LOWLIFES15 saves you 15% at checkout! LLoGB doesn\'t take a commission. Instead, a portion of all purchase totals where our code is used is put into a bonus pot for players to play for and win!');
     triggerPromo(0);
     console.log(`[DCD] Promo triggered by ${uname}`);
     return;
@@ -1526,6 +1526,24 @@ app.post('/api/trigger-promo', (req, res) => {
   const promoIndex = Number.isInteger(req.body?.index) ? req.body.index : 0;
   triggerPromo(promoIndex);
   res.json({ success: true, index: promoIndex });
+});
+
+// API endpoint to announce score updates
+app.post('/api/announce-score', async (req, res) => {
+  const { adminName, player1, player2 } = req.body || {};
+
+  if (!adminName) {
+    return res.status(400).json({ error: 'Admin name required' });
+  }
+
+  try {
+    await say(`${adminName} updated the score: TATTOO ${player1} - OPEN ${player2}`);
+    console.log(`[SCORE] ${adminName} updated score to ${player1}-${player2}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[SCORE] Announce error:', err);
+    res.status(500).json({ error: 'Failed to announce' });
+  }
 });
 
 // ====== RAID SSE (for overlay) ======

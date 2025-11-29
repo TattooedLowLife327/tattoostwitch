@@ -1,6 +1,31 @@
-import { functionApi } from './api.js';
+import { functionApi, botApi } from './api.js';
 
 let scores = { player1: 0, player2: 0 };
+
+// Get current admin name from the bot
+async function getAdminName() {
+  try {
+    const res = await fetch(botApi('/api/admin/current'));
+    const data = await res.json();
+    return data.name || 'Admin';
+  } catch {
+    return 'Admin';
+  }
+}
+
+// Announce score update in chat
+async function announceScoreUpdate(player1, player2) {
+  try {
+    const adminName = await getAdminName();
+    await fetch(botApi('/api/announce-score'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminName, player1, player2 })
+    });
+  } catch (e) {
+    console.error('Failed to announce score:', e);
+  }
+}
 let scoreboardSyncInterval = null;
 let scoreboardSyncPromise = null;
 
@@ -80,8 +105,11 @@ export async function updateScore(player, delta) {
       const normalized = normalizeScoreboardPayload(responseData?.scoreboard || responseData);
       if (normalized) {
         setScoreDisplays(normalized.player1, normalized.player2);
+        // Announce score update in chat
+        announceScoreUpdate(normalized.player1, normalized.player2);
       } else {
         await syncScoreboardFromServer(true);
+        announceScoreUpdate(scores.player1, scores.player2);
       }
     } else {
       console.error('Failed to update scoreboard:', responseData?.error || res.statusText);
@@ -109,6 +137,8 @@ export async function resetScores() {
       if (normalized) {
         setScoreDisplays(normalized.player1, normalized.player2);
       }
+      // Announce score reset in chat
+      announceScoreUpdate(0, 0);
     } else {
       console.error('Failed to reset scoreboard:', responseData?.error || res.statusText);
     }
