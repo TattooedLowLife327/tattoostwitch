@@ -3,6 +3,12 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+
+# Backup files (may contain sensitive data)
+*.old
+*.backup
+*.bak
 
 # Logs
 npm-debug.log*

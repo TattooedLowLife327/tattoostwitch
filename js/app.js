@@ -5,6 +5,7 @@ import * as scoreboard from './scoreboard.js';
 import * as settings from './settings.js';
 import * as overlays from './overlays.js';
 import * as stats from './stats.js';
+import * as obs from './obs.js';
 import { showAdminScreen, showLoginScreen, toggleMenu } from './ui.js';
 import * as navigation from './navigation.js';
 
@@ -15,6 +16,7 @@ window.scoreboardModule = scoreboard;
 window.settingsModule = settings;
 window.overlaysModule = overlays;
 window.statsModule = stats;
+window.obsModule = obs;
 window.navigation = navigation;
 
 // Expose individual functions needed by HTML onclick handlers
@@ -58,6 +60,47 @@ window.activateBRB = overlays.activateBRB;
 window.activateTechDifficulties = overlays.activateTechDifficulties;
 window.deactivateScreen = overlays.deactivateScreen;
 window.triggerPromo = overlays.triggerPromo;
+window.endStream = overlays.endStream;
+
+window.connectToOBS = obs.connectToOBS;
+window.saveOBSSettings = obs.saveOBSSettings;
+window.getStoredOBSSettings = obs.getStoredOBSSettings;
+window.isOBSConnected = obs.isOBSConnected;
+
+window.saveOBSSettingsFromUI = function() {
+  const ip = document.getElementById('obs-ip').value.trim();
+  const port = document.getElementById('obs-port').value.trim();
+  const password = document.getElementById('obs-password').value;
+  obs.saveOBSSettings(ip || '192.168.1.134', port || '4455', password);
+  const statusEl = document.getElementById('obs-status');
+  statusEl.textContent = 'Settings saved';
+  statusEl.style.color = '#10b981';
+};
+
+window.testOBSConnection = async function() {
+  const statusEl = document.getElementById('obs-status');
+  statusEl.textContent = 'Connecting...';
+  statusEl.style.color = 'var(--muted)';
+
+  // Save settings first
+  window.saveOBSSettingsFromUI();
+
+  try {
+    await obs.connectToOBS();
+    statusEl.textContent = 'Connected successfully!';
+    statusEl.style.color = '#10b981';
+  } catch (e) {
+    statusEl.textContent = 'Connection failed: ' + e.message;
+    statusEl.style.color = '#ef4444';
+  }
+};
+
+window.loadOBSSettings = function() {
+  const settings = obs.getStoredOBSSettings();
+  document.getElementById('obs-ip').value = settings.ip || '';
+  document.getElementById('obs-port').value = settings.port || '';
+  document.getElementById('obs-password').value = settings.password || '';
+};
 
 window.restartBot = stats.restartBot;
 
@@ -96,6 +139,7 @@ function startUpdates() {
   // stats.updateSubscriberCount();
   scoreboard.syncScoreboardFromServer();
   auth.checkAdminStatus();
+  window.loadOBSSettings();
 
   // Update check-in status for non-owner admins
   if (!auth.isOwner) {

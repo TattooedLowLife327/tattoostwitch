@@ -34,8 +34,8 @@ const {
 const DEFAULT_PORT = 8888;
 const envPort = Number.parseInt(process.env.PORT, 10);
 const PORT = Number.isFinite(envPort) ? envPort : DEFAULT_PORT;
-const ALLOWED_PINS = ['92522', '8317', '5196'];
-const specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
+// Special users list - loaded from database, falls back to env var
+let specialUsersList = SPECIAL_USERS ? SPECIAL_USERS.toLowerCase().split(',').map(u => u.trim()) : [];
 const LURKER_ANNOUNCE_INTERVAL = 30 * 60 * 1000; // 30 minutes
 const SR_REMINDER_INTERVAL = 15 * 60 * 1000; // 15 minutes
 const SPOTIFY_POLL_INTERVAL = 30 * 1000; // 30 seconds to reduce API churn
@@ -135,6 +135,48 @@ async function query(sql, params = []) {
   } catch (error) {
     console.error('Database error:', error);
     throw error;
+  }
+}
+
+// ====== SPECIAL USERS DATABASE FUNCTIONS ======
+async function loadSpecialUsersFromDB() {
+  try {
+    const result = await query("SELECT value FROM settings WHERE key = 'specialUsers'");
+    if (result && result.length > 0 && result[0].value) {
+      const parsed = JSON.parse(result[0].value);
+      // Handle both array of strings (old format) and array of objects (new format)
+      specialUsersList = parsed.map(u => typeof u === 'string' ? u : u.username).filter(Boolean);
+      // Load custom messages
+      parsed.forEach(u => {
+        if (typeof u === 'object' && u.username && u.message) {
+          specialUserMessages[u.username] = u.message;
+        }
+      });
+      console.log('[DB] Loaded special users from database:', specialUsersList);
+    } else {
+      console.log('[DB] No special users in database, using env fallback');
+    }
+  } catch (e) {
+    console.error('[DB] Failed to load special users:', e.message);
+  }
+}
+
+async function saveSpecialUsersToDB() {
+  try {
+    const usersWithMessages = specialUsersList.map(username => ({
+      username,
+      message: specialUserMessages[username] || null
+    }));
+    await query(
+      `INSERT INTO settings (key, value, updated_at)
+       VALUES ('specialUsers', $1, NOW())
+       ON CONFLICT (key)
+       DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(usersWithMessages)]
+    );
+    console.log('[DB] Saved special users to database');
+  } catch (e) {
+    console.error('[DB] Failed to save special users:', e.message);
   }
 }
 
@@ -417,7 +459,7 @@ const seenUsers = new Map(); // Track announcement count per user per stream ses
 const lastSeenMap = new Map();
 
 const specialUserMessages = {
-  'chantheman814': 'TheMan has arrived.',
+  // Custom messages loaded from database, keyed by username
   default: [
     'has entered the chat!',
     'just rolled in!',
@@ -961,14 +1003,18 @@ app.get('/api/spotify-queue', async (req, res) => {
   }
 });
 
-app.post('/restart-bot', (req, res) => {
+app.post('/restart-bot', async (req, res) => {
   const providedPin = (req.body?.pin || '').trim();
 
   if (!providedPin) {
     return res.status(400).json({ error: 'Missing PIN' });
   }
 
-  if (!ALLOWED_PINS.includes(providedPin)) {
+  // Validate PIN against database admins
+  const admins = await getAdmins();
+  const isValidAdmin = admins.some(a => a.pin === providedPin) || providedPin === ADMIN_PIN;
+
+  if (!isValidAdmin) {
     return res.status(401).json({ error: 'Invalid PIN' });
   }
 
@@ -989,7 +1035,7 @@ app.get('/special-users', (req, res) => {
   res.json({ users: usersWithMessages, defaultMessages: specialUserMessages.default });
 });
 
-app.post('/special-users', (req, res) => {
+app.post('/special-users', async (req, res) => {
   const { username, action, message } = req.body || {};
 
   if (!username || !action) {
@@ -1006,6 +1052,8 @@ app.post('/special-users', (req, res) => {
       }
       console.log(`[ADMIN] Added special user: ${user} with message: "${message || 'default'}"`);
     }
+    // Persist to database
+    await saveSpecialUsersToDB();
     const usersWithMessages = specialUsersList.map(u => ({
       username: u,
       message: specialUserMessages[u] || null
@@ -1018,6 +1066,8 @@ app.post('/special-users', (req, res) => {
       delete specialUserMessages[user];
       console.log(`[ADMIN] Removed special user: ${user}`);
     }
+    // Persist to database
+    await saveSpecialUsersToDB();
     const usersWithMessages = specialUsersList.map(u => ({
       username: u,
       message: specialUserMessages[u] || null
@@ -1162,7 +1212,10 @@ app.get('/api/subscribers', async (req, res) => {
 });
 
 // ====== ADMIN MANAGEMENT ======
-const OWNER_PIN = ADMIN_PIN || '0000'; // Owner has special privileges; override via ADMIN_PIN env
+const OWNER_PIN = ADMIN_PIN; // Owner PIN from environment variable - REQUIRED
+if (!OWNER_PIN) {
+  console.warn('[ADMIN] WARNING: ADMIN_PIN environment variable not set! Owner functions will not work.');
+}
 let currentAdmin = null; // { pin, name, checkedInAt }
 
 // Ensure admins table exists
@@ -1644,4 +1697,8 @@ app.listen(PORT, async () => {
   // Initialize admin table
   await initAdminsTable();
   console.log('[BOT] Admin system initialized');
+
+  // Load special users from database
+  await loadSpecialUsersFromDB();
+  console.log('[BOT] Special users loaded');
 });

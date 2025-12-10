@@ -109,7 +109,7 @@ Replace all localhost URLs with your Netlify URL:
 ## Step 5: Access Your PWA
 
 1. On your phone, go to: `https://your-site.netlify.app/index.html`
-2. Login with PIN: `92522`
+2. Login with your admin PIN (set in database admins table)
 3. Add to home screen (iOS Safari: Share > Add to Home Screen)
 4. Done! Control your stream from anywhere
 

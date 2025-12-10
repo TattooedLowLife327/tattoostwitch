@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
 <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
-<link rel="stylesheet" href="css/styles.css?v=102" />
+<link rel="stylesheet" href="css/styles.css?v=104" />
 <title>Tattoo's Twitch Controls</title>
 </head>
 <body>
@@ -263,6 +263,7 @@
       </div>
       <button class="btn" style="margin-bottom: 10px; background: #6c757d;" onclick="deactivateScreen()">Dismiss Screen</button>
       <button class="btn" style="margin-bottom: 10px; background: var(--purple);" onclick="activateTechDifficulties()">Tech Difficulties</button>
+      <button class="btn" style="margin-bottom: 10px; background: #ef4444;" onclick="endStream()">End Stream</button>
     </div>
   </div>
 
@@ -281,6 +282,29 @@
         <h3 style="color: var(--purple); margin-bottom: 10px;">Current Admins</h3>
         <div id="admin-list"></div>
       </div>
+    </div>
+
+    <!-- OBS WebSocket Settings -->
+    <div class="section">
+      <h2>OBS WebSocket</h2>
+      <small style="color: var(--muted); font-size: 12px; display: block; margin-bottom: 15px;">Configure OBS WebSocket to enable End Stream button</small>
+      <div style="margin-bottom: 10px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Server IP</label>
+        <input type="text" id="obs-ip" placeholder="192.168.1.134" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Server Port</label>
+        <input type="text" id="obs-port" placeholder="4455" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Server Password</label>
+        <input type="password" id="obs-password" placeholder="WebSocket Password" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn" style="flex: 1;" onclick="saveOBSSettingsFromUI()">Save</button>
+        <button class="btn" style="flex: 1; background: #10b981;" onclick="testOBSConnection()">Test Connection</button>
+      </div>
+      <div id="obs-status" style="margin-top: 10px; text-align: center; font-size: 14px;"></div>
     </div>
 
     <!-- Bot Settings -->
@@ -350,7 +374,7 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=103"></script>
+<script type="module" src="js/app.js?v=105"></script>
 
 </body>
 </html>

@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Insert default settings
 INSERT INTO settings (key, value, description) VALUES
   ('promo_minutes', '15', 'Minutes between automatic promo messages'),
-  ('special_users', 'chantheman814,coil666', 'Comma-separated list of special users to announce'),
+  ('special_users', '', 'Comma-separated list of special users to announce'),
   ('song_request_enabled', 'true', 'Enable/disable song requests'),
   ('max_requests_per_user', '3', 'Maximum pending requests per user'),
   ('auto_approve_threshold_minutes', '0', 'Auto-approve songs shorter than X minutes (0 = disabled)')
@@ -187,10 +187,11 @@ CREATE TABLE IF NOT EXISTS admins (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Ensure owner account exists for control panel access
-INSERT INTO admins (pin, name, role, color)
-VALUES ('92522', 'Owner', 'owner', '#8b5cf6')
-ON CONFLICT (pin) DO NOTHING;
+-- Add your owner account for control panel access
+-- IMPORTANT: Replace 'YOUR_PIN_HERE' with your actual PIN before running
+-- INSERT INTO admins (pin, name, role, color)
+-- VALUES ('YOUR_PIN_HERE', 'Owner', 'owner', '#8b5cf6')
+-- ON CONFLICT (pin) DO NOTHING;
 
 -- Migration: Add color column to existing admins table (run this if table already exists)
 -- ALTER TABLE admins ADD COLUMN IF NOT EXISTS color VARCHAR(7) DEFAULT '#8b5cf6';

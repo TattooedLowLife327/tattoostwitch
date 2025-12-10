@@ -1,5 +1,6 @@
 import { functionApi, botApi } from './api.js';
 import { getDubsEnabled, getDubsPartnerName } from './settings.js';
+import { connectToOBS, stopStream, isOBSConnected } from './obs.js';
 
 export async function setMode(mode) {
   try {
@@ -138,6 +139,26 @@ export async function activateTechDifficulties() {
     alert('Tech Difficulties screen activated');
   } catch (e) {
     alert('Failed to activate Tech Difficulties screen');
+  }
+}
+
+export async function endStream() {
+  if (!confirm('END STREAM? This will stop your OBS stream!')) {
+    return;
+  }
+
+  try {
+    // Connect to OBS if not already connected
+    if (!isOBSConnected()) {
+      await connectToOBS();
+    }
+
+    // Stop the stream
+    await stopStream();
+    alert('Stream stopped successfully');
+  } catch (e) {
+    console.error('Failed to stop stream:', e);
+    alert('Failed to stop stream: ' + e.message + '\n\nMake sure OBS is running and WebSocket settings are correct in Settings.');
   }
 }
 

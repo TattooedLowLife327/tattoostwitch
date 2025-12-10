@@ -114,13 +114,13 @@ Replace ALL localhost URLs with your Netlify URL:
 ### iPhone:
 1. Open Safari, go to: `https://your-site.netlify.app/index.html`
 2. Tap Share button → "Add to Home Screen"
-3. Login with PIN: `92522`
+3. Login with your admin PIN (set in database admins table)
 4. Done!
 
 ### Android:
 1. Open Chrome, go to: `https://your-site.netlify.app/index.html`
 2. Tap menu → "Install app" or "Add to Home Screen"
-3. Login with PIN: `92522`
+3. Login with your admin PIN (set in database admins table)
 4. Done!
 
 ---
