@@ -34,8 +34,7 @@
       "Bash(npx http-server:*)",
       "Bash(sh)",
       "Bash(cat:*)",
-      "Bash(git stash:*)",
-      "Bash(git filter-branch:*)"
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
