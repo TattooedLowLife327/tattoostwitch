@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill:*)",
+      "Bash(node bot.js:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(where:*)",
+      "Bash(npx localtunnel --port 8787)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(ngrok http:*)",
+      "Bash(timeout 3 ping:*)",
+      "Bash(nul)",
+      "Bash(pm2 start:*)",
+      "Bash(ipconfig:*)",
+      "Bash(findstr:*)",
+      "Bash(git log:*)",
+      "Bash(git pull:*)",
+      "Bash(node --check:*)",
+      "Bash(pm2 list:*)",
+      "Bash(tasklist:*)",
+      "Bash(pm2 logs:*)",
+      "Bash(pm2 save:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(timeout 3 pm2 logs:*)",
+      "Bash(for commit in dd6082e 8738dd5 1c4fb9f 122c6da 37e351c 66a22c0 3742545)",
+      "Bash(do echo \"=== COMMIT $commit ===\")",
+      "Bash(done)",
+      "Bash(git diff-tree:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(timeout 3 head:*)",
+      "Bash(npx http-server:*)",
+      "Bash(sh)",
+      "Bash(cat:*)",
+      "Bash(git stash:*)",
+      "Bash(git filter-branch:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

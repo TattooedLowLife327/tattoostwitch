@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socials Panel</title>
+  <style>
+    :root {
+      --social-width: 600px; /* Match scaled queue width (320px * 1.5) */
+      --social-height: 120px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      font-family: 'Arial', sans-serif;
+      overflow: hidden;
+      width: 1600px;
+      height: 600px;
+    }
+
+    .socials-container {
+      position: absolute;
+      top: 200px;
+      left: 0;
+      display: flex;
+      align-items: center;
+      width: 1570px;
+      height: 220px;
+    }
+
+    .social-item {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .social-item.active,
+    .social-item.exiting {
+      opacity: 1;
+    }
+
+    .social-wrapper {
+      display: flex;
+      align-items: center;
+      width: var(--social-width);
+      height: var(--social-height);
+      gap: 0;
+    }
+
+    .social-icon {
+      width: 140px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+      flex-shrink: 0;
+      opacity: 0;
+      transform: translateX(-150px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .social-item.active .social-icon {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .social-item.exiting .social-icon {
+      opacity: 0;
+      transform: translateX(-150px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .social-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .social-handle {
+      flex: 1;
+      background: transparent;
+      color: #fff;
+      padding: 18px 32px 18px 32px;
+      margin-left: -8px;
+      border-radius: 0 20px 20px 0;
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+      height: var(--social-height);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .social-handle span {
+      display: block;
+      width: 100%;
+      color: inherit;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      white-space: normal;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .social-item.active .social-handle {
+      clip-path: inset(0 0 0 0);
+      transition-delay: 0.2s;
+    }
+
+    .social-item.exiting .social-handle {
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 0.4s ease;
+    }
+
+    .social-item.exiting .social-icon {
+      transition-delay: 0.4s;
+    }
+  </style>
+</head>
+<body>
+  <div class="socials-container" id="socialsContainer"></div>
+
+  <script>
+    const socials = [
+      { platform: 'granboard', icon: 'images/granblackicon.png', handle: 'TattooedLowLife [LLoGB]' },
+      { platform: 'twitch', icon: 'images/twitchblackicon.png', handle: 'TheTattooedLowLife' },
+      { platform: 'tiktok', icon: 'images/tiktokblackicon.png', handle: 'TattooedLowLife LLoGB' },
+      { platform: 'spotify', icon: 'images/spotifyblackicon.png', handle: 'LowLifesofGB' },
+      { platform: 'snapchat', icon: 'images/snapchatblackicon.png', handle: 'TheLowLifesofGB' },
+      { platform: 'facebook', icon: 'images/facebookblackicon.png', handle: 'The LowLifes of Granboard' },
+      { platform: 'youtube', icon: 'images/youtubeblackicon.png', handle: 'TheTattooedLowLife' },
+      { platform: 'discord', icon: 'images/discordblackicon.png', handle: 'The LowLifes of Granboard' },
+      { platform: 'instagram', icon: 'images/instagramblackicon.png', handle: 'TheTattooedLowLife' }
+    ];
+
+    const container = document.getElementById('socialsContainer');
+    let currentIndex = 0;
+
+    function fitHandleText(handleEl) {
+      if (!handleEl) return;
+      const textEl = handleEl.querySelector('span');
+      if (!textEl) return;
+      let fontSize = 54;
+      const minSize = 28;
+      textEl.style.fontSize = fontSize + 'px';
+      while ((textEl.scrollWidth > handleEl.clientWidth - 20 || textEl.scrollHeight > handleEl.clientHeight * 0.95) && fontSize > minSize) {
+        fontSize -= 2;
+        textEl.style.fontSize = fontSize + 'px';
+      }
+    }
+
+    // Create all social items
+    socials.forEach((social) => {
+      const item = document.createElement('div');
+      item.className = `social-item ${social.platform}`;
+      item.innerHTML = `
+        <div class="social-wrapper">
+          <div class="social-icon">
+            <img src="${social.icon}" alt="${social.platform}">
+          </div>
+          <div class="social-handle"><span>${social.handle}</span></div>
+        </div>
+      `;
+      container.appendChild(item);
+      fitHandleText(item.querySelector('.social-handle'));
+    });
+
+    const items = document.querySelectorAll('.social-item');
+    let isAnimating = false;
+
+    function showNext() {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const prevIndex = (currentIndex - 1 + socials.length) % socials.length;
+
+      // Exit current item
+      if (currentIndex > 0 || items[prevIndex].classList.contains('active')) {
+        items[prevIndex].classList.add('exiting');
+        items[prevIndex].classList.remove('active');
+      }
+
+      // Enter new item after a short delay
+      setTimeout(() => {
+        items[prevIndex].classList.remove('exiting');
+        items[currentIndex].classList.add('active');
+
+        // Move to next
+        currentIndex = (currentIndex + 1) % socials.length;
+        isAnimating = false;
+      }, 700);
+    }
+
+    // Show first item immediately
+    items[0].classList.add('active');
+    currentIndex = 1;
+
+    // Cycle every 7 seconds
+    setInterval(showNext, 7000);
+  </script>
+</body>
+</html>

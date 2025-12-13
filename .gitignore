@@ -1,0 +1,36 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Backup files (may contain sensitive data)
+*.old
+*.backup
+*.bak
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+
+# Figma prototypes and design code
+examplecodefromfigma/
+
+# Admin folder (backup - not in use)
+admin/
+
+#Ignore insiders AI rules
+.github\instructions\codacy.instructions.md
+
+# Local Netlify folder
+.netlify

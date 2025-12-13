@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLoGB Chat Overlay</title>
+<style>
+  :root{
+    --bg: rgba(0,0,0,0.0);
+    --purple: #8B5CF6;
+    --text: #ffffff;
+    --muted: #a3a3a3;
+    --font: system-ui, -apple-system, sans-serif;
+    --fade: 12s;
+    --max: 30;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overflow: visible;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    position: relative;
+  }
+
+  .card {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 300px;
+    height: 505px;
+    background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+    transform: scale(1.5);
+    transform-origin: bottom left;
+  }
+
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%);
+    border-radius: 12px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .card-content {
+    position: relative;
+    padding: 16px;
+    z-index: 2;
+  }
+
+  #log {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 480px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  #log::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+  }
+
+  .msg {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    animation: rise 0.3s ease-out;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    background: transparent;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+
+  .name {
+    font-weight: 500;
+    font-size: 22px;
+    white-space: nowrap;
+  }
+
+  .timestamp {
+    display: none;
+  }
+
+  .text {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.625;
+  }
+
+  @keyframes rise {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeout {
+    0%, 85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Purple color variations for different users */
+  .color-1 { color: #8B5CF6; }
+  .color-2 { color: #A855F7; }
+  .color-3 { color: #C084FC; }
+  .color-4 { color: #7C3AED; }
+  .color-5 { color: #DDD6FE; }
+  .color-6 { color: #A78BFA; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-overlay"></div>
+  <div class="card-content">
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+  function getBotOrigin() {
+    if (window.OVERLAY_BOT_BASE) {
+      return window.OVERLAY_BOT_BASE.replace(/\/$/, '');
+    }
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8787';
+    }
+    return 'https://tattoostwitch327.onrender.com';
+  }
+
+  const MAX_MSG = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max')) || 30;
+  const log = document.getElementById('log');
+
+  // User color mapping (fallback for users without Twitch colors)
+  const userColors = {};
+  let colorIndex = 1;
+
+  function getUserFallbackColor(username) {
+    if (!userColors[username]) {
+      userColors[username] = `color-${colorIndex}`;
+      colorIndex = (colorIndex % 6) + 1;
+    }
+    return userColors[username];
+  }
+
+  function getTimestamp() {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 should be 12
+    return `${hours}:${minutes} ${ampm}`;
+  }
+
+  function getPlatformIcon(platform) {
+    if (platform === 'twitch') {
+      return '<img src="images/twitch.png" alt="Twitch">';
+    } else if (platform === 'facebook') {
+      return '<img src="images/facebook.png" alt="Facebook">';
+    }
+    return '<img src="images/twitch.png" alt="Platform">';
+  }
+
+  function pushMessage(user, text, emotes, color, platform = 'twitch'){
+    const el = document.createElement('div');
+    el.className = 'msg';
+    const formattedText = formatEmotes(text, emotes);
+    const timestamp = getTimestamp();
+
+    // Use Twitch color if provided, otherwise fall back to purple variations
+    const nameColor = color || '';
+    const colorClass = color ? '' : getUserFallbackColor(user);
+
+    el.innerHTML = `
+      <div class="avatar">
+        ${getPlatformIcon(platform)}
+      </div>
+      <div class="content">
+        <div class="header">
+          <span class="name ${colorClass}" style="${nameColor ? `color: ${nameColor}` : ''}">${escapeHTML(user)}</span>
+          <span class="timestamp">${timestamp}</span>
+        </div>
+        <div class="text">${formattedText}</div>
+      </div>
+    `;
+    log.appendChild(el);
+    while(log.children.length > MAX_MSG){
+      log.removeChild(log.firstChild);
+    }
+
+    // Auto-scroll to bottom to show newest messages
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function escapeHTML(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function formatEmotes(text, emotes) {
+    if (!emotes) return escapeHTML(text);
+
+    // Strip out emotes completely (your emote wall will show them)
+    const replacements = [];
+    for (const emoteId in emotes) {
+      emotes[emoteId].forEach(position => {
+        const [start, end] = position.split('-').map(Number);
+        replacements.push({ start, end });
+      });
+    }
+
+    // Sort in reverse order to remove from end to start
+    replacements.sort((a, b) => b.start - a.start);
+
+    let result = text;
+    replacements.forEach(({ start, end }) => {
+      // Remove emote text and any extra spaces
+      result = result.substring(0, start) + result.substring(end + 1);
+    });
+
+    // Clean up extra spaces
+    result = result.replace(/\s+/g, ' ').trim();
+
+    return escapeHTML(result);
+  }
+
+  // Connect to bot's chat stream
+  const eventSource = new EventSource(`${getBotOrigin()}/chat-stream`);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      pushMessage(data.user, data.message, data.emotes, data.color, data.platform || 'twitch');
+    } catch (e) {
+      console.error('Failed to parse chat message:', e);
+    }
+  };
+
+  eventSource.onerror = (error) => {
+    console.error('Chat stream error:', error);
+  };
+</script>
+</body>
+</html>

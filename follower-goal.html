@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Follower Goal Preview</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: transparent;
+    font-family: system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  html {
+    background: transparent;
+  }
+
+  .container {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 32px;
+    background: transparent;
+  }
+
+  .overlay-wrapper {
+    position: relative;
+    width: 1200px;
+    height: 300px;
+  }
+
+  /* Progress bar container */
+  .progress-bar {
+    position: relative;
+    height: 90px;
+    width: 660px;
+    margin-top: 30px;
+  }
+
+  /* Filled bar wrapper */
+  .filled-bar-wrapper {
+    position: absolute;
+    height: 45px;
+    left: 0;
+    top: 0;
+    width: 585px;
+  }
+
+  /* Clipped filled bar */
+  .filled-clip-container {
+    position: absolute;
+    left: 3px;
+    top: 1.5px;
+    width: 579px;
+    height: 42px;
+    transition: clip-path 0.03s linear;
+    overflow: hidden;
+  }
+
+  .filled-bar-svg {
+    display: block;
+  }
+
+  /* Sparkle */
+  .sparkle {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  @keyframes float-out {
+    to {
+      rotate: 360deg;
+      translate: 30% 0;
+    }
+  }
+
+  @keyframes float-out-reverse {
+    to {
+      rotate: -360deg;
+      translate: 30% 0;
+    }
+  }
+
+  .sparkle {
+    width: calc(var(--size, 0.25) * 3rem);
+    aspect-ratio: 1;
+    position: absolute;
+    top: calc(var(--y) * 1%);
+    left: calc(var(--x) * 1%);
+    opacity: var(--alpha, 1);
+    animation: float-out calc(var(--duration, 1) * 1s) calc(var(--delay) * -1s) infinite linear;
+    transform-origin: var(--origin-x, 1000%) var(--origin-y, 1000%);
+    pointer-events: none;
+    filter: blur(1.5px);
+  }
+
+  .sparkle:nth-of-type(even) {
+    animation-name: float-out-reverse;
+  }
+
+  /* Outline wrapper */
+  .outline-wrapper {
+    position: absolute;
+    height: 45px;
+    left: 0;
+    top: -1.5px;
+    width: 585px;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  /* Text */
+  .follower-count {
+    position: absolute;
+    height: 45px;
+    line-height: normal;
+    left: 564px;
+    font-size: 36px;
+    color: white;
+    top: 45px;
+    width: 93px;
+  }
+
+  .goal-label {
+    position: absolute;
+    height: 45px;
+    line-height: normal;
+    left: 0;
+    font-size: 36px;
+    color: white;
+    top: 50px;
+    width: 585px;
+    white-space: nowrap;
+  }
+
+  /* Hide/show */
+  .hidden {
+    display: none;
+  }
+
+  .progress-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 1;
+    transition: opacity 0.3s;
+  }
+
+  .progress-view.fade-out {
+    opacity: 0;
+  }
+
+  .progress-view.charge {
+    animation: charge 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes charge {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.05); filter: brightness(1.3); }
+    100% { transform: scale(1.08); filter: brightness(1.5); }
+  }
+
+  .progress-view.burst {
+    animation: burst 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+
+  @keyframes burst {
+    0% { transform: scale(1.08); opacity: 1; filter: brightness(1.5); }
+    50% { transform: scale(2.5); opacity: 0.5; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+
+  /* Purple flash */
+  .purple-flash {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(147, 51, 234, 0.4) 0%, transparent 60%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .purple-flash.animate {
+    animation: flash 0.6s cubic-bezier(0.4, 0, 0.6, 1);
+  }
+
+  @keyframes flash {
+    0% { opacity: 0; transform: scale(0.8); }
+    30% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(1.5); }
+  }
+
+  /* White wipe */
+  .white-wipe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 220px;
+    height: 30px;
+    background: white;
+    z-index: 50;
+    transform: translateX(-220px);
+    display: none;
+  }
+
+  .white-wipe.animate {
+    display: block;
+    animation: wipe-slide 0.5s ease-in-out forwards;
+  }
+
+  @keyframes wipe-slide {
+    from { transform: translateX(0); }
+    to { transform: translateX(220px); }
+  }
+
+  /* Celebration */
+  .celebration-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  .celebration-view.animate {
+    animation: celebrate-grow 1.5s forwards;
+  }
+
+  @keyframes celebrate-grow {
+    0% { opacity: 0; transform: scale(0); }
+    40% { opacity: 1; transform: scale(1.3); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .celebration-wrapper {
+    position: relative;
+    padding: 0;
+  }
+
+  .celebration-text {
+    display: block;
+    opacity: 0;
+    transform: translateY(-100%);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .celebration-text.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .celebration-text.exiting {
+    opacity: 0;
+    transform: translateY(-100%);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  /* Confetti */
+  .confetti-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="overlay-wrapper">
+    <!-- Progress View -->
+    <div id="progress-view" class="progress-view">
+      <div class="progress-bar">
+        <!-- Filled Purple Bar -->
+        <div class="filled-bar-wrapper">
+          <div id="filled-clip-container" class="filled-clip-container">
+            <svg class="filled-bar-svg" preserveAspectRatio="none" viewBox="0 0 579 42" width="579" height="42" fill="none">
+              <defs>
+                <linearGradient id="purpleGrad" x1="0" y1="21" x2="579" y2="21" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#0D0118"/>
+                  <stop offset="0.3" stop-color="#2D0B4E"/>
+                  <stop offset="0.6" stop-color="#5B1896"/>
+                  <stop offset="1" stop-color="#7B2CB8"/>
+                </linearGradient>
+              </defs>
+              <path d="M0 0H576V42H24L0 0Z" fill="url(#purpleGrad)"/>
+            </svg>
+          </div>
+
+          <!-- Sparkles OUTSIDE clipped area so they don't get cut off -->
+          <div id="sparkles-container" style="position: absolute; left: 3px; top: 1.5px; width: 579px; height: 42px; z-index: 10; opacity: 0; transition: clip-path 0.03s linear, opacity 3s ease-in;">
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+            <svg class="sparkle" viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 0 L13.5 10.5 L24 12 L13.5 13.5 L12 24 L10.5 13.5 L0 12 L10.5 10.5 Z" /></svg>
+          </div>
+        </div>
+
+        <!-- White Outline -->
+        <div class="outline-wrapper">
+          <svg width="585" height="45" viewBox="0 0 585 45" fill="none" preserveAspectRatio="none">
+            <path d="M3 1.5H582V43.5H28.5L3 1.5Z" stroke="white" stroke-width="3" fill="none"/>
+          </svg>
+        </div>
+
+        <!-- Follower Count -->
+        <div id="follower-count" class="follower-count">0</div>
+
+        <!-- Goal Label -->
+        <div class="goal-label">500 FOLLOWERS</div>
+      </div>
+
+      <!-- White Wipe -->
+      <div id="white-wipe" class="white-wipe"></div>
+    </div>
+
+    <!-- Celebration View -->
+    <div id="celebration-view" class="celebration-view hidden">
+      <div class="celebration-wrapper">
+        <img src="images/GOAL-REACHED-11-8-2025 (1).png" alt="Goal Reached" class="celebration-text" id="goal-img-1" style="height: auto; width: 800px; position: absolute; top: -20px; left: -50px;">
+        <img src="images/500-LOWLIFES-11-8-2025.png" alt="500 Lowlifes" class="celebration-text" id="goal-img-2" style="height: auto; width: 800px; position: absolute; top: -20px; left: -50px;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confetti -->
+<div id="confetti-container" class="confetti-container hidden"></div>
+
+<!-- Purple Flash -->
+<div id="purple-flash" class="purple-flash"></div>
+
+<script>
+  function getBotOrigin() {
+    if (window.OVERLAY_BOT_BASE) {
+      return window.OVERLAY_BOT_BASE.replace(/\/$/, '');
+    }
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8787';
+    }
+    return 'https://tattoostwitch327.onrender.com';
+  }
+
+  const BOT_API_BASE = getBotOrigin();
+  const FOLLOWER_ENDPOINT = `${BOT_API_BASE}/followers`;
+  const GOAL = 500;
+  let followers = 0;
+  let goalReached = false;
+  let sparklesInitialized = false;
+  let initialAnimationDone = false;
+  let currentImageIndex = 0;
+  let previousFollowerCount = 0;
+
+  const filledClipContainer = document.getElementById('filled-clip-container');
+  const followerCount = document.getElementById('follower-count');
+  const progressView = document.getElementById('progress-view');
+  const celebrationView = document.getElementById('celebration-view');
+  const whiteWipe = document.getElementById('white-wipe');
+  const confettiContainer = document.getElementById('confetti-container');
+  const sparklesContainer = document.getElementById('sparkles-container');
+  const purpleFlash = document.getElementById('purple-flash');
+
+  function updateProgress() {
+    // Custom progress: last 10 followers (491-500) each get 3px
+    // Total width: 579px
+    // First 490 followers: 549px
+    // Last 10 followers: 30px (3px each)
+    let progressPixels;
+    if (followers <= 490) {
+      progressPixels = (followers / 490) * 549;
+    } else {
+      progressPixels = 549 + (followers - 490) * 3;
+    }
+    const progressPercent = (progressPixels / 579) * 100;
+
+    // Update clip-path to show filled portion
+    filledClipContainer.style.clipPath = `inset(0 ${100 - progressPercent}% 0 0)`;
+
+    // Also clip sparkles to match the filled portion
+    sparklesContainer.style.clipPath = `inset(0 ${100 - progressPercent}% 0 0)`;
+
+    // Update follower count
+    followerCount.textContent = followers;
+
+    // Initialize sparkles once
+    if (!sparklesInitialized) {
+      initSparkles();
+      sparklesInitialized = true;
+    }
+
+    // Check if goal reached
+    if (followers >= GOAL && !goalReached) {
+      goalReached = true;
+      triggerCelebration();
+    }
+  }
+
+  async function fetchFollowerCount() {
+    try {
+      const response = await fetch(FOLLOWER_ENDPOINT, { cache: 'no-store' });
+      const data = await response.json();
+      return typeof data.total === 'number' ? data.total : followers;
+    } catch (error) {
+      console.error('Failed to fetch follower count:', error);
+      return followers; // Return current count if fetch fails
+    }
+  }
+
+  async function animateInitialFill() {
+    const actualFollowers = await fetchFollowerCount();
+    const duration = 4000; // 4 seconds
+    const startTime = Date.now();
+    const startCount = 0;
+    const endCount = actualFollowers;
+
+    // Fade in sparkles
+    sparklesContainer.style.opacity = '1';
+
+    function animate() {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease out cubic for smooth deceleration
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+      followers = Math.floor(startCount + (endCount - startCount) * easeProgress);
+      updateProgress();
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        followers = endCount;
+        updateProgress();
+        initialAnimationDone = true;
+        previousFollowerCount = followers;
+      }
+    }
+
+    animate();
+  }
+
+  function initSparkles() {
+    const RANDOM = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
+    const sparkles = document.querySelectorAll('.sparkle');
+
+    sparkles.forEach(sparkle => {
+      sparkle.setAttribute('style', `
+        --x: ${RANDOM(25, 85)};
+        --y: ${RANDOM(35, 65)};
+        --duration: ${RANDOM(20, 50)};
+        --delay: ${RANDOM(1, 15)};
+        --alpha: ${RANDOM(60, 90) / 100};
+        --origin-x: ${Math.random() > 0.7 ? RANDOM(150, 350) : RANDOM(150, 350) * -1}%;
+        --origin-y: ${Math.random() > 0.5 ? RANDOM(150, 350) * -1 : RANDOM(150, 350)}%;
+        --size: ${RANDOM(10, 30) / 100};
+      `);
+    });
+  }
+
+  function triggerCelebration() {
+    // Hide text immediately
+    followerCount.style.opacity = '0';
+    document.querySelector('.goal-label').style.opacity = '0';
+
+    // Charge up
+    progressView.classList.add('charge');
+
+    // After charge, burst
+    setTimeout(() => {
+      progressView.classList.remove('charge');
+      progressView.classList.add('burst');
+
+      // Purple flash
+      purpleFlash.classList.add('animate');
+
+      // Show celebration text immediately as burst starts
+      celebrationView.classList.remove('hidden');
+      celebrationView.classList.add('animate');
+
+      // Start image rotation
+      startImageRotation();
+    }, 600);
+
+    // Confetti starts mid-celebration
+    setTimeout(() => {
+      startConfetti();
+    }, 1000);
+  }
+
+  function startImageRotation() {
+    const images = [
+      document.getElementById('goal-img-1'),
+      document.getElementById('goal-img-2')
+    ];
+
+    // Show first image
+    images[0].classList.add('active');
+
+    // Rotate every 15 seconds with vertical transition
+    setInterval(() => {
+      const prevIndex = currentImageIndex;
+      images[prevIndex].classList.add('exiting');
+      images[prevIndex].classList.remove('active');
+
+      currentImageIndex = (currentImageIndex + 1) % images.length;
+
+      setTimeout(() => {
+        images[prevIndex].classList.remove('exiting');
+        images[currentImageIndex].classList.add('active');
+      }, 500);
+    }, 15000);
+  }
+
+  function startConfetti() {
+    confettiContainer.classList.remove('hidden');
+    const colors = ['#000000', '#FFFFFF', '#9333EA', '#7C3AED', '#A855F7', '#C084FC', '#6B21A8'];
+
+    for (let i = 0; i < 160; i++) {
+      const confetti = document.createElement('div');
+      confetti.style.position = 'absolute';
+      confetti.style.width = '13px';
+      confetti.style.height = '8px';
+      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+      const startX = Math.random() * window.innerWidth;
+      const startY = Math.random() * 200 - 250;
+      const endX = startX + (Math.random() - 0.5) * 400;
+      const endY = window.innerHeight + 50;
+      const duration = 3 + Math.random() * 6;
+      const rotation = Math.random() * 360;
+
+      confetti.style.left = startX + 'px';
+      confetti.style.top = startY + 'px';
+
+      confetti.animate([
+        { transform: `translate(0, 0) rotate(${rotation}deg) scaleY(1)` },
+        { transform: `translate(${endX - startX}px, ${endY - startY}px) rotate(${rotation + 270}deg) scaleY(0.1)` }
+      ], {
+        duration: duration * 1000,
+        delay: (i / 200) * 1000,
+        easing: 'linear'
+      });
+
+      confettiContainer.appendChild(confetti);
+    }
+  }
+
+  // Initial render - animate from 0 to actual count
+  animateInitialFill();
+
+  // Poll for real follower updates every 5 seconds
+  setInterval(async () => {
+    if (initialAnimationDone && !goalReached) {
+      const newCount = await fetchFollowerCount();
+      if (newCount > followers) {
+        // Increment one at a time for smooth animation
+        const incrementInterval = setInterval(() => {
+          if (followers < newCount) {
+            followers++;
+            updateProgress();
+          } else {
+            clearInterval(incrementInterval);
+          }
+        }, 200);
+      }
+    }
+  }, 5000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BRB / Screen Overlays</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: transparent;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  .overlay {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+    pointer-events: none;
+  }
+
+  .overlay.active {
+    opacity: 1;
+  }
+
+  .overlay.brb {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  }
+
+  .overlay.tech_difficulties {
+    background: transparent;
+  }
+
+  .tech-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70%;
+    height: auto;
+    max-height: 90vh;
+    object-fit: contain;
+    display: none;
+  }
+
+  .overlay.tech_difficulties .tech-video {
+    display: block;
+  }
+
+  .overlay.tech_difficulties .content {
+    display: none;
+  }
+
+  .overlay.starting_soon {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+
+  .overlay.ending {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+
+  .content {
+    text-align: center;
+    color: white;
+  }
+
+  .main-text {
+    font-size: 180px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 12px;
+    text-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    margin-bottom: 30px;
+  }
+
+  .sub-text {
+    font-size: 64px;
+    font-weight: 300;
+    letter-spacing: 6px;
+    opacity: 0.9;
+    margin-bottom: 20px;
+  }
+
+  .countdown {
+    font-size: 96px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    margin-top: 40px;
+  }
+
+  .custom-message {
+    font-size: 48px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.85);
+    margin-top: 30px;
+    max-width: 80%;
+  }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay">
+  <video class="tech-video" id="tech-video" autoplay loop muted playsinline>
+    <source src="images/techdiffs.mp4" type="video/mp4">
+  </video>
+  <div class="content">
+    <div class="main-text" id="main-text">BRB</div>
+    <div class="sub-text" id="sub-text">Be Right Back</div>
+    <div class="countdown" id="countdown"></div>
+    <div class="custom-message" id="custom-message"></div>
+  </div>
+</div>
+
+<script>
+  function getBotOrigin() {
+    if (window.OVERLAY_BOT_BASE) {
+      return window.OVERLAY_BOT_BASE.replace(/\/$/, '');
+    }
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8787';
+    }
+    return 'https://tattoostwitch327.onrender.com';
+  }
+
+  const ENDPOINT = `${getBotOrigin()}/api/screen-overlay`;
+  const overlay = document.getElementById('overlay');
+  const mainText = document.getElementById('main-text');
+  const subText = document.getElementById('sub-text');
+  const countdown = document.getElementById('countdown');
+  const customMessage = document.getElementById('custom-message');
+
+  let currentState = null;
+  let startTime = null;
+  let durationMinutes = null;
+
+  const overlayConfig = {
+    'brb': {
+      mainText: 'BRB',
+      subText: 'Be Right Back',
+      className: 'brb'
+    },
+    'tech_difficulties': {
+      mainText: 'TECHNICAL',
+      subText: 'Difficulties - Please Stand By',
+      className: 'tech_difficulties'
+    },
+    'starting_soon': {
+      mainText: 'STARTING',
+      subText: 'Soon',
+      className: 'starting_soon'
+    },
+    'ending': {
+      mainText: 'STREAM',
+      subText: 'Ending - Thanks for Watching!',
+      className: 'ending'
+    }
+  };
+
+  function formatTime(seconds) {
+    if (seconds <= 0) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  function updateCountdown() {
+    if (!startTime || !durationMinutes) {
+      countdown.textContent = '';
+      return;
+    }
+
+    const now = Date.now();
+    const elapsed = now - startTime;
+    const totalDuration = durationMinutes * 60 * 1000;
+    const remaining = Math.max(0, totalDuration - elapsed);
+    const remainingSeconds = remaining / 1000;
+
+    if (remainingSeconds > 0) {
+      countdown.textContent = `Back in ${formatTime(remainingSeconds)}`;
+    } else {
+      countdown.textContent = '';
+      // Timer expired, hide overlay
+      hideOverlay();
+    }
+  }
+
+  function showOverlay(data) {
+    const config = overlayConfig[data.overlay_type];
+    if (!config) return;
+
+    // Remove all overlay type classes
+    overlay.classList.remove('brb', 'tech_difficulties', 'starting_soon', 'ending');
+
+    // Add current type class
+    overlay.classList.add(config.className);
+
+    // Set text
+    mainText.textContent = config.mainText;
+    subText.textContent = config.subText;
+
+    // Set custom message
+    if (data.custom_message) {
+      customMessage.textContent = data.custom_message;
+    } else {
+      customMessage.textContent = '';
+    }
+
+    // Set timing
+    if (data.duration_minutes) {
+      startTime = new Date(data.start_time).getTime();
+      durationMinutes = data.duration_minutes;
+    } else {
+      startTime = null;
+      durationMinutes = null;
+      countdown.textContent = '';
+    }
+
+    // Play tech video if tech_difficulties
+    const techVideo = document.getElementById('tech-video');
+    if (data.overlay_type === 'tech_difficulties' && techVideo) {
+      techVideo.currentTime = 0;
+      techVideo.play().catch(err => console.log('Video autoplay prevented:', err));
+    }
+
+    // Show overlay
+    overlay.classList.add('active');
+  }
+
+  function hideOverlay() {
+    overlay.classList.remove('active');
+    startTime = null;
+    durationMinutes = null;
+    countdown.textContent = '';
+
+    // Pause tech video
+    const techVideo = document.getElementById('tech-video');
+    if (techVideo) {
+      techVideo.pause();
+    }
+  }
+
+  async function checkOverlayStatus() {
+    try {
+      const response = await fetch(ENDPOINT, { cache: 'no-store' });
+      const data = await response.json();
+
+      if (data.is_active && data.overlay_type) {
+        // Show or update overlay
+        if (currentState !== data.overlay_type) {
+          showOverlay(data);
+          currentState = data.overlay_type;
+        }
+        // Update countdown
+        updateCountdown();
+      } else {
+        // Hide overlay
+        if (currentState !== null) {
+          hideOverlay();
+          currentState = null;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check overlay status:', error);
+    }
+  }
+
+  // Check status every 2 seconds
+  setInterval(checkOverlayStatus, 2000);
+  checkOverlayStatus();
+
+  // Update countdown display every second
+  setInterval(updateCountdown, 1000);
+</script>
+</body>
+</html>

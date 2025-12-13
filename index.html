@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="theme-color" content="#8B5CF6" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
+<link rel="stylesheet" href="css/styles.css?v=104" />
+<title>Tattoo's Twitch Controls</title>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen" class="container">
+  <div class="login-form">
+    <img src="images/bannerphoto.svg" alt="Tattoo's Twitch Banner" style="width: 100%; max-width: 350px; margin: 0 auto 20px auto; display: block;">
+    <input type="text" id="pin-input" placeholder="Enter PIN" autocomplete="off" inputmode="none" onclick="showPinPad()" style="-webkit-text-security: disc;" />
+    <button class="btn" onclick="login()">Login</button>
+    <div id="login-error" class="error hidden"></div>
+  </div>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div id="logout-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out? This will end your current admin session.</p>
+    <div class="modal-actions">
+      <button class="btn" style="background: #6c757d; flex: 1;" onclick="hideLogoutModal()">Cancel</button>
+      <button class="btn" style="background: #ff6b6b; flex: 1;" onclick="confirmLogoutAction()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN Pad Overlay -->
+<div id="pin-pad-overlay" class="pin-pad-overlay" onclick="handlePadBackgroundClick(event)">
+  <div class="pin-pad" role="dialog" aria-modal="true" aria-label="PIN pad">
+    <button class="pin-pad-close" onclick="hidePinPad()" aria-label="Close PIN pad"></button>
+    <h3>Enter PIN</h3>
+    <div class="pin-pad-display" id="pin-pad-display">••••</div>
+    <div class="pin-pad-grid">
+      <button class="pin-btn digit-1" onclick="appendPinDigit('1')" aria-label="1">1</button>
+      <button class="pin-btn digit-2" onclick="appendPinDigit('2')" aria-label="2">2</button>
+      <button class="pin-btn digit-3" onclick="appendPinDigit('3')" aria-label="3">3</button>
+      <button class="pin-btn digit-4" onclick="appendPinDigit('4')" aria-label="4">4</button>
+      <button class="pin-btn digit-5" onclick="appendPinDigit('5')" aria-label="5">5</button>
+      <button class="pin-btn digit-6" onclick="appendPinDigit('6')" aria-label="6">6</button>
+      <button class="pin-btn digit-7" onclick="appendPinDigit('7')" aria-label="7">7</button>
+      <button class="pin-btn digit-8" onclick="appendPinDigit('8')" aria-label="8">8</button>
+      <button class="pin-btn digit-9" onclick="appendPinDigit('9')" aria-label="9">9</button>
+      <button class="pin-btn clear-btn" onclick="clearPin()" aria-label="Clear">C</button>
+      <button class="pin-btn digit-0" onclick="appendPinDigit('0')" aria-label="0">0</button>
+      <button class="pin-btn back-btn" onclick="backspacePinDigit()" aria-label="Backspace">Back</button>
+    </div>
+    <div class="pin-pad-actions">
+      <button class="submit-btn" onclick="submitPinPad()" aria-label="Submit PIN">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Floating Settings Button (Owner Only) -->
+<button id="floating-settings-btn" class="floating-settings-btn hidden" onclick="window.navigation.setActiveTab('settings')" aria-label="Settings">
+  <img src="images/settings.svg" alt="Settings" style="width: 28px; height: 28px;">
+</button>
+
+<!-- Admin Screen -->
+<div id="admin-screen" class="container hidden">
+  <div class="banner-wrapper">
+    <img src="images/bannerphoto.svg" alt="Tattoo's Twitch Banner" class="banner-image">
+  </div>
+
+  <!-- Dashboard Tab -->
+  <div id="tab-dashboard" class="tab-content active">
+    <!-- Admin Check-In Section (only for non-owner admins) -->
+    <div id="admin-checkin-section" class="section hidden">
+      <h2>Admin Status</h2>
+      <div style="text-align: center; padding: 15px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; margin-bottom: 10px;">
+        <div style="font-size: 18px; font-weight: 600; color: var(--purple);">
+          Status: <span id="my-checkin-status">Not Checked In</span>
+        </div>
+        <div id="my-checkin-time" style="color: var(--muted); font-size: 14px; margin-top: 5px;"></div>
+      </div>
+      <div id="checkin-btn-container">
+        <button class="btn" style="background: #10b981;" onclick="checkIn()">Check In</button>
+      </div>
+      <div id="checkout-btn-container" class="hidden">
+        <button class="btn" style="background: #6c757d;" onclick="checkOut()">Check Out</button>
+      </div>
+    </div>
+
+    <!-- Active Admin Section (only shown to owner when non-owner admin is checked in) -->
+    <div id="active-admin-section" class="section hidden">
+      <h2>Checked-In Admin</h2>
+      <div id="admin-status" style="text-align: center; padding: 15px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; margin-bottom: 10px;">
+        <div style="font-size: 18px; font-weight: 600; color: var(--purple);">
+          <span id="current-admin-name"></span>
+        </div>
+        <div id="admin-since" style="color: var(--muted); font-size: 14px; margin-top: 5px;"></div>
+      </div>
+      <button class="btn" style="background: #ff6b6b;" onclick="bootAdmin()">Boot Admin</button>
+    </div>
+
+    <!-- Channel Stats & Scoreboard -->
+    <div class="section" style="max-width: 500px; margin: 0 auto 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center; margin-bottom: 20px;">
+        <div>
+          <div style="color: var(--muted); font-size: 12px; margin-bottom: 5px;">Followers</div>
+          <div style="font-size: 32px; font-weight: 900; color: var(--purple);">
+            <span id="follower-count">---</span>
+          </div>
+        </div>
+        <div>
+          <div style="color: var(--muted); font-size: 12px; margin-bottom: 5px;">Subscribers</div>
+          <div style="font-size: 32px; font-weight: 900; color: var(--purple);">
+            <span id="subscriber-count">---</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <div class="scoreboard-card">
+          <div class="scoreboard-card-overlay"></div>
+          <div class="scoreboard-card-content">
+            <div class="scoreboard">
+              <div class="player-column">
+                <div class="player-name">TATTOO</div>
+                <div class="player-score" id="score1">0</div>
+                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px;">
+                  <button class="score-btn" onclick="updateScore('player1', -1)" style="width: 36px; height: 36px;">-</button>
+                  <button class="score-btn" onclick="updateScore('player1', 1)" style="width: 36px; height: 36px;">+</button>
+                </div>
+              </div>
+              <div class="player-column">
+                <div class="player-name">OPEN</div>
+                <div class="player-score" id="score2">0</div>
+                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px;">
+                  <button class="score-btn" onclick="updateScore('player2', -1)" style="width: 36px; height: 36px;">-</button>
+                  <button class="score-btn" onclick="updateScore('player2', 1)" style="width: 36px; height: 36px;">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn" style="margin-top: 15px;" onclick="resetScores()">Reset Scores</button>
+    </div>
+  </div>
+
+  <!-- Music Tab -->
+  <div id="tab-music" class="tab-content">
+    <!-- Combined Music Card -->
+    <div class="section" style="max-width: 600px; margin: 0 auto;">
+      <h2>Music Control</h2>
+
+      <!-- Now Playing -->
+      <div class="spotify-player">
+        <div class="player-layout">
+          <div class="album-art-container">
+            <div class="album-glow"></div>
+            <div class="album-art" id="album-art">
+              <svg viewBox="0 0 24 24" fill="white" style="width: 64px; height: 64px;">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+              </svg>
+            </div>
+            <div class="music-notes" id="music-notes">
+              <div class="music-note">♪</div>
+              <div class="music-note">♫</div>
+              <div class="music-note">♪</div>
+            </div>
+          </div>
+          <div class="player-info">
+            <div class="track-title" id="track-title">—</div>
+            <div class="track-artist" id="track-artist">—</div>
+            <div class="track-playlist" id="track-playlist"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Player Controls -->
+      <div class="spotify-controls">
+        <button class="control-btn" onclick="togglePlayPause()" id="play-pause-btn">
+          <img src="images/play.svg?v=2" alt="Play" style="width: 50px; height: 50px;">
+        </button>
+        <button class="control-btn" onclick="skipSong()">
+          <svg width="50" height="50" viewBox="0 0 127 127" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g filter="url(#filter0_ii_skip)">
+              <path d="M127 63.5C127 98.5701 98.5701 127 63.5 127C28.4299 127 0 98.5701 0 63.5C0 28.4299 28.4299 0 63.5 0C98.5701 0 127 28.4299 127 63.5ZM11.5884 63.5C11.5884 92.17 34.83 115.412 63.5 115.412C92.17 115.412 115.412 92.17 115.412 63.5C115.412 34.83 92.17 11.5884 63.5 11.5884C34.83 11.5884 11.5884 34.83 11.5884 63.5Z" fill="#8b5cf6"/>
+            </g>
+            <g filter="url(#filter1_ii_skip)">
+              <path d="M29.7723 39.919C29.7587 37.1405 33.2035 35.8381 35.0315 37.9306L54.2372 59.9148C55.5383 61.4041 55.5557 63.6208 54.2782 65.1304L35.2861 87.573C33.4855 89.7007 30.0097 88.4371 29.996 85.6498L29.7723 39.919Z" fill="#8b5cf6"/>
+            </g>
+            <g filter="url(#filter2_ii_skip)">
+              <path d="M56.7723 39.919C56.7587 37.1405 60.2035 35.8381 62.0315 37.9306L81.2372 59.9148C82.5383 61.4041 82.5557 63.6208 81.2782 65.1304L62.2861 87.573C60.4855 89.7007 57.0097 88.4371 56.996 85.6498L56.7723 39.919Z" fill="#8b5cf6"/>
+            </g>
+            <g filter="url(#filter3_ii_skip)">
+              <path d="M84.9994 40.5927C84.9895 38.9289 86.3355 37.5749 87.9993 37.5749L93.7844 37.5749C95.9935 37.5749 97.7844 39.3657 97.7844 41.5749L97.7844 84.5749C97.7844 86.784 95.9935 88.5749 93.7844 88.5749L88.2666 88.5749C86.6167 88.5749 85.2765 87.2426 85.2667 85.5927L84.9994 40.5927Z" fill="#8b5cf6"/>
+            </g>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Pending Queue -->
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <h3 style="color: var(--purple); margin-bottom: 12px; font-size: 18px;">Up Next</h3>
+        <div id="pending-queue"></div>
+      </div>
+    </div>
+
+    <!-- Bot Controls -->
+    <div class="section" style="max-width: 600px; margin: 20px auto 0;">
+      <h2>Bot Controls</h2>
+      <button class="btn" onclick="resetBot()">Reset Queue</button>
+    </div>
+  </div>
+
+  <!-- Overlays Tab -->
+  <div id="tab-overlays" class="tab-content">
+    <!-- Mode Display -->
+    <div class="section">
+      <h2 style="display: flex; justify-content: space-between; align-items: center;">
+        Mode Display
+        <button onclick="toggleModeDisplayVisibility()" id="mode-visibility-btn" style="background: none; border: none; color: var(--purple); cursor: pointer; font-size: 20px; padding: 5px;" title="Toggle Mode Display Visibility">👁️</button>
+      </h2>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+        <div style="display: flex; gap: 10px;">
+          <button class="btn" style="flex: 1;" onclick="setMode('tourney')">Tourney Play</button>
+          <button class="btn" style="flex: 1;" onclick="setMode('lobby')">Open Lobby</button>
+          <button class="btn" style="flex: 1;" onclick="setMode('cash')">Cash Sets</button>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn" style="flex: 1;" onclick="setMode('league')">League Play</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="dubs-toggle" onchange="handleDubsToggle(this.checked)" />
+          <label for="dubs-toggle" style="color: var(--text); font-weight: 600; cursor: pointer;">Enable Dubs Overlay</label>
+        </div>
+      </div>
+      <div id="dubs-partner-container" style="margin-top: 12px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Dubs Partner Name</label>
+        <input type="text" id="dubs-partner" placeholder="Partner Name" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+        <small style="color: var(--muted); font-size: 12px;">Used when Dubs mode is active.</small>
+        <button class="btn" style="margin-top: 10px;" onclick="saveDubsSettings()">Save Dubs Settings</button>
+      </div>
+      <div id="current-mode" style="text-align: center; margin-top: 10px; color: var(--muted); font-size: 14px;">
+        Current: <span id="mode-text" style="color: var(--purple); font-weight: 600;">TOURNEY PLAY</span>
+        <span id="mode-visibility-status" style="display: block; margin-top: 5px; font-size: 12px; color: var(--muted);"></span>
+      </div>
+    </div>
+
+    <!-- BRB / Screen Control -->
+    <div class="section">
+      <h2>BRB / Screen Control</h2>
+      <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <button class="btn" style="flex: 1;" onclick="activateBRB(5)">BRB 5min</button>
+        <button class="btn" style="flex: 1;" onclick="activateBRB(10)">BRB 10min</button>
+        <button class="btn" style="flex: 1;" onclick="activateBRB(15)">BRB 15min</button>
+      </div>
+      <button class="btn" style="margin-bottom: 10px; background: #6c757d;" onclick="deactivateScreen()">Dismiss Screen</button>
+      <button class="btn" style="margin-bottom: 10px; background: var(--purple);" onclick="activateTechDifficulties()">Tech Difficulties</button>
+      <button class="btn" style="margin-bottom: 10px; background: #ef4444;" onclick="endStream()">End Stream</button>
+    </div>
+  </div>
+
+  <!-- Settings Tab -->
+  <div id="tab-settings" class="tab-content">
+    <!-- Admin Management (Owner Only) -->
+    <div id="admin-management" class="section hidden">
+      <h2>Admin Management</h2>
+      <div style="margin-bottom: 20px;">
+        <h3 style="color: var(--purple); margin-bottom: 10px;">Add New Admin</h3>
+        <input type="text" id="new-admin-name" placeholder="Admin Name" style="margin-bottom: 10px;" />
+        <input type="text" id="new-admin-pin" placeholder="PIN (4+ digits)" style="margin-bottom: 10px;" />
+        <button class="btn" onclick="addAdmin()">Add Admin</button>
+      </div>
+      <div>
+        <h3 style="color: var(--purple); margin-bottom: 10px;">Current Admins</h3>
+        <div id="admin-list"></div>
+      </div>
+    </div>
+
+    <!-- OBS WebSocket Settings -->
+    <div class="section">
+      <h2>OBS WebSocket</h2>
+      <small style="color: var(--muted); font-size: 12px; display: block; margin-bottom: 15px;">Configure OBS WebSocket to enable End Stream button</small>
+      <div style="margin-bottom: 10px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Server IP</label>
+        <input type="text" id="obs-ip" placeholder="192.168.1.134" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Server Port</label>
+        <input type="text" id="obs-port" placeholder="4455" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--text); font-weight: 600;">Server Password</label>
+        <input type="password" id="obs-password" placeholder="WebSocket Password" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" />
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn" style="flex: 1;" onclick="saveOBSSettingsFromUI()">Save</button>
+        <button class="btn" style="flex: 1; background: #10b981;" onclick="testOBSConnection()">Test Connection</button>
+      </div>
+      <div id="obs-status" style="margin-top: 10px; text-align: center; font-size: 14px;"></div>
+    </div>
+
+    <!-- Bot Settings -->
+    <div class="section">
+      <h2>Bot Settings</h2>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Special Users</label>
+        <small style="color: var(--muted); font-size: 12px; display: block; margin-bottom: 10px;">Users who get a custom chat announcement when they join</small>
+        <div id="special-users-list" style="margin-bottom: 15px;"></div>
+        <div style="background: rgba(139, 92, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+          <h4 style="color: var(--purple); margin-bottom: 8px; font-size: 14px;">Add New Special User</h4>
+          <input type="text" id="new-special-user" placeholder="Username" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 8px;" />
+          <input type="text" id="new-special-user-message" placeholder="Custom Message (optional - uses random default if empty)" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 8px;" />
+          <button class="btn" onclick="addSpecialUser()" style="width: 100%;">Add Special User</button>
+        </div>
+        <div style="font-size: 12px; color: var(--muted);">
+          <strong>Default messages (random if no custom message):</strong>
+          <ul id="default-messages-list" style="margin: 5px 0 0 20px; color: var(--muted);"></ul>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; color: var(--text); font-weight: 600;">Promo Interval (minutes)</label>
+        <input type="number" id="promo-minutes" min="1" max="60" value="15" style="width: 100%; padding: 10px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text); font-size: 14px;" onchange="updatePromoInterval()" />
+      </div>
+
+      <button class="btn" onclick="saveSettings()" style="width: 100%; background: #8400ff;">Save All Settings</button>
+    </div>
+
+    <!-- Logout -->
+    <button class="btn logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- Help Tab -->
+  <div id="tab-help" class="tab-content">
+    <div class="section">
+      <h2>Viewer Commands</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+        <div><strong>!cancel</strong> - Cancel your request</div>
+        <div><strong>!dcd</strong> - Dead Center Darts promo</div>
+        <div><strong>!lastseen [user]</strong> - Check last activity</div>
+        <div><strong>!llogb</strong> - Join our Facebook group!<br>https://www.facebook.com/groups/thelowlifesofgranboard</div>
+        <div><strong>!lurkers</strong> - Show anonymous viewers</div>
+        <div><strong>!prime</strong> - Prime sub promo</div>
+        <div><strong>!queue</strong> - View current queue</div>
+        <div><strong>!sr [song]</strong> - Request a song</div>
+        <div><strong>!waitlist</strong> - Join our waitlist!<br>https://www.lowlifesofgranboard.com/launch</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Admin Commands</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+        <div><strong>!approve [id]</strong> - Approve pending song</div>
+        <div><strong>!deny [id]</strong> - Deny pending song</div>
+        <div><strong>!skip</strong> - Skip current song</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>TattooedLowLife Commands</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+        <div style="color: var(--muted); font-style: italic;">TattooedLowLife commands are available via the admin panel</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js?v=105"></script>
+
+</body>
+</html>

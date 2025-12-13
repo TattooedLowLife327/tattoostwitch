@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLoGB Scoreboard</title>
+<style>
+  :root{
+    --bg: rgba(0,0,0,0.0);
+    --purple: #8B5CF6;
+    --text: #ffffff;
+    --muted: #a3a3a3;
+    --font: system-ui, -apple-system, sans-serif;
+    --card-width: 320px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overflow: visible;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .card {
+    width: var(--card-width);
+    background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    transform: scale(1.5);
+    transform-origin: top left;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, transparent 100%);
+    border-radius: 12px;
+    pointer-events: none;
+  }
+
+  .card-content {
+    position: relative;
+    padding: 12px 16px 18px;
+    z-index: 2;
+    min-height: 140px;
+    max-height: none;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .scoreboard {
+    position: relative;
+    display: flex;
+    width: 100%;
+    gap: 0;
+    align-items: stretch;
+  }
+
+  .scoreboard::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: linear-gradient(180deg, transparent 0%, rgba(139, 92, 246, 0.6) 50%, transparent 100%);
+    transform: translateX(-50%);
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+  }
+
+  .player-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  .player-name {
+    font-size: 22px;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+    width: 100%;
+    text-align: center;
+  }
+
+  .player-score {
+    font-size: 74px;
+    color: var(--text);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    font-weight: 900;
+    line-height: 0.9;
+    width: 100%;
+    text-align: center;
+  }
+
+  .brb-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border-radius: 12px;
+    pointer-events: none;
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    transition: opacity 0.25s ease, clip-path 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+    z-index: 3;
+  }
+
+  .brb-overlay.active {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+
+  .brb-overlay-bg {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(15, 9, 31, 0.98), rgba(54, 14, 87, 0.96));
+    overflow: hidden;
+  }
+
+  .brb-overlay-fill {
+    position: absolute;
+    inset: 0;
+    width: var(--fill, 0%);
+    background: linear-gradient(135deg, rgba(92, 32, 195, 0.85), rgba(139, 92, 246, 0.92));
+    transition: width 0.4s linear;
+  }
+
+  .brb-overlay-content {
+    position: relative;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 4;
+  }
+
+  .brb-overlay-label {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .brb-overlay-countdown {
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .brb-overlay-subtext {
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.9);
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-overlay"></div>
+  <div class="card-content">
+    <div class="scoreboard">
+      <div class="player-column">
+        <div class="player-name" id="player1-name">TATTOO</div>
+        <div class="player-score" id="player1-score">0</div>
+      </div>
+      <div class="player-column">
+        <div class="player-name" id="player2-name">OPEN</div>
+        <div class="player-score" id="player2-score">0</div>
+      </div>
+    </div>
+  </div>
+  <div class="brb-overlay" id="brb-overlay">
+    <div class="brb-overlay-bg">
+      <div class="brb-overlay-fill" id="brb-fill" style="--fill: 0%;"></div>
+    </div>
+    <div class="brb-overlay-content">
+      <div class="brb-overlay-label" id="brb-label">Be Right Back</div>
+      <div class="brb-overlay-countdown" id="brb-countdown">00:00</div>
+      <div class="brb-overlay-subtext" id="brb-subtext">Quick break — stay tuned.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = 'https://tattoostwitch.netlify.app';
+  const ENDPOINT = API_BASE + '/api/scoreboard';
+  const BOT_API_BASE = window.location.origin.includes('localhost')
+    ? 'http://localhost:8787'
+    : 'https://tattoostwitch327.onrender.com';
+  const SCREEN_ENDPOINT = BOT_API_BASE + '/api/screen-overlay';
+  const brbOverlay = document.getElementById('brb-overlay');
+  const brbFill = document.getElementById('brb-fill');
+  const brbCountdown = document.getElementById('brb-countdown');
+  const brbLabel = document.getElementById('brb-label');
+  const brbSubtext = document.getElementById('brb-subtext');
+  let brbDurationMs = 0;
+
+  async function loadBackgroundFromSettings() {
+    try {
+      const response = await fetch(API_BASE + '/api/settings', { cache: 'no-store' });
+      const settings = await response.json();
+      const bgUrl = settings.obsBackgroundUrl;
+
+      if (bgUrl && bgUrl.trim()) {
+        document.body.style.background = `url('${bgUrl}') center center / cover no-repeat fixed`;
+      }
+    } catch (error) {
+      console.error('Failed to load background:', error);
+    }
+  }
+
+  async function updateScoreboard() {
+    try {
+      const response = await fetch(ENDPOINT, { cache: 'no-store' });
+      const data = await response.json();
+
+      if (data.player1) {
+        document.getElementById('player1-name').textContent = (data.player1.name || 'TATTOO').toUpperCase();
+        document.getElementById('player1-score').textContent = data.player1.score || 0;
+      }
+
+      if (data.player2) {
+        document.getElementById('player2-name').textContent = (data.player2.name || 'OPEN').toUpperCase();
+        document.getElementById('player2-score').textContent = data.player2.score || 0;
+      }
+
+    } catch (error) {
+      console.error('Failed to update scoreboard:', error);
+    }
+  }
+
+  function formatTime(ms) {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  async function syncBrbTimer() {
+    try {
+      const response = await fetch(SCREEN_ENDPOINT, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      const type = data.type || data.overlay_type;
+      const isActive = (typeof data.isActive === 'boolean' ? data.isActive : data.is_active);
+      const durationMinutes = data.durationMinutes ?? data.duration_minutes;
+      const rawTimeRemaining = data.timeRemaining ?? data.time_remaining;
+      const rawEndTime = data.endTime ?? data.end_time;
+      let remainingMs = 0;
+
+      if (durationMinutes) {
+        brbDurationMs = durationMinutes * 60000;
+      }
+
+      if (isActive && type === 'brb') {
+        if (typeof rawTimeRemaining === 'number') {
+          remainingMs = rawTimeRemaining;
+        } else if (typeof rawEndTime === 'number') {
+          remainingMs = Math.max(0, rawEndTime - Date.now());
+        } else if (typeof rawEndTime === 'string') {
+          const parsed = parseInt(rawEndTime, 10);
+          if (!Number.isNaN(parsed)) {
+            remainingMs = Math.max(0, parsed - Date.now());
+          }
+        } else if (data.start_time && durationMinutes) {
+          const started = new Date(data.start_time).getTime();
+          remainingMs = Math.max(0, (durationMinutes * 60000) - (Date.now() - started));
+        } else if (durationMinutes) {
+          remainingMs = durationMinutes * 60000;
+        }
+      }
+
+      updateBrbOverlay(type, remainingMs);
+    } catch (error) {
+      console.error('Failed to sync BRB timer:', error);
+      updateBrbOverlay(null, 0);
+    }
+  }
+
+  function updateBrbOverlay(type, remainingMs) {
+    const isActive = type === 'brb' && remainingMs > 0;
+    if (!isActive) {
+      brbOverlay.classList.remove('active');
+      brbFill.style.setProperty('--fill', '0%');
+      return;
+    }
+
+    const duration = brbDurationMs || remainingMs || 1;
+    const elapsedRatio = 1 - Math.max(0, Math.min(1, remainingMs / duration));
+    brbOverlay.classList.add('active');
+    brbFill.style.setProperty('--fill', `${elapsedRatio * 100}%`);
+    brbCountdown.textContent = formatTime(remainingMs);
+    brbLabel.textContent = 'Be Right Back';
+    brbSubtext.textContent = 'Quick break — stay tuned.';
+  }
+
+  loadBackgroundFromSettings();
+  updateScoreboard();
+  syncBrbTimer();
+  setInterval(updateScoreboard, 1000); // Fast updates for instant feedback
+  setInterval(syncBrbTimer, 1000);
+</script>
+</body>
+</html>

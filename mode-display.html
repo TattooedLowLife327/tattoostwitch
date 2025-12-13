@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLoGB Mode Display</title>
+<style>
+  :root{
+    --bg: rgba(0,0,0,0.0);
+    --purple: #8B5CF6;
+    --text: #ffffff;
+    --muted: #a3a3a3;
+    --font: system-ui, -apple-system, sans-serif;
+    --card-width: 420px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overflow: visible;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .card {
+    width: var(--card-width);
+    background: linear-gradient(135deg, rgba(17,17,17,0.98) 0%, rgba(17,17,17,0.95) 100%);
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    border-radius: 12px;
+    overflow: hidden;
+    transform: scale(1.5);
+    transform-origin: top left;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, transparent 100%);
+    border-radius: 12px;
+    pointer-events: none;
+  }
+
+  .card-content {
+    position: relative;
+    padding: 12px 16px;
+    z-index: 2;
+    min-height: 125px;
+    max-height: 125px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .mode-text {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-align: center;
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.8), 0 2px 8px rgba(0, 0, 0, 0.5);
+    line-height: 1.2;
+  }
+
+  @keyframes glow {
+    0%, 100% {
+      text-shadow: 0 0 20px rgba(139, 92, 246, 0.8), 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+    50% {
+      text-shadow: 0 0 30px rgba(139, 92, 246, 1), 0 0 15px rgba(168, 85, 247, 0.8), 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  .mode-text {
+    animation: glow 3s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-overlay"></div>
+  <div class="card-content">
+    <div class="mode-text" id="mode-display">
+      TOURNEY<br>PLAY
+    </div>
+  </div>
+</div>
+
+<script>
+  function getSiteOrigin() {
+    if (window.OVERLAY_API_BASE) {
+      return window.OVERLAY_API_BASE.replace(/\/$/, '');
+    }
+    if (window.location?.origin && window.location.origin !== 'null') {
+      return window.location.origin;
+    }
+    return 'https://tattoostwitch.netlify.app';
+  }
+
+  const SITE_ORIGIN = getSiteOrigin();
+  const API_BASE = `${SITE_ORIGIN}/api`;
+  const MODE_ENDPOINT = `${API_BASE}/mode`;
+  const SETTINGS_ENDPOINT = `${API_BASE}/settings`;
+  let dubsPartner = '';
+  let dubsEnabled = false;
+  let currentMode = 'tourney';
+  let showDubsInfo = true; // Toggle between showing dubs and mode
+
+  const modes = {
+    'tourney': 'TOURNEY<br>PLAY',
+    'lobby': 'OPEN<br>LOBBY',
+    'cash': 'CASH<br>SETS',
+    'league': 'LEAGUE<br>PLAY'
+  };
+
+  async function updateMode() {
+    try {
+      const response = await fetch(MODE_ENDPOINT, { cache: 'no-store' });
+      const data = await response.json();
+
+      const modeDisplay = document.getElementById('mode-display');
+      const apiMode = data.mode || 'tourney';
+      const shouldShowDubs = dubsEnabled === true || dubsEnabled === 'true';
+      const safeMode = (!shouldShowDubs && apiMode === 'dubs') ? 'tourney' : apiMode;
+      currentMode = safeMode;
+
+      // If dubs is enabled and partner is set, rotate between mode and dubs info
+      if (shouldShowDubs && dubsPartner && dubsPartner.trim()) {
+        if (showDubsInfo) {
+          const partner = dubsPartner.trim();
+          modeDisplay.innerHTML = `DUBS:<br>${partner.toUpperCase()}`;
+        } else {
+          modeDisplay.innerHTML = modes[currentMode] || modes.tourney;
+        }
+      } else if (shouldShowDubs) {
+        // If dubs is enabled but no partner, just show dubs mode
+        modeDisplay.innerHTML = 'DUBS<br>MODE';
+      } else {
+        modeDisplay.innerHTML = modes[safeMode] || modes.tourney;
+      }
+
+    } catch (error) {
+      console.error('Failed to update mode:', error);
+    }
+  }
+
+  // Toggle between showing dubs info and mode info every 5 seconds
+  function toggleDisplay() {
+    const shouldShowDubs = dubsEnabled === true || dubsEnabled === 'true';
+    if (shouldShowDubs && dubsPartner && dubsPartner.trim()) {
+      showDubsInfo = !showDubsInfo;
+      updateMode();
+    }
+  }
+
+  async function checkVisibility() {
+    try {
+      const response = await fetch(SETTINGS_ENDPOINT, { cache: 'no-store' });
+      const settings = await response.json();
+
+      // Default to visible if not set
+      const isVisible = settings.modeDisplayVisible !== 'false';
+      dubsPartner = settings.dubsPartner || '';
+      const rawDubs = settings.dubsEnabled;
+      dubsEnabled = rawDubs === true || rawDubs === 'true';
+
+      const card = document.querySelector('.card');
+      if (card) {
+        card.style.display = isVisible ? 'block' : 'none';
+      }
+      updateMode();
+    } catch (error) {
+      console.error('Failed to check visibility:', error);
+    }
+  }
+
+  updateMode();
+  checkVisibility();
+  setInterval(updateMode, 5000); // Optimized polling
+  setInterval(checkVisibility, 5000); // Check visibility every 5 seconds
+  setInterval(toggleDisplay, 5000); // Toggle between mode and dubs every 5 seconds
+</script>
+</body>
+</html>

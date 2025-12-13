@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px 40px;
+      background: transparent;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #platform-container {
+      display: flex;
+      gap: 40px;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .platform-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 150px;
+    }
+
+    .platform-icon {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+    }
+
+    .viewer-count {
+      font-size: 42px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .error {
+      margin-top: 12px;
+      color: #ff6b6b;
+      font-size: 14px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    }
+  </style>
+</head>
+<body>
+
+<div id="platform-container">
+  <div class="platform-item" id="twitch-item">
+    <img class="platform-icon" src="images/twitchblackicon.png" alt="Twitch">
+    <div class="viewer-count" id="twitch-count">--</div>
+  </div>
+  <div class="platform-item" id="facebook-item">
+    <img class="platform-icon" src="images/facebookblackicon.png" alt="Facebook">
+    <div class="viewer-count" id="facebook-count">--</div>
+  </div>
+  <div class="platform-item" id="tiktok-item">
+    <img class="platform-icon" src="images/tiktokblackicon.png" alt="TikTok">
+    <div class="viewer-count" id="tiktok-count">--</div>
+  </div>
+  <div class="platform-item" id="youtube-item">
+    <img class="platform-icon" src="images/youtubeblackicon.png" alt="YouTube">
+    <div class="viewer-count" id="youtube-count">--</div>
+  </div>
+</div>
+
+<div id="error" class="error"></div>
+
+<script>
+function getSiteOrigin() {
+  if (window.OVERLAY_API_BASE) {
+    return window.OVERLAY_API_BASE.replace(/\/$/, '');
+  }
+  if (window.location?.origin && window.location.origin !== 'null') {
+    return window.location.origin;
+  }
+  return 'https://tattoostwitch.netlify.app';
+}
+
+const API_ENDPOINT = 'https://tattoostwitch.netlify.app/api/viewer-counts';
+const PLATFORMS = ['twitch', 'facebook', 'tiktok', 'youtube'];
+
+async function updateViewerCounts() {
+  try {
+    const response = await fetch(API_ENDPOINT, { cache: 'no-store' });
+
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    PLATFORMS.forEach((key) => {
+      updatePlatform(key, data[key]);
+    });
+
+    document.getElementById('error').textContent = '';
+  } catch (err) {
+    console.error('Failed to fetch viewer counts:', err);
+    document.getElementById('error').textContent = 'Failed to fetch viewer counts';
+  }
+}
+
+function updatePlatform(platform, count) {
+  const countEl = document.getElementById(`${platform}-count`);
+  if (!countEl) return;
+
+  const displayValue = (count === null || Number.isNaN(count) || typeof count === 'undefined')
+    ? '--'
+    : Number(count).toLocaleString();
+
+  countEl.textContent = displayValue;
+}
+
+updateViewerCounts();
+setInterval(updateViewerCounts, 30000);
+</script>
+
+</body>
+</html>
