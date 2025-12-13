@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
 <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
-<link rel="stylesheet" href="css/styles.css?v=106" />
+<link rel="stylesheet" href="css/styles.css?v=107" />
 <title>Tattoo's Twitch Controls</title>
 </head>
 <body>
@@ -20,7 +20,9 @@
 <div id="login-screen" class="container">
   <div class="login-form">
     <img src="images/bannerphoto.svg" alt="Tattoo's Twitch Banner" style="width: 100%; max-width: 350px; margin: 0 auto 20px auto; display: block;">
-    <input type="text" id="pin-input" placeholder="Enter PIN" autocomplete="off" inputmode="none" readonly onfocus="this.blur(); showPinPad();" ontouchstart="showPinPad();" onclick="showPinPad();" style="-webkit-text-security: disc;" />
+    <div onclick="showPinPad()" style="cursor: pointer;">
+      <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off" readonly tabindex="-1" style="pointer-events: none;" />
+    </div>
     <button class="btn" onclick="login()">Login</button>
     <div id="login-error" class="error hidden"></div>
   </div>
@@ -374,7 +376,7 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=106"></script>
+<script type="module" src="js/app.js?v=107"></script>
 
 </body>
 </html>
